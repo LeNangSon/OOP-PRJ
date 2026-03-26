@@ -3,6 +3,7 @@ package org.openjfx.app.core;
 public class RelationManager {
 
     static {
+        
     }
 
     public static boolean isScaredOf(EntityType subject, EntityType target) {
