@@ -5,6 +5,7 @@ import java.util.List;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 
+
 public class FleeStrategy implements MoveStrategy {
     private double detectionRadius;
     private double comfortDistance;
@@ -14,7 +15,7 @@ public class FleeStrategy implements MoveStrategy {
 
     }
 
-    public boolean isThreat(Entity Object){
+    public boolean isThreat(Entity entity){
         return true;
 
     }
