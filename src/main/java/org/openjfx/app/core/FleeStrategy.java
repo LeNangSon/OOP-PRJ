@@ -25,7 +25,7 @@ public class FleeStrategy implements MoveStrategy {
         //Duyệt từng vật thể một,
         for (Entity neighbor: neighbors){
             EntityType cur = neighbor.getType();
-            if ()
+            
         }           
             
         
