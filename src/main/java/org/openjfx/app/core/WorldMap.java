@@ -37,6 +37,14 @@ public class WorldMap {
             renderEntityWithImage(gc, entity);
         }
     }
+     // 4. Hàm "Radar" - Cung cấp tầm nhìn cho AI
+    public List<Entity> getNeighbors(Entity owner, double radius) {
+        
+        return null; // Thay bằng list kết quả
+    }
+    private void handleBounds(Entity e) {
+        
+    }
 
     private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
     // 1. Tách chuỗi từ toString() để lấy tên lớp
