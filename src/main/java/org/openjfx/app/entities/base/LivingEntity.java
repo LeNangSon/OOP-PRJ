@@ -55,6 +55,7 @@ public abstract class LivingEntity extends MovableEntity {
 
 
     //Method
+    @Override
     public void update(double dt) {
         if (!isAlive) return;
     

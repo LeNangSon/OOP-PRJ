@@ -20,7 +20,7 @@ public abstract class Entity {
     public int getId() { return id; }
     public double getSize() { return size; }
 
-    public abstract void update();
+    public abstract void update(double dt);
 
     // public abstract void render(GraphicsContext gc);
 
