@@ -1,5 +1,6 @@
 package org.openjfx.app.entities.base;
 
+import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 
 public abstract class Entity {
@@ -8,6 +9,7 @@ public abstract class Entity {
     protected double size;
     protected String shape;
     private static int nextId = 0;
+    protected EntityType type;
 
     public Entity(Vector2D position, double size, String shape) {
         this.position = position;
@@ -19,6 +21,7 @@ public abstract class Entity {
     public Vector2D getPosition() { return position; }
     public int getId() { return id; }
     public double getSize() { return size; }
+    public EntityType getType(){ return type; }
 
     public abstract void update(double dt);
 
