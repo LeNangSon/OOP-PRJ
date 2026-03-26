@@ -7,7 +7,6 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
-    
 
     private double hungerRate;
     private double thirstRate;
@@ -82,8 +81,6 @@ public abstract class LivingEntity extends MovableEntity {
     
         
     }
-    //bat bc phai co trong lop con @Override
-    
 
     public abstract void eat();
     public abstract void drink();
