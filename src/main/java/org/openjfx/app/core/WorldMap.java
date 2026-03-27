@@ -25,10 +25,10 @@ public class WorldMap {
 
     public void update(double dt) {
         for (Entity entity : entities) {
-            entity.update(dt);
+            entity.update(dt, this);
         }
     }
-    
+
     public Entity getEntityById(int id) {
         for (Entity e : entities) {
             if (e.getId() == id) return e;
@@ -49,6 +49,7 @@ public class WorldMap {
         
         return null; // Thay bằng list kết quả
     }
+    // Xung đột
     private void handleBounds(Entity e) {
         
     }

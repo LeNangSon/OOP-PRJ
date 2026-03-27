@@ -19,7 +19,7 @@ public class FleeStrategy implements MoveStrategy {
     int closiestID = -1;
     for(Entity neighbor : neighbors) {
         EntityType curNeighborType = neighbor.getType();
-        if (RelationManager.isPrey(owner.getType(), curNeighborType)){
+        if (RelationManager.isScaredOf(owner.getType(), curNeighborType)){
             Vector2D ownerPosition = owner.getPosition();
             double distance = ownerPosition.distance(neighbor.getPosition());
             if (distance <= minDistance){
@@ -41,10 +41,14 @@ public class FleeStrategy implements MoveStrategy {
         if (mostDangerous != -1){
             Entity threat = world.getEntityById(mostDangerous);
             if (threat != null) {
+                // Tìm vecto(BA) rồi chuẩn hóa
                 Vector2D directionShouldRun = threat.getPosition().directionTo(owner.getPosition());
                 owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
 
             }
+        } else {
+            owner.setVelocity(new Vector2D(0, 0));
+            
         }
         
         

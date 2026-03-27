@@ -1,9 +1,17 @@
 package org.openjfx.app.entities.base;
 
+import java.util.List;
+
+import org.openjfx.app.core.MoveStrategy;
+import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WorldMap;
+
+
 
 public abstract class LivingEntity extends MovableEntity {
     //Atribute
+    protected MoveStrategy moveStrategy;
     private double hunger;
     private double thirst;
     private double health;
@@ -11,6 +19,8 @@ public abstract class LivingEntity extends MovableEntity {
     private double hungerRate;
     private double thirstRate;
     private boolean isAlive;
+    private double radius;
+    protected  List<Entity> neighbors;
 
 
     //Constructor
@@ -22,6 +32,7 @@ public abstract class LivingEntity extends MovableEntity {
         this.hunger = 0.0;
         this.thirst = 0.0;
         this.isAlive = true;
+        //this.moveStrategy = new FleeStrategy(); // Dang nhe la lang thang nhung chua co class nen de tam flee
     }
 
 
@@ -30,6 +41,7 @@ public abstract class LivingEntity extends MovableEntity {
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
+    
 
 
     public void setHealth(double health) {
@@ -56,21 +68,16 @@ public abstract class LivingEntity extends MovableEntity {
 
     //Method
     @Override
-    public void update(double dt) {
+    public void update(double dt, WorldMap world) {
         if (!isAlive) return;
+
+        this.neighbors = world.getNeighbors(this, radius);
     
         super.move(dt);
     
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
 
-        //Nếu đói + khát thì phải đi kiếm ăn
-        if (this.hunger > 70.0) {
-            this.eat(); 
-        }
-        if (this.thirst > 70.0) {
-            this.drink();
-        }
 
 
         //Đói + Khát quá thì bị mất máu
@@ -78,12 +85,28 @@ public abstract class LivingEntity extends MovableEntity {
             setHealth(this.health - 5*dt);
         }
 
-    
+        
+        if (this.moveStrategy != null) {
+            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
+        }
+
+
+    }
+
+    public boolean hasThreat(Entity owner, List<Entity> neighbors) {
+        for (Entity neighbor : neighbors){
+            if (RelationManager.isScaredOf(owner.getType(), neighbor.getType())){
+                return true;
+            }
+        }
+        return false;
         
     }
 
     public abstract void eat();
     public abstract void drink();
+
+
 
     public void onDeath(){
         System.out.println("Death");
