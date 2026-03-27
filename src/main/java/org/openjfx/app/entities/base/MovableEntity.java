@@ -4,11 +4,23 @@ import org.openjfx.app.core.Vector2D;
 
 public abstract class MovableEntity extends Entity {
     protected Vector2D velocity;
+    private double maxSpeed;
 
     public MovableEntity(Vector2D position, double size, String shape) {
         super(position, size, shape);
         this.velocity = new Vector2D(0, 0);
     }
+
+    public double getMaxSpeed() {
+        return maxSpeed;
+    }
+
+    public void setMaxSpeed(double maxSpeed) {
+        if (maxSpeed >= 0) {
+            this.maxSpeed = maxSpeed;
+        }
+    }
+
 
     @Override
     public void update(double dt) {

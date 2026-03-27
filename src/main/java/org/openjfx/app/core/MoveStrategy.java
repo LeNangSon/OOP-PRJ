@@ -17,5 +17,5 @@ public interface MoveStrategy {
      * @param neighbors: Danh sách các thực thể xung quanh mà World quét được.
      * @param dt: Khoảng thời gian giữa 2 khung hình (delta time).
      */
-    void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt);
+    void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world);
 }

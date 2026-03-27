@@ -28,6 +28,13 @@ public class WorldMap {
             entity.update(dt);
         }
     }
+    
+    public Entity getEntityById(int id) {
+        for (Entity e : entities) {
+            if (e.getId() == id) return e;
+        }
+        return null;
+    }
 
     public void render(GraphicsContext gc) {
         //Vẽ nền Map

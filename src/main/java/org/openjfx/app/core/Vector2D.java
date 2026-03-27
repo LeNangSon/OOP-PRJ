@@ -36,6 +36,9 @@ public class Vector2D {
     public double dot(Vector2D other){
         return this.x * other.x + this.y * other.y;
     }
+    public Vector2D directionTo(Vector2D other) {
+        return other.sub(this).normalize();
+    }
     @Override
     public String toString() {
         return "(" + x + ", " + y + ")";
