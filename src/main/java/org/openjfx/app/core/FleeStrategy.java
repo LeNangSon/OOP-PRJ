@@ -47,7 +47,7 @@ public class FleeStrategy implements MoveStrategy {
 
             }
         } else {
-            // Chuyen sang Wander
+            owner.setVelocity(new Vector2D(0, 0));
             
         }
         

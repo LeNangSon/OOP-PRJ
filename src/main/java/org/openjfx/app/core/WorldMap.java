@@ -25,7 +25,7 @@ public class WorldMap {
 
     public void update(double dt) {
         for (Entity entity : entities) {
-            entity.update(dt);
+            entity.update(dt, this);
         }
     }
 
