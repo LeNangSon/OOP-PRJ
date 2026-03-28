@@ -44,14 +44,18 @@ public class WorldMap {
             renderEntityWithImage(gc, entity);
         }
     }
-     // 4. Hàm "Radar" - Cung cấp tầm nhìn cho AI
+     //Hàm "Radar" - Cung cấp tầm nhìn cho AI
     public List<Entity> getNeighbors(Entity owner, double radius) {
-        
-        return null; // Thay bằng list kết quả
-    }
-    // Xung đột
-    private void handleBounds(Entity e) {
-        
+        List<Entity> result = new ArrayList<>();
+        for (Entity e : entities) {
+            if (e != owner) {
+                double dist = owner.getPosition().distance(e.getPosition());
+                if (dist <= radius) {
+                    result.add(e);
+                }
+            }
+        }
+        return result;
     }
 
     private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
