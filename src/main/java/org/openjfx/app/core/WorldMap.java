@@ -44,7 +44,7 @@ public class WorldMap {
             renderEntityWithImage(gc, entity);
         }
     }
-     // 4. Hàm "Radar" - Cung cấp tầm nhìn cho AI
+     //Hàm "Radar" - Cung cấp tầm nhìn cho AI
     public List<Entity> getNeighbors(Entity owner, double radius) {
         List<Entity> result = new ArrayList<>();
         for (Entity e : entities) {
