@@ -46,14 +46,17 @@ public class WorldMap {
     }
      // 4. Hàm "Radar" - Cung cấp tầm nhìn cho AI
     public List<Entity> getNeighbors(Entity owner, double radius) {
-        
-        return null; // Thay bằng list kết quả
+        List<Entity> result = new ArrayList<>();
+        for (Entity e : entities) {
+            if (e != owner) {
+                double dist = owner.getPosition().distance(e.getPosition());
+                if (dist <= radius) {
+                    result.add(e);
+                }
+            }
+        }
+        return result;
     }
-    // Xung đột
-    private void handleBounds(Entity e) {
-        
-    }
-
     private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
     // 1. Tách chuỗi từ toString() để lấy tên lớp
     String[] parts = entity.toString().split("\\{");
