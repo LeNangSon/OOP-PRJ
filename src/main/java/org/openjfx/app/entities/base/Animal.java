@@ -2,24 +2,21 @@ package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.FleeStrategy;
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WanderStrategy;
 import org.openjfx.app.core.WorldMap;
 
 
 
-public abstract class Herbivore extends LivingEntity {
 
-    public Herbivore(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
+public abstract class Animal extends LivingEntity {
+
+    public Animal(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
         super(position, size, shape, initialHealth, hungerRate, thirstRate);
 
     }
 
 
-    @Override
-    public void eat(){
-        // this.moveStrategy = FindFlantStrategy
-    };
-    @Override
-    public void drink(){};
+    
     @Override
     public void update(double dt, WorldMap world){
         super.update(dt, world);
@@ -27,11 +24,11 @@ public abstract class Herbivore extends LivingEntity {
         // Thứ tự ưu tiên : chạy trốn khỏi địch->sinh lý:ăn->đi lang thang (chưa bổ sung uống nước)
         if (hasThreat(this, neighbors)){
             this.moveStrategy = new FleeStrategy();
-        }else if (this.getHunger() > 70.0 /*&& this.moveStrategy == SearchForFlantStrategy*/){
-            this.eat();
+        }else if (this.getHunger() > 70.0 /*&& this.moveStrategy != HungerStrategy*/){
+            /*this.moveStrategy = new HungerStrategy();*/   
 
         }else {
-            //this.moveForHerbivore = new WanderStrategy
+            this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
         }
 
         

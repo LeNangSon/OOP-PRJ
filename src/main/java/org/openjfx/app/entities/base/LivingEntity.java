@@ -15,6 +15,8 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
+    protected double wanderR;
+    protected double wanderSpeed;
 
     private double hungerRate;
     private double thirstRate;
@@ -107,11 +109,6 @@ public abstract class LivingEntity extends MovableEntity {
         return false;
         
     }
-
-    public abstract void eat();
-    public abstract void drink();
-
-
 
     public void onDeath(){
         System.out.println("Death");
