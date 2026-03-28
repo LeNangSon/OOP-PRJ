@@ -1,7 +1,7 @@
 package org.openjfx.app.core;
 
 import java.util.List;
-import org.openjfx.app.core.MoveStrategy;
+
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 
