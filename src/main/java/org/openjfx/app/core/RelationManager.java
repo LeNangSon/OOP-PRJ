@@ -22,9 +22,9 @@ public class RelationManager {
     moveAway.put(EntityType.WOLF, Arrays.asList(EntityType.ELEPHANT));
     moveAway.put(EntityType.BEAR, Arrays.asList(EntityType.ELEPHANT));
 
-    ediblePlant.put(EntityType.GRASS, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT));
-    ediblePlant.put(EntityType.FRUIT, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT, EntityType.BEAR));
-    ediblePlant.put(EntityType.ALGAE, Arrays.asList(EntityType.FISH));
+    threat.put(EntityType.GRASS, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT));
+    threat.put(EntityType.FRUIT, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT, EntityType.BEAR));
+    threat.put(EntityType.ALGAE, Arrays.asList(EntityType.FISH));
 
 
 
@@ -46,19 +46,6 @@ public class RelationManager {
     public static boolean isPrey(EntityType subject, EntityType target) {
         if (threat.containsKey(subject) ){
             for (EntityType animal : threat.get(subject)){
-                if (animal == target){
-                    return true;
-                }
-            }
-
-        }
-        return false;
-        
-    }
-
-    public static boolean isEdiblePlant(EntityType subject, EntityType target) {
-        if (ediblePlant.containsKey(subject) ){
-            for (EntityType animal : ediblePlant.get(subject)){
                 if (animal == target){
                     return true;
                 }
