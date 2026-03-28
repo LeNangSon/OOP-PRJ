@@ -1,10 +1,11 @@
-package org.openjfx.app.entities.base;
+package org.openjfx.app.entities.movable;
 
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.entities.base.Herbivore;
 
-public class Rabbit extends Herbivore{
+public class Rabbit extends Herbivore {
     
 
     public Rabbit(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
