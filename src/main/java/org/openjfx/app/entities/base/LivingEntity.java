@@ -2,9 +2,11 @@ package org.openjfx.app.entities.base;
 
 import java.util.List;
 
+import org.openjfx.app.core.FleeStrategy;
 import org.openjfx.app.core.MoveStrategy;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WanderStrategy;
 import org.openjfx.app.core.WorldMap;
 
 
@@ -34,11 +36,11 @@ public abstract class LivingEntity extends MovableEntity {
         this.hunger = 0.0;
         this.thirst = 0.0;
         this.isAlive = true;
-        //this.moveStrategy = new FleeStrategy(); // Dang nhe la lang thang nhung chua co class nen de tam flee
+        this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
     }
 
 
-    //Getter & Setter
+    //Getter 
     public double getHealth() { return health; }
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
@@ -46,7 +48,7 @@ public abstract class LivingEntity extends MovableEntity {
     public double getRadius() { return radius; }
     
 
-
+    //Setter
     public void setHealth(double health) {
         // Máu [0:100]
         this.health = Math.max(0, Math.min(100, health));
@@ -81,17 +83,28 @@ public abstract class LivingEntity extends MovableEntity {
 
         this.neighbors = world.getNeighbors(this, radius);
 
+        if (hasThreat(this, neighbors)){
+            if (!(this.moveStrategy instanceof FleeStrategy)) {
+                this.moveStrategy = new FleeStrategy();
+            }
+        }else if (this.getHunger() > 70.0){
+            /*if (!(this.moveStrategy instanceof HungerStrategy)){
+                this.moveStrategy = new HungerStrategy();
+            }*/
+        }else {
+            if (!(this.moveStrategy instanceof WanderStrategy)) {
+                this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
+            }
+        }
+
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
-    
         super.move(dt);
-    
+
+
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
-
-
-
         //Đói + Khát quá thì bị mất máu
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);

@@ -4,7 +4,7 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 
-public class Rabbit extends Animal{
+public class Rabbit extends LivingEntity{
     
 
     public Rabbit(Vector2D position){
