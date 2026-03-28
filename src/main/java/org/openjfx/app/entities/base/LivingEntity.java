@@ -41,6 +41,7 @@ public abstract class LivingEntity extends MovableEntity {
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
+    public double getRadius() { return radius; }
     
 
 
@@ -65,13 +66,23 @@ public abstract class LivingEntity extends MovableEntity {
         this.thirst = Math.max(0, Math.min(100, thirst));
     }
 
+    public void setRadius(double radius){
+        this.radius = Math.max(0, Math.min(100, radius));
+    }
+
 
     //Method
     @Override
     public void update(double dt, WorldMap world) {
-        if (!isAlive) return;
+        if (!isAlive) {
+            return;
+        }
 
         this.neighbors = world.getNeighbors(this, radius);
+
+        if (this.moveStrategy != null) {
+            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
+        }
     
         super.move(dt);
     
@@ -84,12 +95,7 @@ public abstract class LivingEntity extends MovableEntity {
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
         }
-
         
-        if (this.moveStrategy != null) {
-            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
-        }
-
 
     }
 
