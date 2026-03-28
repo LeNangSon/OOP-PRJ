@@ -12,8 +12,6 @@ public abstract class Herbivore extends LivingEntity {
         super(position, size, shape, initialHealth, hungerRate, thirstRate);
 
     }
-
-
     @Override
     public void eat(){
         // this.moveStrategy = FindFlantStrategy
