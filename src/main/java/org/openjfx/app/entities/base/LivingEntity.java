@@ -11,8 +11,6 @@ import org.openjfx.app.core.WorldMap;
 
 public abstract class LivingEntity extends MovableEntity {
     //Atribute
-    protected double wanderSpeed;
-    protected double wanderR;
     protected MoveStrategy moveStrategy;
     private double hunger;
     private double thirst;
@@ -70,13 +68,6 @@ public abstract class LivingEntity extends MovableEntity {
 
     public void setRadius(double radius){
         this.radius = Math.max(0, Math.min(100, radius));
-    }
-    public double getWanderSpeed() {
-        return wanderSpeed;
-    }
-
-    public double getWanderR() {
-        return wanderR;
     }
 
     //Method
