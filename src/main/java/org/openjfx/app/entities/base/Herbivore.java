@@ -6,7 +6,7 @@ import org.openjfx.app.core.WorldMap;
 
 
 
-public class Herbivore extends LivingEntity {
+public abstract class Herbivore extends LivingEntity {
 
     public Herbivore(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
         super(position, size, shape, initialHealth, hungerRate, thirstRate);
@@ -27,7 +27,7 @@ public class Herbivore extends LivingEntity {
         // Thứ tự ưu tiên : chạy trốn khỏi địch->sinh lý:ăn->đi lang thang (chưa bổ sung uống nước)
         if (hasThreat(this, neighbors)){
             this.moveStrategy = new FleeStrategy();
-        }else if (this.getHunger() > 70.0){
+        }else if (this.getHunger() > 70.0 /*&& this.moveStrategy == SearchForFlantStrategy*/){
             this.eat();
 
         }else {

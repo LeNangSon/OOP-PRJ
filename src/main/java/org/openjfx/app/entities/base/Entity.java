@@ -2,6 +2,9 @@ package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WorldMap;
+
+
 
 public abstract class Entity {
     protected Vector2D position;
@@ -23,7 +26,7 @@ public abstract class Entity {
     public double getSize() { return size; }
     public EntityType getType(){ return type; }
 
-    public abstract void update(double dt);
+    public abstract void update(double dt, WorldMap world);
 
     // public abstract void render(GraphicsContext gc);
 

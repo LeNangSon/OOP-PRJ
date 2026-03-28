@@ -1,6 +1,8 @@
 package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WorldMap;
+
 
 public abstract class MovableEntity extends Entity {
     protected Vector2D velocity;
@@ -23,7 +25,7 @@ public abstract class MovableEntity extends Entity {
 
 
     @Override
-    public void update(double dt) {
+    public void update(double dt, WorldMap world) {
         move(dt);
     }
 
