@@ -8,8 +8,6 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 
 public class FleeStrategy implements MoveStrategy {
-   private double detectionRadius;
-   private double comfortDistance;
 
    public FleeStrategy() {
    }

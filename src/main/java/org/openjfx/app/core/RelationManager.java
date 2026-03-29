@@ -8,7 +8,6 @@ public class RelationManager {
 
    private static final Map<EntityType, List<EntityType>> threat = new HashMap<>();
    private static final Map<EntityType, List<EntityType>> moveAway = new HashMap<>();
-   private static final Map<EntityType, List<EntityType>> ediblePlant = new HashMap<>();
    
    static{
     threat.put(EntityType.RABBIT, Arrays.asList(EntityType.WOLF, EntityType.BEAR));

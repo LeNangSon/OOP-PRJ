@@ -5,6 +5,7 @@ import java.util.List;
 import org.openjfx.app.core.MoveStrategy;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WanderStrategy;
 import org.openjfx.app.core.WorldMap;
 
 
@@ -15,6 +16,8 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
+    protected double wanderR;
+    protected double wanderSpeed;
 
     private double hungerRate;
     private double thirstRate;
@@ -32,11 +35,11 @@ public abstract class LivingEntity extends MovableEntity {
         this.hunger = 0.0;
         this.thirst = 0.0;
         this.isAlive = true;
-        //this.moveStrategy = new FleeStrategy(); // Dang nhe la lang thang nhung chua co class nen de tam flee
+        this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
     }
 
 
-    //Getter & Setter
+    //Getter 
     public double getHealth() { return health; }
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
@@ -44,7 +47,7 @@ public abstract class LivingEntity extends MovableEntity {
     public double getRadius() { return radius; }
     
 
-
+    //Setter
     public void setHealth(double health) {
         // Máu [0:100]
         this.health = Math.max(0, Math.min(100, health));
@@ -77,19 +80,11 @@ public abstract class LivingEntity extends MovableEntity {
             return;
         }
 
-        this.neighbors = world.getNeighbors(this, radius);
-
-        if (this.moveStrategy != null) {
-            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
-        }
-    
         super.move(dt);
-    
+
+
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
-
-
-
         //Đói + Khát quá thì bị mất máu
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
@@ -107,11 +102,6 @@ public abstract class LivingEntity extends MovableEntity {
         return false;
         
     }
-
-    public abstract void eat();
-    public abstract void drink();
-
-
 
     public void onDeath(){
         System.out.println("Death");

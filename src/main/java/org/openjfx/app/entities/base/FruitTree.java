@@ -2,7 +2,6 @@ package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.entities.base.StaticEntity;
 
 public class FruitTree extends StaticEntity {
     private boolean hasFruit;
