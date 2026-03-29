@@ -1,4 +1,4 @@
-package org.openjfx.app.entities.base;
+package org.openjfx.app.environment;
 
 import org.openjfx.app.core.Environment;
 import org.openjfx.app.core.Vector2D;
