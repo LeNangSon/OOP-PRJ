@@ -2,11 +2,11 @@ package org.openjfx.app.entities.base;
 
 import java.util.List;
 
-import org.openjfx.app.core.strategies.MoveStrategy;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
-import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.strategies.MoveStrategy;
+import org.openjfx.app.core.strategies.WanderStrategy;
 
 
 
@@ -22,7 +22,7 @@ public abstract class LivingEntity extends MovableEntity {
     private double hungerRate;
     private double thirstRate;
     private boolean isAlive;
-    private double radius;
+    protected double radius;
     protected  List<Entity> neighbors;
 
     //Constructor
@@ -78,10 +78,6 @@ public abstract class LivingEntity extends MovableEntity {
         if (!isAlive) {
             return;
         }
-
-        super.move(dt);
-
-
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
         //Đói + Khát quá thì bị mất máu
@@ -89,6 +85,7 @@ public abstract class LivingEntity extends MovableEntity {
             setHealth(this.health - 5*dt);
         }
 
+        super.move(dt);
 
     }
 
