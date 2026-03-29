@@ -1,4 +1,5 @@
 package org.openjfx.app.core;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -8,7 +9,6 @@ public class RelationManager {
 
    private static final Map<EntityType, List<EntityType>> threat = new HashMap<>();
    private static final Map<EntityType, List<EntityType>> moveAway = new HashMap<>();
-   private static final Map<EntityType, List<EntityType>> ediblePlant = new HashMap<>();
    
    static{
     threat.put(EntityType.RABBIT, Arrays.asList(EntityType.WOLF, EntityType.BEAR));

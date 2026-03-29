@@ -1,7 +1,8 @@
-package org.openjfx.app.core;
+package org.openjfx.app.core.strategies;
 
 import java.util.List;
 
+import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 

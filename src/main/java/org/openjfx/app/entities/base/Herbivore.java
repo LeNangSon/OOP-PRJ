@@ -1,6 +1,6 @@
 package org.openjfx.app.entities.base;
 
-import org.openjfx.app.core.FleeStrategy;
+import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 
@@ -12,8 +12,6 @@ public abstract class Herbivore extends LivingEntity {
         super(position, size, shape, initialHealth, hungerRate, thirstRate);
 
     }
-
-
     @Override
     public void eat(){
         // this.moveStrategy = FindFlantStrategy
