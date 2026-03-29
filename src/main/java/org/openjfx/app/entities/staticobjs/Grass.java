@@ -1,7 +1,6 @@
 package org.openjfx.app.entities.staticobjs;
 
 import org.openjfx.app.core.Vector2D;
-import org.openjfx.app.entities.base.Plant;
 
 public class Grass extends Plant {
 

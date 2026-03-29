@@ -22,7 +22,6 @@ public abstract class LivingEntity extends MovableEntity {
     private double radius;
     protected  List<Entity> neighbors;
 
-
     //Constructor
     public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
         super(position, size, shape);
