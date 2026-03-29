@@ -27,11 +27,13 @@ public abstract class Plant extends StaticEntity {
         return isAvailable;
     }
 
-    public void consume() {
+    public double consume() {
         if (isAvailable) {
             isAvailable = false;
             regrowTimer = 0;
+            return 20.0; // Trả về lượng dinh dưỡng (ví dụ 20 đơn vị đói)
         }
+        return 0; // Nếu cây đang héo/chưa mọc lại thì không có dinh dưỡng
     }
 
     @Override

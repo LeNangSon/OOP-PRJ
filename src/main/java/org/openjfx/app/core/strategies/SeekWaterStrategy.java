@@ -1,13 +1,13 @@
 package org.openjfx.app.core.strategies;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class SeekWaterStrategy implements MoveStrategy {
     private List<Entity> knownWaters = new ArrayList<>();
@@ -17,7 +17,7 @@ public class SeekWaterStrategy implements MoveStrategy {
     public SeekWaterStrategy(double wanderSpeed, double wanderR) {
         this.searchWander = new WanderStrategy(wanderSpeed, wanderR);
     }
-
+    @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world){
         for(Entity e : neighbors){
             if (e.getType() == EntityType.WATER && !this.knownWaters.contains(e)) {
@@ -50,7 +50,10 @@ public class SeekWaterStrategy implements MoveStrategy {
         }
         else{
             owner.setVelocity(new Vector2D(0,0));
-            owner.drink();
+            if (owner.getThirst() > 10){
+                owner.drink(dt);
+            }
+            
         }
     }
 }

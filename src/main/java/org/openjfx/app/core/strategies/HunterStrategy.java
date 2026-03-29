@@ -45,13 +45,18 @@ public class HunterStrategy implements MoveStrategy {
                     // Vector hướng từ chủ thể (owner) ĐẾN con mồi (prey)
                     // ownerPosition.directionTo(preyPosition) => Vector(AB)
                     Vector2D directionToAttack = owner.getPosition().directionTo(prey.getPosition());
+                    double range = owner.getPosition().distance(prey.getPosition());
+                    
+                    if (range < 5){
+                        owner.eat(prey,dt);
+                    }else{
+                        owner.setVelocity(directionToAttack.multiply(owner.getMaxSpeed()));
+                    }
 
-                    // Gán vận tốc tối đa để đuổi theo
-                    owner.setVelocity(directionToAttack.multiply(owner.getMaxSpeed()));
                 }
             } else {
                 // Nếu không có con mồi, đứng yên hoặc có thể đổi sang chiến thuật đi tuần (Wander)
-                owner.setVelocity(new Vector2D(0, 0));
+                
             }
         }
     }

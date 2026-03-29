@@ -103,6 +103,8 @@ public abstract class LivingEntity extends MovableEntity {
         System.out.println("Death");
     }
 
-    public abstract void eat();
-    public abstract void drink();
+    public abstract void eat(Entity target, double dt);
+    public void drink(double dt){
+        setThirst(this.thirst - 20.0*dt);
+    };
 }
