@@ -33,6 +33,8 @@ public abstract class LivingEntity extends MovableEntity {
         this.thirstRate = thirstRate;
         this.hunger = 0.0;
         this.thirst = 0.0;
+        this.wanderSpeed = 30; // 🔥 THÊM DÒNG NÀY
+        this.wanderR = 50;     // 🔥 THÊM DÒNG NÀY
         this.isAlive = true;
         this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
     }
@@ -103,6 +105,8 @@ public abstract class LivingEntity extends MovableEntity {
         System.out.println("Death");
     }
 
-    public abstract void eat();
-    public abstract void drink();
+    public abstract void eat(Entity target, double dt);
+    public void drink(double dt){
+        setThirst(this.thirst - 20.0*dt);
+    };
 }

@@ -6,6 +6,7 @@ import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
+import org.openjfx.app.entities.staticobjs.Plant;
 
 
 
@@ -13,14 +14,12 @@ public abstract class Herbivore extends LivingEntity {
 
     public Herbivore(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
         super(position, size, shape, initialHealth, hungerRate, thirstRate);
-
     }
     @Override
-    public void eat(){
-        
+    public void eat(Entity target, double dt){
+            setHunger(this.getHunger() - ((Plant)target).consume());
     };
-    @Override
-    public void drink(){};
+    
     @Override
     public void update(double dt, WorldMap world){
         this.neighbors = world.getNeighbors(this, this.radius);

@@ -11,6 +11,7 @@ public abstract class MovableEntity extends Entity {
     public MovableEntity(Vector2D position, double size, String shape) {
         super(position, size, shape);
         this.velocity = new Vector2D(0, 0);
+        this.maxSpeed = 50;
     }
 
     public double getMaxSpeed() {
