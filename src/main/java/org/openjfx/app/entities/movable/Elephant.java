@@ -17,5 +17,10 @@ public class Elephant extends Herbivore {
     public void update(double dt, WorldMap world){
         super.update(dt, world);
     }
-    
+    @Override
+    public String toString() {
+        // Giả sử file ảnh của bạn tên là Elephant.png (hoặc Elephant.jpg)
+        // Lưu ý: Tên này phải khớp chính xác với file trong folder resources
+        return "org/openjfx/app/Elephant.png";
+    }
 }
