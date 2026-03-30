@@ -25,14 +25,14 @@ public class SeekWaterStrategy implements MoveStrategy {
             }
         }
 
-        Vector2D currentPos = owner.getPosition();
-        Entity closestWater = null;
-        double min_distance = Double.MAX_VALUE;
-
         if(this.knownWaters.isEmpty()) {
             this.searchWander.updateVelocity(owner, neighbors, dt, world);
             return;
         }
+
+        Vector2D currentPos = owner.getPosition();
+        Entity closestWater = null;
+        double min_distance = Double.MAX_VALUE;
 
         for(Entity water: this.knownWaters){
                 double distance = currentPos.distance(water.getPosition());

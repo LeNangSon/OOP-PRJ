@@ -20,18 +20,25 @@ public class WanderStrategy implements MoveStrategy {
 
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
-
         Vector2D currentPos = owner.getPosition();
         double stepDistance = this.wanderSpeed * dt;
 
         if (targetPos == null || currentPos.distance(targetPos) < stepDistance) {
-            double x_random = Math.random() - 0.5;
-            double y_random = Math.random() - 0.5;
+            boolean found = false;
+            while (found == false) {
+                double x_random = Math.random() - 0.5;
+                double y_random = Math.random() - 0.5;
 
-            Vector2D vectoRandom = new Vector2D(x_random, y_random).normalize();
-            Vector2D offset = vectoRandom.multiply(this.wanderR);
+                Vector2D vectoRandom = new Vector2D(x_random, y_random).normalize();
+                Vector2D offset = vectoRandom.multiply(this.wanderR);
 
-            targetPos = currentPos.add(offset);
+                targetPos = currentPos.add(offset);
+                if(targetPos.x < 0 || targetPos.x > 800 || targetPos.y < 0 || targetPos.y > 600) {
+                    found = false;
+                } else {
+                    found = true;
+                }
+            }
         }
 
         Vector2D direct = currentPos.directionTo(targetPos);

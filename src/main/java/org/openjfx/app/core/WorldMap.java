@@ -38,13 +38,13 @@ public class WorldMap {
 
     public void render(GraphicsContext gc) {
         //Vẽ nền Map
-        gc.clearRect(0, 0, width, height); 
+        gc.clearRect(0, 0, width, height);
         //chèn ảnh vào tọa độ của vật
         for (Entity entity : entities) {
             renderEntityWithImage(gc, entity);
         }
     }
-     //Hàm "Radar" - Cung cấp tầm nhìn cho AI
+    //Hàm "Radar" - Cung cấp tầm nhìn cho AI
     public List<Entity> getNeighbors(Entity owner, double radius) {
         List<Entity> result = new ArrayList<>();
         for (Entity e : entities) {
@@ -59,12 +59,24 @@ public class WorldMap {
     }
 
     private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
-    // 1. Tách chuỗi từ toString() để lấy tên lớp
-    String[] parts = entity.toString().split("\\{");
-    String imagePath = parts[0]; 
-    // 2. Load ảnh trực tiếp từ chuỗi đã tách
-    Image img = new Image(getClass().getResourceAsStream("/" + imagePath));
-    // 3. Vẽ ảnh lên Canvas
-        gc.drawImage(img,entity.getPosition().x,entity.getPosition().y,entity.getSize(),entity.getSize());
-}
+        // Cách lấy tên Class sạch nhất (trả về "Rabbit", "Elephant"...)
+        String className = entity.getClass().getSimpleName();
+
+        try {
+            // Phải thêm đuôi .png vào sau tên class
+            String path = "/" + className + ".png";
+            var stream = getClass().getResourceAsStream(path);
+
+            if (stream != null) {
+                Image img = new Image(stream);
+                gc.drawImage(img, entity.getPosition().x, entity.getPosition().y, entity.getSize(), entity.getSize());
+            } else {
+                // Nếu không tìm thấy ảnh, vẽ tạm hình tròn để biết thực thể vẫn tồn tại
+                gc.strokeOval(entity.getPosition().x, entity.getPosition().y, entity.getSize(), entity.getSize());
+                System.out.println("Missing image: " + path);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
