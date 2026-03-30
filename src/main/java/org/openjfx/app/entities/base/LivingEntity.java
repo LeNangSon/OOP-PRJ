@@ -33,6 +33,8 @@ public abstract class LivingEntity extends MovableEntity {
         this.thirstRate = thirstRate;
         this.hunger = 0.0;
         this.thirst = 0.0;
+        this.wanderSpeed = 30; // 🔥 THÊM DÒNG NÀY
+        this.wanderR = 50;     // 🔥 THÊM DÒNG NÀY
         this.isAlive = true;
         this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
     }
