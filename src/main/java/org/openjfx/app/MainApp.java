@@ -35,28 +35,12 @@ public class MainApp extends Application {
             "rect", 
             100.0, 
             5.0, 
-            6.0
+            3.0
         );
-        
-        // Add voi vào danh sách thực thể của Map
         worldMap.addEntity(elephant);
-        Rabbit rabbit = new Rabbit(
-            new Vector2D(100, 100), 
-            40.0,   // size
-            "circle", 
-            100.0,  // health
-            1.0,    // hunger
-            1.5     // thirst
-        );
-        worldMap.addEntity(rabbit);
-        Lake lake = new Lake(new Vector2D(600, 100), 300, 300);
+        Lake lake = new Lake(new Vector2D(440, 300), 300, 300);
         worldMap.addEntity(lake);
-        worldMap.addEntity(new Rock(new Vector2D(300, 450), 190.0, "circle"));
-        worldMap.addEntity(new Rock(new Vector2D(100, 500), 190.0, "circle"));
-        Lake lake1 = new Lake(new Vector2D(200, 300), 300, 300);
-        worldMap.addEntity(lake1);
-        worldMap.addEntity(new Fish(new Vector2D(600, 100)));
-        worldMap.addEntity(new Fish(new Vector2D(200, 300)));
+
         //vẽ
         Canvas canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();

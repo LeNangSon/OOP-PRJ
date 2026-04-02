@@ -19,20 +19,27 @@ public abstract class Herbivore extends LivingEntity {
     public void eat(Entity target, double dt){
             setHunger(this.getHunger() - ((Plant)target).consume());
     };
-    
+
     @Override
     public void update(double dt, WorldMap world){
+        System.out.println(this.getThirst());
         this.neighbors = world.getNeighbors(this, this.radius);
+
+        boolean isCurrentlySeekingWater = (this.moveStrategy instanceof SeekWaterStrategy)
+                && (this.getThirst() > this.getThirstRate() * dt);
+
+        boolean isCurrentlyHunting = (this.moveStrategy instanceof HunterStrategy)
+                && (this.getHunger() > this.getHungerRate() * dt);
 
         if (hasThreat(this, neighbors)){
             if (!(this.moveStrategy instanceof FleeStrategy)) {
                 this.moveStrategy = new FleeStrategy();
             }
-        }else if(this.getThirst() > 70.0){
+        }else if(isCurrentlySeekingWater || this.getThirst() > 70.0){
             if (!(this.moveStrategy instanceof SeekWaterStrategy)){
                 this.moveStrategy = new SeekWaterStrategy(this.wanderSpeed, this.wanderR);
             }
-        }else if (this.getHunger() > 70.0){
+        }else if (isCurrentlyHunting || this.getHunger() > 70.0){
             if (!(this.moveStrategy instanceof HunterStrategy)){
                 this.moveStrategy = new HunterStrategy();
             }
@@ -45,14 +52,6 @@ public abstract class Herbivore extends LivingEntity {
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
-
         super.update(dt, world);
-
-        
-
-
     }
-
-
-    
 }

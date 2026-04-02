@@ -50,10 +50,7 @@ public class SeekWaterStrategy implements MoveStrategy {
         }
         else{
             owner.setVelocity(new Vector2D(0,0));
-            if (owner.getThirst() > 10){
-                owner.drink(dt);
-            }
-            
+            owner.drink(dt);
         }
     }
 }

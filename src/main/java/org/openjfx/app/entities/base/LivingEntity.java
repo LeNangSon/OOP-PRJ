@@ -46,7 +46,8 @@ public abstract class LivingEntity extends MovableEntity {
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
     public double getRadius() { return radius; }
-    
+    public double getThirstRate(){ return thirstRate; }
+    public double getHungerRate(){ return hungerRate; }
 
     //Setter
     public void setHealth(double health) {

@@ -80,7 +80,7 @@ public class WorldMap {
         // Nếu lỗi (sai imagePath hoặc thiếu file), vẽ hình tạm để tránh trắng màn hình
         gc.setFill(javafx.scene.paint.Color.RED);
         gc.fillOval(entity.getPosition().x - 5, entity.getPosition().y - 5, 10, 10);
-        System.err.println("Lỗi load ảnh: /" + imagePath);
+        //System.err.println("Lỗi load ảnh: /" + imagePath);
     }
 }
    
