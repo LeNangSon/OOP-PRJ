@@ -16,15 +16,18 @@ import javafx.stage.Stage;
 
 public class MainApp extends Application {
     private WorldMap worldMap;
-    private final double WIDTH = 1024;
+    private final double WIDTH = 1032;
     private final double HEIGHT = 576;
     private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/map-final.png";
+    private static final String TERRAIN_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain.csv";
+    private static final int TERRAIN_TILE_SIZE = 24;
 
     @Override
     public void start(Stage stage) {
         //Khởi tạo WorldMap (Sau điều chỉnh thì sửa ở trên)
         worldMap = new WorldMap(WIDTH, HEIGHT);
         worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
+        worldMap.setTerrainGridFromCsvResource(TERRAIN_CSV_RESOURCE_PATH, TERRAIN_TILE_SIZE);
 
         // --- BƯỚC THÊM VOI ---
         // Khởi tạo con voi tại tọa độ (400, 300) - chính giữa màn hình
@@ -70,4 +73,5 @@ public class MainApp extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
 }

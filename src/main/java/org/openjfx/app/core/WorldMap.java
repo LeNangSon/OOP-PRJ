@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.openjfx.app.entities.base.Entity;
+import org.openjfx.app.entities.base.LivingEntity;
+import org.openjfx.app.core.terrain.TerrainGrid;
+import org.openjfx.app.core.terrain.TerrainType;
 
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
@@ -12,7 +15,7 @@ public class WorldMap {
     private final double width;
     private final double height;
     private final List<Entity> entities;
-    private final int TILE_SIZE = 40;
+    private TerrainGrid terrainGrid;
     private Image fixedBackgroundImage;
     public WorldMap(double width, double height) {
         this.width = width;
@@ -22,6 +25,34 @@ public class WorldMap {
 
     public void addEntity(Entity entity) {
         entities.add(entity);
+    }
+
+    public void setTerrainGrid(TerrainGrid terrainGrid) {
+        this.terrainGrid = terrainGrid;
+    }
+
+    public void setTerrainGridFromCsvResource(String resourcePath, int tileSize) {
+        this.terrainGrid = TerrainGrid.fromCsvResource(resourcePath, tileSize);
+    }
+
+    public TerrainType getTerrainAt(Vector2D position) {
+        if (terrainGrid == null) {
+            return TerrainType.LAND;
+        }
+        return terrainGrid.getTerrainAt(position);
+    }
+
+    public boolean canStandOn(LivingEntity entity, Vector2D position) {
+        TerrainType terrain = getTerrainAt(position);
+        EntityType entityType = entity.getType();
+
+        if (terrain == TerrainType.WATER) {
+            return entityType == EntityType.FISH;
+        }
+        if (terrain == TerrainType.PIT) {
+            return false;
+        }
+        return terrain != TerrainType.ROCK;
     }
 
     public void update(double dt) {
@@ -38,14 +69,14 @@ public class WorldMap {
     }
 
     public void render(GraphicsContext gc) {
-    // 1. Vẽ map cố định nếu có, nếu không fallback về nền cỏ.
+    // 1. Vẽ map nền (nếu có ảnh thì dùng ảnh, không thì vẽ LAND bằng code).
     if (fixedBackgroundImage != null) {
         gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
     } else {
         drawGrassBackground(gc);
     }
 
-    // 2. Vẽ các thực thể (Thỏ, Voi...) đè lên nền cỏ
+    // 2. Vẽ các thực thể (Thỏ, Sói...) đè lên map.
     for (Entity entity : entities) {
         renderEntityWithImage(gc, entity);
     }
