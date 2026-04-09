@@ -2,11 +2,9 @@ package org.openjfx.app;
 
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.entities.movable.Elephant;
-import org.openjfx.app.entities.movable.Fish;
 import org.openjfx.app.entities.movable.Rabbit;
-import org.openjfx.app.entities.staticobjs.Rock;
-import org.openjfx.app.environment.Lake;
+import org.openjfx.app.entities.movable.Wolf;
+import org.openjfx.app.entities.staticobjs.Bush;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -18,28 +16,36 @@ import javafx.stage.Stage;
 
 public class MainApp extends Application {
     private WorldMap worldMap;
-    private final double WIDTH = 800;
-    private final double HEIGHT = 600;
+    private final double WIDTH = 1024;
+    private final double HEIGHT = 576;
+    private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/map-final.png";
 
     @Override
     public void start(Stage stage) {
         //Khởi tạo WorldMap (Sau điều chỉnh thì sửa ở trên)
         worldMap = new WorldMap(WIDTH, HEIGHT);
+        worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
 
         // --- BƯỚC THÊM VOI ---
         // Khởi tạo con voi tại tọa độ (400, 300) - chính giữa màn hình
         // Kích thước size = 80.0, máu = 100, đói = 5.0, khát = 6.0
-        Elephant elephant = new Elephant(
-            new Vector2D(400, 300), 
-            80.0, 
-            "rect", 
-            100.0, 
-            5.0, 
-            3.0
+        Rabbit rabbit1 = new Rabbit(
+            new Vector2D(400, 300)
         );
-        worldMap.addEntity(elephant);
-        Lake lake = new Lake(new Vector2D(440, 300), 300, 300);
-        worldMap.addEntity(lake);
+        worldMap.addEntity(rabbit1);
+
+        Wolf wolf1 = new Wolf(
+            new Vector2D(500, 300)
+        );
+        worldMap.addEntity(wolf1);
+
+        Bush bush1 = new Bush(
+            new Vector2D(600, 300)
+        );
+        worldMap.addEntity(bush1);
+
+
+        
 
         //vẽ
         Canvas canvas = new Canvas(WIDTH, HEIGHT);

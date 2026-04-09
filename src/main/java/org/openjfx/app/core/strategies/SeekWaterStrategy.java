@@ -47,10 +47,13 @@ public class SeekWaterStrategy implements MoveStrategy {
         if(min_distance > 5){                                           // <=5 là uống nước
             Vector2D direct = currentPos.directionTo(targetPos);
             owner.setVelocity(direct.multiply(owner.getMaxSpeed()));
+            System.out.println("Đang tìm nước");
         }
         else{
+            System.out.println("Đang uống nước");
             owner.setVelocity(new Vector2D(0,0));
             owner.drink(dt);
+            
         }
     }
 }

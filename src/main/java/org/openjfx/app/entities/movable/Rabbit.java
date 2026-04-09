@@ -7,7 +7,7 @@ import org.openjfx.app.entities.base.Herbivore;
 
 public class Rabbit extends Herbivore {
 
-    public Rabbit(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
+    public Rabbit(Vector2D position){
         super(position, 40.0, "circle", 100.0, 1.0, 1.5);
         this.setRadius(40.0);
         this.type = EntityType.RABBIT;

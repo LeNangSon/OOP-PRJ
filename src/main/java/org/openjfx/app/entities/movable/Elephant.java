@@ -7,7 +7,7 @@ import org.openjfx.app.entities.base.Herbivore;
 
 public class Elephant extends Herbivore {
 
-    public Elephant(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
+    public Elephant(Vector2D position){
         super(position, 120.0, "rect", 100.0, 5.0, 6.0);
         this.setRadius(40.0);
         this.setThirst(80.0);

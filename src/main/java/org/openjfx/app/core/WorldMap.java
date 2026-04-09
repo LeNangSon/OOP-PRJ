@@ -13,6 +13,7 @@ public class WorldMap {
     private final double height;
     private final List<Entity> entities;
     private final int TILE_SIZE = 40;
+    private Image fixedBackgroundImage;
     public WorldMap(double width, double height) {
         this.width = width;
         this.height = height;
@@ -37,14 +38,36 @@ public class WorldMap {
     }
 
     public void render(GraphicsContext gc) {
-    // 1. Thay vì chỉ clear trắng, ta vẽ nền cỏ xanh
-    drawGrassBackground(gc); 
+    // 1. Vẽ map cố định nếu có, nếu không fallback về nền cỏ.
+    if (fixedBackgroundImage != null) {
+        gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
+    } else {
+        drawGrassBackground(gc);
+    }
 
     // 2. Vẽ các thực thể (Thỏ, Voi...) đè lên nền cỏ
     for (Entity entity : entities) {
         renderEntityWithImage(gc, entity);
     }
 }
+
+    public void setFixedBackgroundImageFromResource(String resourcePath) {
+        try {
+            Image image = new Image(getClass().getResourceAsStream(resourcePath));
+            fixedBackgroundImage = image.isError() ? null : image;
+        } catch (Exception e) {
+            fixedBackgroundImage = null;
+        }
+    }
+
+    public void setFixedBackgroundImageFromFile(String absoluteFilePath) {
+        try {
+            Image image = new Image("file:" + absoluteFilePath);
+            fixedBackgroundImage = image.isError() ? null : image;
+        } catch (Exception e) {
+            fixedBackgroundImage = null;
+        }
+    }
      //Hàm "Radar" - Cung cấp tầm nhìn cho AI
     public List<Entity> getNeighbors(Entity owner, double radius) {
         List<Entity> result = new ArrayList<>();

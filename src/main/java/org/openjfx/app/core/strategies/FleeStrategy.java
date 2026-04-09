@@ -12,6 +12,7 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 
 public class FleeStrategy implements MoveStrategy {
+    private int flag = 0;
 
    public FleeStrategy() {
    }
@@ -35,6 +36,9 @@ public class FleeStrategy implements MoveStrategy {
 
    }
 
+
+
+
    @Override
    public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
     if(owner.isAlive()){
@@ -45,7 +49,23 @@ public class FleeStrategy implements MoveStrategy {
             if (threat != null) {
                 // Tìm vecto(BA) rồi chuẩn hóa
                 Vector2D directionShouldRun = threat.getPosition().directionTo(owner.getPosition());
-                owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
+                double ownerX = owner.getPosition().x;
+                double ownerY = owner.getPosition().y;
+                
+
+                if (ownerX < 0 || ownerX > 800 || ownerY < 0 || ownerY > 600 ){
+                        flag =1;
+
+                        directionShouldRun.x = directionShouldRun.x * (-0.5) - directionShouldRun.y * 0.866025;
+                        directionShouldRun.y = directionShouldRun.x * 0.866025 + directionShouldRun.y * (-0.5);
+                        owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
+
+                    
+
+                }else{
+                    owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
+                }
+                
 
             }
         } else {

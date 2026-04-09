@@ -56,7 +56,7 @@ public abstract class LivingEntity extends MovableEntity {
         
         
         if (this.health <= 0 && this.isAlive == true) {
-            onDeath();
+            System.out.println("Death");
             this.isAlive = false;
         }
     }
@@ -102,9 +102,6 @@ public abstract class LivingEntity extends MovableEntity {
         
     }
 
-    public void onDeath(){
-        System.out.println("Death");
-    }
 
     public abstract void eat(Entity target, double dt);
     public void drink(double dt){
