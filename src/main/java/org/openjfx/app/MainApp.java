@@ -29,26 +29,10 @@ public class MainApp extends Application {
         worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
         worldMap.setTerrainGridFromCsvResource(TERRAIN_CSV_RESOURCE_PATH, TERRAIN_TILE_SIZE);
 
-        // --- BƯỚC THÊM VOI ---
-        // Khởi tạo con voi tại tọa độ (400, 300) - chính giữa màn hình
-        // Kích thước size = 80.0, máu = 100, đói = 5.0, khát = 6.0
         Rabbit rabbit1 = new Rabbit(
             new Vector2D(400, 300)
         );
         worldMap.addEntity(rabbit1);
-
-        Wolf wolf1 = new Wolf(
-            new Vector2D(500, 300)
-        );
-        worldMap.addEntity(wolf1);
-
-        Bush bush1 = new Bush(
-            new Vector2D(600, 300)
-        );
-        worldMap.addEntity(bush1);
-
-
-        
 
         //vẽ
         Canvas canvas = new Canvas(WIDTH, HEIGHT);

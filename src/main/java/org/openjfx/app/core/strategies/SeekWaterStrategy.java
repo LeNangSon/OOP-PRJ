@@ -1,17 +1,14 @@
 package org.openjfx.app.core.strategies;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 
 public class SeekWaterStrategy implements MoveStrategy {
-    private List<Entity> knownWaters = new ArrayList<>();
-
     private WanderStrategy searchWander;
 
     public SeekWaterStrategy(double wanderSpeed, double wanderR) {
@@ -19,41 +16,26 @@ public class SeekWaterStrategy implements MoveStrategy {
     }
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world){
-        for(Entity e : neighbors){
-            if (e.getType() == EntityType.WATER && !this.knownWaters.contains(e)) {
-                this.knownWaters.add(e);
-            }
+        Vector2D currentPos = owner.getPosition();
+
+        if (world.getTerrainAt(currentPos) == TerrainType.WATER) {
+            owner.setVelocity(new Vector2D(0, 0));
+            owner.drink(dt);
+            return;
         }
 
-        if(this.knownWaters.isEmpty()) {
+        Vector2D nearestWater = world.findNearestTerrainPosition(currentPos, TerrainType.WATER);
+        if (nearestWater == null) {
             this.searchWander.updateVelocity(owner, neighbors, dt, world);
             return;
         }
 
-        Vector2D currentPos = owner.getPosition();
-        Entity closestWater = null;
-        double min_distance = Double.MAX_VALUE;
-
-        for(Entity water: this.knownWaters){
-                double distance = currentPos.distance(water.getPosition());
-                if(distance < min_distance) {
-                    closestWater = water;
-                    min_distance = distance;
-                }
-        }
-
-        Vector2D targetPos = closestWater.getPosition();
-
-        if(min_distance > 5){                                           // <=5 là uống nước
-            Vector2D direct = currentPos.directionTo(targetPos);
+        double distanceToWater = currentPos.distance(nearestWater);
+        if(distanceToWater > 5){
+            Vector2D direct = currentPos.directionTo(nearestWater);
             owner.setVelocity(direct.multiply(owner.getMaxSpeed()));
-            System.out.println("Đang tìm nước");
-        }
-        else{
-            System.out.println("Đang uống nước");
-            owner.setVelocity(new Vector2D(0,0));
-            owner.drink(dt);
-            
+        } else {
+            owner.setVelocity(new Vector2D(0, 0));
         }
     }
 }

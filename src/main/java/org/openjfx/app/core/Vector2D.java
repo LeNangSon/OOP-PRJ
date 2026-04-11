@@ -23,12 +23,32 @@ public class Vector2D {
         return Math.sqrt(x*x + y*y);
     }
 
+    public Vector2D copy(Vector2D other){
+        this.x = other.x;
+        this.y = other.y;
+        return this;
+    }
     public Vector2D normalize() {
         double mag = magnitude();
         if (mag == 0) return new Vector2D(0, 0);
         return new Vector2D(x / mag, y / mag);
     }
+    public Vector2D limit(double max){
+        if (max <= 0) {
+            return new Vector2D(0, 0);
+        }
 
+        double mag = this.magnitude();
+        if (mag > max) {
+            return this.normalize().multiply(max);
+        }
+        return this;
+    }
+    public Vector2D set(double x, double y){
+        this.x = x;
+        this.y = y;
+        return this;
+    }
     public double distance(Vector2D other){
         return this.sub(other).magnitude();
     }

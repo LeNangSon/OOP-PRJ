@@ -3,13 +3,16 @@ package org.openjfx.app.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.openjfx.app.core.strategies.WanderStrategy;
+import org.openjfx.app.core.terrain.TerrainGrid;
+import org.openjfx.app.core.terrain.TerrainTile;
+import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
-import org.openjfx.app.core.terrain.TerrainGrid;
-import org.openjfx.app.core.terrain.TerrainType;
 
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 
 public class WorldMap {
     private final double width;
@@ -35,11 +38,50 @@ public class WorldMap {
         this.terrainGrid = TerrainGrid.fromCsvResource(resourcePath, tileSize);
     }
 
+    public double getWidth() {
+        return width;
+    }
+
+    public double getHeight() {
+        return height;
+    }
+
     public TerrainType getTerrainAt(Vector2D position) {
         if (terrainGrid == null) {
             return TerrainType.LAND;
         }
         return terrainGrid.getTerrainAt(position);
+    }
+
+    public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
+        if (terrainGrid == null || from == null || targetType == null) {
+            return null;
+        }
+
+        Vector2D nearestCenter = null;
+        double minDistance = Double.MAX_VALUE;
+
+        int tileSize = terrainGrid.getTileSize();
+        for (int row = 0; row < terrainGrid.getRows(); row++) {
+            for (int col = 0; col < terrainGrid.getCols(); col++) {
+                TerrainTile tile = terrainGrid.getTile(row, col);
+                if (tile == null || tile.getType() != targetType) {
+                    continue;
+                }
+
+                Vector2D center = new Vector2D(
+                    (col + 0.5) * tileSize,
+                    (row + 0.5) * tileSize
+                );
+                double distance = from.distance(center);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestCenter = center;
+                }
+            }
+        }
+
+        return nearestCenter;
     }
 
     public boolean canStandOn(LivingEntity entity, Vector2D position) {
@@ -69,7 +111,7 @@ public class WorldMap {
     }
 
     public void render(GraphicsContext gc) {
-    // 1. Vẽ map nền (nếu có ảnh thì dùng ảnh, không thì vẽ LAND bằng code).
+    // 1. Vẽ map nền (nếu có ảnh thì dùng ảnh, không thì vẽ cỏ mặc định).
     if (fixedBackgroundImage != null) {
         gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
     } else {
@@ -79,6 +121,7 @@ public class WorldMap {
     // 2. Vẽ các thực thể (Thỏ, Sói...) đè lên map.
     for (Entity entity : entities) {
         renderEntityWithImage(gc, entity);
+        renderWanderDebug(gc, entity);
     }
 }
 
@@ -137,7 +180,30 @@ public class WorldMap {
         //System.err.println("Lỗi load ảnh: /" + imagePath);
     }
 }
-   
+
+    private void renderWanderDebug(GraphicsContext gc, Entity entity) {
+        WanderStrategy.DebugWanderState debugState = WanderStrategy.getDebugState(entity.getId());
+        if (debugState == null) {
+            return;
+        }
+
+        Vector2D center = debugState.getCircleCenter();
+        Vector2D randomPoint = debugState.getRandomPoint();
+        double radius = debugState.getWanderRadius();
+
+        gc.save();
+        gc.setLineWidth(1.5);
+
+        gc.setStroke(Color.ORANGE);
+        gc.strokeOval(center.x - radius, center.y - radius, radius * 2, radius * 2);
+
+        gc.setStroke(Color.YELLOW);
+        gc.strokeOval(randomPoint.x - 5, randomPoint.y - 5, 10, 10);
+        gc.setFill(Color.YELLOW);
+        gc.fillOval(randomPoint.x - 2, randomPoint.y - 2, 4, 4);
+        gc.restore();
+    }
+
     private void drawGrassBackground(GraphicsContext gc) {
     // Định nghĩa kích thước mỗi ô cỏ (ví dụ 40x40 pixel)
     int tileSize = 40; 

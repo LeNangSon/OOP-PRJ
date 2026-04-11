@@ -16,8 +16,8 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
-    protected double wanderR;
-    protected double wanderSpeed;
+    protected double wanderRadius;
+    protected double wanderDistance;
 
     private double hungerRate;
     private double thirstRate;
@@ -26,17 +26,19 @@ public abstract class LivingEntity extends MovableEntity {
     protected  List<Entity> neighbors;
 
     //Constructor
-    public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
-        super(position, size, shape);
+    public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate,
+                        double maxSpeed, double maxForce, double mass,
+                        double wanderDistance, double wanderRadius){
+        super(position, size, shape, maxSpeed, maxForce, mass);
         this.health = initialHealth;
         this.hungerRate = hungerRate;
         this.thirstRate = thirstRate;
         this.hunger = 0.0;
         this.thirst = 0.0;
-        this.wanderSpeed = 30; // 🔥 THÊM DÒNG NÀY
-        this.wanderR = 50;     // 🔥 THÊM DÒNG NÀY
         this.isAlive = true;
-        this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
+        this.wanderRadius = wanderRadius;
+        this.wanderDistance = wanderDistance;
+        this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
     }
 
 
@@ -72,7 +74,7 @@ public abstract class LivingEntity extends MovableEntity {
     }
 
     public void setRadius(double radius){
-        this.radius = Math.max(0, Math.min(100, radius));
+        this.radius = Math.max(0, radius);
     }
 
     //Method
@@ -88,8 +90,44 @@ public abstract class LivingEntity extends MovableEntity {
             setHealth(this.health - 5*dt);
         }
 
-        super.move(dt);
+        // Move only when the next position is valid for this entity on the terrain grid.
+        Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
+        if (world.canStandOn(this, nextPosition)) {
+            this.position = nextPosition;
+        } else {
+            this.velocity = this.velocity.multiply(-1);
+        }
 
+        handleOutOfMap(world);
+
+    }
+
+    protected void handleOutOfMap(WorldMap world) {
+        double halfSize = this.size * 0.5;
+        double minX = halfSize;
+        double minY = halfSize;
+        double maxX = Math.max(minX, world.getWidth() - halfSize);
+        double maxY = Math.max(minY, world.getHeight() - halfSize);
+
+        double clampedX = Math.max(minX, Math.min(maxX, this.position.x));
+        double clampedY = Math.max(minY, Math.min(maxY, this.position.y));
+
+        boolean hitX = clampedX != this.position.x;
+        boolean hitY = clampedY != this.position.y;
+        if (hitX || hitY) {
+            this.position = new Vector2D(clampedX, clampedY);
+
+            double vx = this.velocity.x;
+            double vy = this.velocity.y;
+            if (hitX) {
+                vx = -vx;
+            }
+            if (hitY) {
+                vy = -vy;
+            }
+
+            this.velocity = new Vector2D(vx, vy).multiply(0.9);
+        }
     }
 
     public boolean hasThreat(Entity owner, List<Entity> neighbors) {

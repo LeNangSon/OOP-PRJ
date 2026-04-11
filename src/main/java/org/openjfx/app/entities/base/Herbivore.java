@@ -2,56 +2,54 @@ package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.strategies.FleeStrategy;
-import org.openjfx.app.core.strategies.HunterStrategy;
-import org.openjfx.app.core.strategies.SeekWaterStrategy;
-import org.openjfx.app.core.strategies.WanderStrategy;
+import org.openjfx.app.core.strategies.*;
 import org.openjfx.app.entities.staticobjs.Plant;
-
-
 
 public abstract class Herbivore extends LivingEntity {
 
-    public Herbivore(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
-        super(position, size, shape, initialHealth, hungerRate, thirstRate);
+    public Herbivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
+                     double maxSpeed, double maxForce, double mass,
+                     double wanderDistance, double wanderRadius) {
+        super(position, size, shape, initialHealth, hungerRate, thirstRate, maxSpeed, maxForce, mass, wanderDistance, wanderRadius);
     }
-    @Override
-    public void eat(Entity target, double dt){
-            setHunger(this.getHunger() - ((Plant)target).consume());
-    };
 
     @Override
-    public void update(double dt, WorldMap world){
-        System.out.println(this.getThirst());
+    public void eat(Entity target, double dt) {
+        if (target instanceof Plant) {
+            setHunger(this.getHunger() - ((Plant) target).consume());
+        }
+    }
+
+    @Override
+    public void update(double dt, WorldMap world) {
         this.neighbors = world.getNeighbors(this, this.radius);
 
-        boolean isCurrentlySeekingWater = (this.moveStrategy instanceof SeekWaterStrategy)
-                && (this.getThirst() > this.getThirstRate() * dt);
-
-        boolean isCurrentlyHunting = (this.moveStrategy instanceof HunterStrategy)
-                && (this.getHunger() > this.getHungerRate() * dt);
-
-        if (hasThreat(this, neighbors)){
+        // Quyết định chiến thuật dựa trên nhu cầu
+        if (hasThreat(this, neighbors)) {
             if (!(this.moveStrategy instanceof FleeStrategy)) {
                 this.moveStrategy = new FleeStrategy();
             }
-        }else if(isCurrentlySeekingWater || this.getThirst() > 70.0){
-            if (!(this.moveStrategy instanceof SeekWaterStrategy)){
-                this.moveStrategy = new SeekWaterStrategy(this.wanderSpeed, this.wanderR);
+        } else if (this.getThirst() > 70.0) {
+            if (!(this.moveStrategy instanceof SeekWaterStrategy)) {
+                this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
             }
-        }else if (isCurrentlyHunting || this.getHunger() > 70.0){
-            if (!(this.moveStrategy instanceof HunterStrategy)){
+        } else if (this.getHunger() > 70.0) {
+            if (!(this.moveStrategy instanceof HunterStrategy)) {
                 this.moveStrategy = new HunterStrategy();
             }
-        }else {
+        } else {
+            // Quay lại trạng thái lang thang nếu không có nhu cầu cấp bách
             if (!(this.moveStrategy instanceof WanderStrategy)) {
-                this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
+                this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
             }
         }
 
+        // Cập nhật vận tốc từ Strategy
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
+
+        // Cập nhật vị trí và các chỉ số sinh tồn (Gọi lớp cha)
         super.update(dt, world);
     }
 }

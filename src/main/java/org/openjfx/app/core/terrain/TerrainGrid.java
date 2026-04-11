@@ -17,10 +17,10 @@ public class TerrainGrid {
     private static final Map<Integer, TerrainType> NUMERIC_TILE_MAPPING = new HashMap<>();
     static {
         NUMERIC_TILE_MAPPING.put(0, TerrainType.WATER);
-        NUMERIC_TILE_MAPPING.put(1, TerrainType.ROCK);
+        NUMERIC_TILE_MAPPING.put(1, TerrainType.BUSH);
         NUMERIC_TILE_MAPPING.put(2, TerrainType.LAND);
         NUMERIC_TILE_MAPPING.put(3, TerrainType.PIT);
-        NUMERIC_TILE_MAPPING.put(4, TerrainType.BUSH);
+        NUMERIC_TILE_MAPPING.put(4, TerrainType.ROCK);
     }
 
     private final int tileSize;
