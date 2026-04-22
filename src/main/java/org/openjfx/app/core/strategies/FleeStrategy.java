@@ -9,76 +9,67 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 
-
-
 public class FleeStrategy implements MoveStrategy {
     private int flag = 0;
+    private double logCooldown = 0; // Biến kiểm soát thời gian gửi log
 
-   public FleeStrategy() {
-   }
+    public FleeStrategy() {
+    }
 
-   public int findClosetThreat(LivingEntity owner, List<Entity> neighbors) {
-    double minDistance=99999999f;
-    int closiestID = -1;
-    for(Entity neighbor : neighbors) {
-        EntityType curNeighborType = neighbor.getType();
-        if (RelationManager.isScaredOf(owner.getType(), curNeighborType)){
-            Vector2D ownerPosition = owner.getPosition();
-            double distance = ownerPosition.distance(neighbor.getPosition());
-            if (distance <= minDistance){
-                minDistance = distance;
-                closiestID = neighbor.getId();
+    public int findClosetThreat(LivingEntity owner, List<Entity> neighbors) {
+        double minDistance = 99999999f;
+        int closiestID = -1;
+        for (Entity neighbor : neighbors) {
+            EntityType curNeighborType = neighbor.getType();
+            if (RelationManager.isScaredOf(owner.getType(), curNeighborType)) {
+                Vector2D ownerPosition = owner.getPosition();
+                double distance = ownerPosition.distance(neighbor.getPosition());
+                if (distance <= minDistance) {
+                    minDistance = distance;
+                    closiestID = neighbor.getId();
+                }
             }
         }
+        return closiestID;
+    }
 
-      }
-      return closiestID;
+    @Override
+    public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
+        if (owner.isAlive()) {
+            int mostDangerous = findClosetThreat(owner, neighbors);
 
-   }
+            if (mostDangerous != -1) {
+                Entity threat = world.getEntityById(mostDangerous);
+                if (threat != null) {
+                    // --- PHẦN THÊM: GỬI THÔNG BÁO CHẠY TRỐN ---
+                    logCooldown -= dt;
+                    if (logCooldown <= 0) {
+                        world.notifyAction(
+                            owner.getType().toString(), 
+                            "đang chạy trốn khỏi", 
+                            threat.getType().toString()
+                        );
+                        logCooldown = 2.0; // 2 giây sau mới báo lại lần nữa
+                    }
+                    // ----------------------------------------
 
+                    Vector2D directionShouldRun = threat.getPosition().directionTo(owner.getPosition());
+                    double ownerX = owner.getPosition().x;
+                    double ownerY = owner.getPosition().y;
 
-
-
-   @Override
-   public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
-    if(owner.isAlive()){
-        int mostDangerous = findClosetThreat(owner, neighbors);
-
-        if (mostDangerous != -1){
-            Entity threat = world.getEntityById(mostDangerous);
-            if (threat != null) {
-                // Tìm vecto(BA) rồi chuẩn hóa
-                Vector2D directionShouldRun = threat.getPosition().directionTo(owner.getPosition());
-                double ownerX = owner.getPosition().x;
-                double ownerY = owner.getPosition().y;
-                
-
-                if (ownerX < 0 || ownerX > 800 || ownerY < 0 || ownerY > 600 ){
-                        flag =1;
-
+                    if (ownerX < 0 || ownerX > 800 || ownerY < 0 || ownerY > 600) {
+                        flag = 1;
                         directionShouldRun.x = directionShouldRun.x * (-0.5) - directionShouldRun.y * 0.866025;
                         directionShouldRun.y = directionShouldRun.x * 0.866025 + directionShouldRun.y * (-0.5);
                         owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
-
-                    
-
-                }else{
-                    owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
+                    } else {
+                        owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
+                    }
                 }
-                
-
+            } else {
+                owner.setVelocity(new Vector2D(0, 0));
+                logCooldown = 0; // Reset để khi gặp kẻ thù mới sẽ báo ngay
             }
-        } else {
-            owner.setVelocity(new Vector2D(0, 0));
-            
         }
-        
-        
-
     }
-
-
-      
-
-   }
 }

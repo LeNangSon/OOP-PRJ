@@ -10,21 +10,22 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 public class HunterStrategy implements MoveStrategy {
 
+    // Biến tạm để kiểm soát tần suất gửi log (tránh tràn terminal)
+    private double logCooldown = 0;
+
     public HunterStrategy() {
     }
 
     /**
-     * Tìm con mồi gần nhất trong danh sách hàng xóm
+     * Tìm con mồi gần nhất trong danh sách hàng xóm (Giữ nguyên)
      */
     public int findClosestPrey(LivingEntity owner, List<Entity> neighbors) {
         double minDistance = Double.MAX_VALUE;
         int closestID = -1;
 
         for (Entity neighbor : neighbors) {
-            // Kiểm tra xem hàng xóm này có phải là con mồi của chủ thể không
             if (RelationManager.isPrey(neighbor.getType(), owner.getType())) {
                 double distance = owner.getPosition().distance(neighbor.getPosition());
-
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestID = neighbor.getId();
@@ -42,21 +43,30 @@ public class HunterStrategy implements MoveStrategy {
             if (targetId != -1) {
                 Entity prey = world.getEntityById(targetId);
                 if (prey != null) {
-                    // Vector hướng từ chủ thể (owner) ĐẾN con mồi (prey)
-                    // ownerPosition.directionTo(preyPosition) => Vector(AB)
                     Vector2D directionToAttack = owner.getPosition().directionTo(prey.getPosition());
                     double range = owner.getPosition().distance(prey.getPosition());
                     
-                    if (range < 5){
-                        owner.eat(prey,dt);
-                    }else{
+                    if (range < 5) {
+                        owner.eat(prey, dt);
+                        
+                        // THÊM SỰ KIỆN: Thông báo đang săn mồi/ăn thịt
+                        logCooldown -= dt;
+                        if (logCooldown <= 0) {
+                            world.notifyAction(
+                                owner.getType().toString(), 
+                                "đang săn đuổi", 
+                                prey.getType().toString() + " (ID:" + prey.getId() + ")"
+                            );
+                            logCooldown = 1.5; // Gửi lại log sau 1.5 giây nếu vẫn đang ăn
+                        }
+                        
+                    } else {
                         owner.setVelocity(directionToAttack.multiply(owner.getMaxSpeed()));
                     }
-
                 }
             } else {
-                // Nếu không có con mồi, đứng yên hoặc có thể đổi sang chiến thuật đi tuần (Wander)
-                
+                // Reset cooldown khi không còn mục tiêu để khi gặp mục tiêu mới sẽ log ngay
+                logCooldown = 0;
             }
         }
     }
