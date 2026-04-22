@@ -98,6 +98,60 @@ public class WorldMap {
         return nearestCenter;
     }
 
+    public Vector2D findNearestTerrainPositionInRadius(Vector2D from, TerrainType targetType, double radius) {
+        if (terrainGrid == null || from == null || targetType == null || radius <= 0) {
+            return null;
+        }
+
+        TerrainGrid.GridCoordinate centerCoordinate = worldToGrid(from);
+        if (centerCoordinate == null) {
+            return null;
+        }
+
+        int tileSize = terrainGrid.getTileSize();
+        int tileRadius = (int) Math.ceil(radius / tileSize);
+        int centerRow = centerCoordinate.getRow();
+        int centerCol = centerCoordinate.getCol();
+
+        Vector2D nearestCenter = null;
+        double minDistanceSquared = Double.MAX_VALUE;
+        double radiusSquared = radius * radius;
+
+        int minRow = centerRow - tileRadius;
+        int maxRow = centerRow + tileRadius;
+        int minCol = centerCol - tileRadius;
+        int maxCol = centerCol + tileRadius;
+
+        for (int row = minRow; row <= maxRow; row++) {
+            for (int col = minCol; col <= maxCol; col++) {
+                if (!terrainGrid.isInside(row, col)) {
+                    continue;
+                }
+
+                TerrainTile tile = terrainGrid.getTile(row, col);
+                if (tile == null || tile.getType() != targetType) {
+                    continue;
+                }
+
+                Vector2D center = terrainGrid.gridToWorldCenter(row, col);
+                double dx = center.x - from.x;
+                double dy = center.y - from.y;
+                double distanceSquared = dx * dx + dy * dy;
+
+                if (distanceSquared > radiusSquared) {
+                    continue;
+                }
+
+                if (distanceSquared < minDistanceSquared) {
+                    minDistanceSquared = distanceSquared;
+                    nearestCenter = center;
+                }
+            }
+        }
+
+        return nearestCenter;
+    }
+
     public boolean canStandOn(LivingEntity entity, Vector2D position) {
         TerrainType terrain = getTerrainAt(position);
         EntityType entityType = entity.getType();
@@ -169,6 +223,12 @@ public class WorldMap {
         }
         return result;
     }
+
+    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
+        return null;
+    }
+
+
 
     private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
     // 1. Tách chuỗi từ toString() để lấy tên lớp/đường dẫn ảnh (Giữ nguyên ý Tuấn)

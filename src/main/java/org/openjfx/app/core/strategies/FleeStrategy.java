@@ -6,6 +6,7 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 
@@ -13,6 +14,8 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 public class FleeStrategy implements MoveStrategy {
     private static final double STEERING_GAIN = 4.0;
+    private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
+    private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
 
    public FleeStrategy() {
    }
@@ -37,34 +40,65 @@ public class FleeStrategy implements MoveStrategy {
    }
    @Override
    public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
-    if(owner.isAlive()){
-        int mostDangerous = findClosetThreat(owner, neighbors);
-
-        if (mostDangerous != -1){
-            Entity threat = world.getEntityById(mostDangerous);
-            if (threat != null) {
-                Vector2D desiredVelocity = threat.getPosition().directionTo(owner.getPosition()).multiply(owner.getMaxSpeed());
-                Vector2D steering = desiredVelocity.sub(owner.getVelocity());
-                Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
-                Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
-                owner.setAcceleration(acceleration);
-                owner.setVelocity(newVelocity);
-
-                
-
-            }
-        } else {
-            
-            
-        }
-        
-        
-
+    if (!owner.isAlive()) {
+        return;
     }
 
+    int mostDangerous = findClosetThreat(owner, neighbors);
+    if (mostDangerous == -1) {
+        double baseRadius = Math.max(owner.getRadius(), 10.0);
+        double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
+        double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
+        WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
+        wanderFallback.updateVelocity(owner, neighbors, dt, world);
+        return;
+    }
 
-      
+    Entity threat = world.getEntityById(mostDangerous);
+    if (threat == null) {
+        double baseRadius = Math.max(owner.getRadius(), 10.0);
+        double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
+        double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
+        WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
+        wanderFallback.updateVelocity(owner, neighbors, dt, world);
+        return;
+    }
 
+    Vector2D ownerPos = owner.getPosition();
+    Vector2D desiredVelocity = null;
+
+    // Prefer a path-driven flee direction first.
+    Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getRadius());
+    if (destination == null) {
+        destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.LAND, owner.getRadius());
+    }
+
+    if (destination != null) {
+        List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
+        if (path != null && !path.isEmpty()) {
+            Vector2D nextWaypoint = null;
+            for (Vector2D waypoint : path) {
+                if (waypoint != null && ownerPos.distance(waypoint) > 1e-3) {
+                    nextWaypoint = waypoint;
+                    break;
+                }
+            }
+            if (nextWaypoint != null) {
+                desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
+            }
+        }
+    }
+
+    // Fallback: steer directly away from threat.
+    if (desiredVelocity == null) {
+        desiredVelocity = threat.getPosition().directionTo(ownerPos).multiply(owner.getMaxSpeed());
+    }
+
+    Vector2D steering = desiredVelocity.sub(owner.getVelocity());
+    Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
+    Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
+    owner.setAcceleration(acceleration);
+    owner.setVelocity(newVelocity);
    }
 
 

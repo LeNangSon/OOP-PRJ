@@ -4,7 +4,6 @@ import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.movable.Rabbit;
 import org.openjfx.app.entities.movable.Wolf;
-import org.openjfx.app.entities.staticobjs.Bush;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -33,6 +32,11 @@ public class MainApp extends Application {
             new Vector2D(400, 300)
         );
         worldMap.addEntity(rabbit1);
+
+        Wolf wolf1 = new Wolf(
+            new Vector2D(500, 300)
+        );
+        worldMap.addEntity(wolf1);
 
         //vẽ
         Canvas canvas = new Canvas(WIDTH, HEIGHT);
