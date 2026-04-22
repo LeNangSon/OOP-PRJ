@@ -10,6 +10,8 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 public class HunterStrategy implements MoveStrategy {
 
+    private static final double STEERING_GAIN = 4.0;
+
     public HunterStrategy() {
     }
 
@@ -42,15 +44,19 @@ public class HunterStrategy implements MoveStrategy {
             if (targetId != -1) {
                 Entity prey = world.getEntityById(targetId);
                 if (prey != null) {
-                    // Vector hướng từ chủ thể (owner) ĐẾN con mồi (prey)
-                    // ownerPosition.directionTo(preyPosition) => Vector(AB)
-                    Vector2D directionToAttack = owner.getPosition().directionTo(prey.getPosition());
                     double range = owner.getPosition().distance(prey.getPosition());
-                    
-                    if (range < 5){
-                        owner.eat(prey,dt);
-                    }else{
-                        owner.setVelocity(directionToAttack.multiply(owner.getMaxSpeed()));
+
+                    if (range < 5) {
+                        owner.setAcceleration(new Vector2D(0, 0));
+                        owner.setVelocity(new Vector2D(0, 0));
+                        owner.eat(prey, dt);
+                    } else {
+                        Vector2D desiredVelocity = owner.getPosition().directionTo(prey.getPosition()).multiply(owner.getMaxSpeed());
+                        Vector2D steering = desiredVelocity.sub(owner.getVelocity());
+                        Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
+                        Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
+                        owner.setAcceleration(acceleration);
+                        owner.setVelocity(newVelocity);
                     }
 
                 }

@@ -12,6 +12,24 @@ import java.util.Map;
 import org.openjfx.app.core.Vector2D;
 
 public class TerrainGrid {
+    public static final class GridCoordinate {
+        private final int row;
+        private final int col;
+
+        public GridCoordinate(int row, int col) {
+            this.row = row;
+            this.col = col;
+        }
+
+        public int getRow() {
+            return row;
+        }
+
+        public int getCol() {
+            return col;
+        }
+    }
+
     // Mapping for Tiled CSV numeric IDs.
     // Update this map if your tileset IDs change.
     private static final Map<Integer, TerrainType> NUMERIC_TILE_MAPPING = new HashMap<>();

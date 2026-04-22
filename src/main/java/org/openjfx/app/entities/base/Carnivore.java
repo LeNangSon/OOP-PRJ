@@ -2,7 +2,10 @@ package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.strategies.*;
+import org.openjfx.app.core.strategies.FleeStrategy;
+import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.SeekWaterStrategy;
+import org.openjfx.app.core.strategies.WanderStrategy;
 
 public abstract class Carnivore extends LivingEntity {
 

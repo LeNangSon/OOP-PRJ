@@ -12,13 +12,13 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 
 public class FleeStrategy implements MoveStrategy {
-    private int flag = 0;
+    private static final double STEERING_GAIN = 4.0;
 
    public FleeStrategy() {
    }
 
    public int findClosetThreat(LivingEntity owner, List<Entity> neighbors) {
-    double minDistance=99999999f;
+    double minDistance= Double.MAX_VALUE;
     int closiestID = -1;
     for(Entity neighbor : neighbors) {
         EntityType curNeighborType = neighbor.getType();
@@ -35,10 +35,6 @@ public class FleeStrategy implements MoveStrategy {
       return closiestID;
 
    }
-
-
-
-
    @Override
    public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
     if(owner.isAlive()){
@@ -47,29 +43,18 @@ public class FleeStrategy implements MoveStrategy {
         if (mostDangerous != -1){
             Entity threat = world.getEntityById(mostDangerous);
             if (threat != null) {
-                // Tìm vecto(BA) rồi chuẩn hóa
-                Vector2D directionShouldRun = threat.getPosition().directionTo(owner.getPosition());
-                double ownerX = owner.getPosition().x;
-                double ownerY = owner.getPosition().y;
-                
+                Vector2D desiredVelocity = threat.getPosition().directionTo(owner.getPosition()).multiply(owner.getMaxSpeed());
+                Vector2D steering = desiredVelocity.sub(owner.getVelocity());
+                Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
+                Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
+                owner.setAcceleration(acceleration);
+                owner.setVelocity(newVelocity);
 
-                if (ownerX < 0 || ownerX > 800 || ownerY < 0 || ownerY > 600 ){
-                        flag =1;
-
-                        directionShouldRun.x = directionShouldRun.x * (-0.5) - directionShouldRun.y * 0.866025;
-                        directionShouldRun.y = directionShouldRun.x * 0.866025 + directionShouldRun.y * (-0.5);
-                        owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
-
-                    
-
-                }else{
-                    owner.setVelocity(directionShouldRun.multiply(owner.getMaxSpeed()));
-                }
                 
 
             }
         } else {
-            owner.setVelocity(new Vector2D(0, 0));
+            
             
         }
         
@@ -81,4 +66,14 @@ public class FleeStrategy implements MoveStrategy {
       
 
    }
+
+
+
+
+   
+
+
+      
+
+   
 }
