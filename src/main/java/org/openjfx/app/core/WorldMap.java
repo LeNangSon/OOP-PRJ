@@ -53,6 +53,20 @@ public class WorldMap {
         return terrainGrid.getTerrainAt(position);
     }
 
+    public TerrainGrid.GridCoordinate worldToGrid(Vector2D position) {
+        if (terrainGrid == null || position == null) {
+            return null;
+        }
+        return terrainGrid.worldToGrid(position);
+    }
+
+    public Vector2D gridToWorldCenter(int row, int col) {
+        if (terrainGrid == null || !terrainGrid.isInside(row, col)) {
+            return null;
+        }
+        return terrainGrid.gridToWorldCenter(row, col);
+    }
+
     public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
         if (terrainGrid == null || from == null || targetType == null) {
             return null;

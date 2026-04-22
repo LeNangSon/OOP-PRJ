@@ -121,12 +121,26 @@ public class TerrainGrid {
     }
 
     public TerrainType getTerrainAt(Vector2D worldPosition) {
-        int col = (int) (worldPosition.x / tileSize);
-        int row = (int) (worldPosition.y / tileSize);
+        GridCoordinate coordinate = worldToGrid(worldPosition);
+        int row = coordinate.getRow();
+        int col = coordinate.getCol();
         if (!isInside(row, col)) {
             return TerrainType.ROCK;
         }
         return tiles[row][col].getType();
+    }
+
+    public GridCoordinate worldToGrid(Vector2D worldPosition) {
+        int col = (int) (worldPosition.x / tileSize);
+        int row = (int) (worldPosition.y / tileSize);
+        return new GridCoordinate(row, col);
+    }
+
+    public Vector2D gridToWorldCenter(int row, int col) {
+        return new Vector2D(
+            (col + 0.5) * tileSize,
+            (row + 0.5) * tileSize
+        );
     }
 
     public TerrainTile getTile(int row, int col) {
