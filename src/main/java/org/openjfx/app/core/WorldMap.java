@@ -1,7 +1,9 @@
 package org.openjfx.app.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.PriorityQueue;
 
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainGrid;
@@ -53,6 +55,33 @@ public class WorldMap {
         return terrainGrid.getTerrainAt(position);
     }
 
+
+    // Khởi tạo các node
+    private class AstarNode implements Comparable<AstarNode>{
+        int row, col;
+        double g;
+        double h;                  // heuristic
+        AstarNode parent;
+
+        // constructor
+        public AstarNode(int row, int col){
+            this.row = row;
+            this.col = col;
+            this.g = Double.MAX_VALUE;
+        }
+
+        public double getF(){
+            return g+h;
+        }
+
+
+        // Chỉ dẫn cho priority queue hoạt động
+        @Override
+        public int compareTo(AstarNode other) {
+            return Double.compare(this.getF(), other.getF());
+        }
+    }
+
     public TerrainGrid.GridCoordinate worldToGrid(Vector2D position) {
         if (terrainGrid == null || position == null) {
             return null;
@@ -67,6 +96,119 @@ public class WorldMap {
         return terrainGrid.gridToWorldCenter(row, col);
     }
 
+    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
+        TerrainGrid.GridCoordinate start_grid = worldToGrid(start);
+        TerrainGrid.GridCoordinate target_grid = worldToGrid(target);
+
+        // rows, cols của map
+        int rows = terrainGrid.getRows();
+        int cols = terrainGrid.getCols();
+
+        int s_row = start_grid.getRow();
+        int s_col = start_grid.getCol();
+        int t_row = target_grid.getRow();
+        int t_col = target_grid.getCol();
+
+        PriorityQueue<AstarNode> openSet = new PriorityQueue<>();
+        boolean[][] visited = new boolean[rows][cols];
+        AstarNode[][] allNodes = new AstarNode[rows][cols];
+
+        for(int r = 0; r < rows; r++){
+            for(int c = 0; c < cols;c++){
+                allNodes[r][c] = new AstarNode(r,c);
+            }
+        }
+
+        AstarNode startNode = allNodes[s_row][s_col];
+        AstarNode targetNode = allNodes[t_row][t_col];
+
+        startNode.g = 0;
+        startNode.h = calculateHeuristic(startNode, targetNode);
+        openSet.add(startNode);
+
+        int[][] directions = {
+                {-1,0},{1,0},{0,-1},{0,1},
+                {-1,-1},{-1,1},{1,-1},{1,1}
+        };
+
+        while(!openSet.isEmpty()){
+            AstarNode current = openSet.poll();
+
+            // Nếu tìm thấy node target
+            if(current.row == t_row && current.col == t_col){
+                return Path(current);
+            }
+
+            visited[current.row][current.col] = true;
+            for(int[] dir: directions){
+                int newRow = current.row + dir[0];
+                int newCol = current.col + dir[1];
+
+                // Valiation
+                // Ngoài map
+                if(newRow < 0 || newCol < 0 || newRow > rows || newCol > cols) continue;
+                if(visited[newRow][newCol]) continue;
+
+                // Check đi vào được không
+                Vector2D titleCenter = gridToWorldCenter(newRow, newCol);
+                if(!canStandOn(entity, titleCenter)) continue;
+
+                AstarNode nextNode = allNodes[newRow][newCol];
+
+                double moveCost =  (dir[0] != 0 && dir[1] != 0) ? Math.sqrt(2) : 1.0;
+                double tmpMoveCost = current.g + moveCost;
+
+                if(tmpMoveCost < nextNode.g){
+                    nextNode.parent = current;
+                    nextNode.g = tmpMoveCost;
+                    nextNode.h = calculateHeuristic(nextNode, targetNode);
+
+                    // nếu nextNode chưa có trong p_queue --> thêm vào
+                    if(!openSet.contains(nextNode)) {
+                        openSet.add(nextNode);
+                    // nếu nextNode đã có trong p_queue --> xoá cái cũ thêm vào cái mới tìm được
+                    } else {
+                        openSet.remove(nextNode);
+                        openSet.add(nextNode);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private List<Vector2D> Path(AstarNode node){
+        List<Vector2D> path = new ArrayList<>();
+        AstarNode current = node;
+
+        while(current != null){
+            Vector2D currentPos = gridToWorldCenter(current.row, current.col);
+            double X = currentPos.x;
+            double Y = currentPos.y;
+
+            path.add(new Vector2D(X,Y));
+            current = current.parent;
+        }
+        // Đảo ngược đường để tìm start -> target
+        Collections.reverse(path);
+
+        // Bỏ vị trí hiện tại của entity
+        if(!path.isEmpty()){
+            path.remove(0);
+        }
+        return path;
+    }
+
+    private double calculateHeuristic(AstarNode start, AstarNode target){
+        double s_row = start.row;
+        double s_col = start.col;
+        double t_row = target.row;
+        double t_col = target.col;
+        double dx = s_col - t_col;
+        double dy = s_row - t_row;
+
+        return Math.sqrt(dx*dx + dy*dy);
+    }
     public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
         if (terrainGrid == null || from == null || targetType == null) {
             return null;
@@ -224,9 +366,6 @@ public class WorldMap {
         return result;
     }
 
-    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
-        return null;
-    }
 
 
 

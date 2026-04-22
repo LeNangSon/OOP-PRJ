@@ -34,7 +34,7 @@ public class MainApp extends Application {
         worldMap.addEntity(rabbit1);
 
         Wolf wolf1 = new Wolf(
-            new Vector2D(500, 300)
+            new Vector2D(400, 300)
         );
         worldMap.addEntity(wolf1);
 
