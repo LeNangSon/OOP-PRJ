@@ -21,6 +21,7 @@ public class FleeStrategy implements MoveStrategy {
     public FleeStrategy() {
     }
 
+
     public int findClosetThreat(LivingEntity owner, List<Entity> neighbors) {
         double minDistance = Double.MAX_VALUE;
         int closiestID = -1;
@@ -115,5 +116,11 @@ public class FleeStrategy implements MoveStrategy {
         Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
+        double distance = owner.getPosition().distance(threat.getPosition());
+        if (distance < 5) {
+            owner.setHealth(owner.getHealth() - 10*dt);
+        }
     }
+
+    
 }

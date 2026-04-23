@@ -5,6 +5,7 @@ import java.util.List;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 
@@ -20,13 +21,13 @@ public class HunterStrategy implements MoveStrategy {
     /**
      * Tìm con mồi gần nhất trong danh sách hàng xóm
      */
-    public int findClosestPrey(LivingEntity owner, List<Entity> neighbors) {
+    public int findClosestPrey(LivingEntity owner, List<Entity> neighbors, WorldMap world) {
         double minDistance = Double.MAX_VALUE;
         int closestID = -1;
 
         for (Entity neighbor : neighbors) {
             // Kiểm tra xem hàng xóm này có phải là con mồi của chủ thể không
-            if (RelationManager.isPrey(neighbor.getType(), owner.getType())) {
+            if (RelationManager.isPrey(neighbor.getType(), owner.getType()) && world.getTerrainAt(neighbor.getPosition()) != TerrainType.BUSH) {
                 double distance = owner.getPosition().distance(neighbor.getPosition());
 
                 if (distance < minDistance) {
@@ -41,9 +42,8 @@ public class HunterStrategy implements MoveStrategy {
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
         if (owner.isAlive()) {
-            int targetId = findClosestPrey(owner, neighbors);
-
-            if (targetId != -1) {
+            int targetId = findClosestPrey(owner, neighbors, world);
+            if (targetId != -1 ) {
                 Entity prey = world.getEntityById(targetId);
                 if (prey != null) {
                     // --- PHẦN THÊM: Bắn tin nhắn săn đuổi ra Terminal ---
