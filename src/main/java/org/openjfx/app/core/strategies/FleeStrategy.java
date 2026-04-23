@@ -1,6 +1,8 @@
 package org.openjfx.app.core.strategies;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.RelationManager;
@@ -18,7 +20,29 @@ public class FleeStrategy implements MoveStrategy {
     // --- PHẦN THÊM: Biến kiểm soát tần suất log ---
     private double logCooldown = 0;
 
+    public static final class DebugPathState {
+        private final List<Vector2D> path;
+
+        public DebugPathState(List<Vector2D> path) {
+            this.path = path;
+        }
+
+        public List<Vector2D> getPath() {
+            return path;
+        }
+    }
+
+    private static final Map<Integer, DebugPathState> DEBUG_PATH_STATES = new ConcurrentHashMap<>();
+
     public FleeStrategy() {
+    }
+
+    public static DebugPathState getDebugPathState(int entityId) {
+        return DEBUG_PATH_STATES.get(entityId);
+    }
+
+    public static void clearDebugPathState(int entityId) {
+        DEBUG_PATH_STATES.remove(entityId);
     }
 
     public int findClosetThreat(LivingEntity owner, List<Entity> neighbors) {
@@ -48,6 +72,7 @@ public class FleeStrategy implements MoveStrategy {
         if (mostDangerous == -1) {
             // Reset log khi an toàn
             logCooldown = 0;
+            clearDebugPathState(owner.getId());
 
             double baseRadius = Math.max(owner.getRadius(), 10.0);
             double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
@@ -60,6 +85,7 @@ public class FleeStrategy implements MoveStrategy {
         Entity threat = world.getEntityById(mostDangerous);
         if (threat == null) {
             logCooldown = 0;
+            clearDebugPathState(owner.getId());
             double baseRadius = Math.max(owner.getRadius(), 10.0);
             double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
             double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
@@ -92,6 +118,7 @@ public class FleeStrategy implements MoveStrategy {
         if (destination != null) {
             List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
             if (path != null && !path.isEmpty()) {
+                DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
                 Vector2D nextWaypoint = null;
                 for (Vector2D waypoint : path) {
                     if (waypoint != null && ownerPos.distance(waypoint) > 1e-3) {
@@ -102,7 +129,11 @@ public class FleeStrategy implements MoveStrategy {
                 if (nextWaypoint != null) {
                     desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
                 }
+            } else {
+                clearDebugPathState(owner.getId());
             }
+        } else {
+            clearDebugPathState(owner.getId());
         }
 
         // Fallback: steer directly away from threat.
@@ -115,5 +146,10 @@ public class FleeStrategy implements MoveStrategy {
         Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
+
+        double distance = owner.getPosition().distance(threat.getPosition());
+        if (distance < 5) {
+            owner.setHealth(owner.getHealth() - 10*dt);
+        }
     }
 }

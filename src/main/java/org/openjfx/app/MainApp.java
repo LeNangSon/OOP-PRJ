@@ -51,14 +51,24 @@ public class MainApp extends Application {
         worldMap.addObserver(new TerminalLogger(logData));
         // -------------------------------------------------------------
 
-        Rabbit rabbit1 = new Rabbit(new Vector2D(400, 300));
+        Rabbit rabbit1 = new Rabbit(new Vector2D(400, 350));
         worldMap.addEntity(rabbit1);
 
+        Rabbit rabbit2 = new Rabbit(new Vector2D(400, 350));
+        worldMap.addEntity(rabbit2);
+        Rabbit rabbit13 = new Rabbit(new Vector2D(400, 350));
+        worldMap.addEntity(rabbit13);
+        Rabbit rabbit3 = new Rabbit(new Vector2D(400, 350));
+        worldMap.addEntity(rabbit3);
+        Rabbit rabbit14 = new Rabbit(new Vector2D(400, 350));
+        worldMap.addEntity(rabbit14);
         Wolf wolf1 = new Wolf(
             new Vector2D(400, 300)
         );
         worldMap.addEntity(wolf1);
+        
 
+        
         // Vẽ
         Canvas canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();

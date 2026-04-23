@@ -33,6 +33,7 @@ public class SeekWaterStrategy implements MoveStrategy {
             return;
         }
 
+        
 
         // Đã tìm thấy nguồn nước (thuật toán hiện tại chỉ là đang đi thẳng đến nguồn nước đó)
         double distanceToWater = currentPos.distance(nearestWater);

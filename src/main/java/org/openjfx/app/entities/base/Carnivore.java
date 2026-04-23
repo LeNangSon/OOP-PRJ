@@ -24,7 +24,7 @@ public abstract class Carnivore extends LivingEntity {
         if (target instanceof LivingEntity) {
             LivingEntity prey = (LivingEntity) target;
             if (!prey.isAlive()) {
-                this.setHunger(this.getHunger() - 50.0); // Ví dụ: ăn xong giảm 50 đơn vị đói
+                this.setHunger(this.getHunger() - 100.0); // Ví dụ: ăn xong giảm 50 đơn vị đói
             }
         }
     }

@@ -56,6 +56,7 @@ public class WanderStrategy implements MoveStrategy {
         Vector2D currentPos = owner.getPosition();
 
         double maxSpeed = owner.getMaxSpeed();
+
         double maxForce = owner.getMaxForce();
         double mass = owner.getMass();
 

@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import org.openjfx.app.core.strategies.FleeStrategy;
+import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainTile;
@@ -54,8 +56,7 @@ public class WorldMap {
         if (terrainGrid == null) return TerrainType.LAND;
         return terrainGrid.getTerrainAt(position);
     }
-
-
+    
     // Khởi tạo các node
     private class AstarNode implements Comparable<AstarNode>{
         int row, col;
@@ -93,8 +94,15 @@ public class WorldMap {
     }
 
     public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
+        if (terrainGrid == null || entity == null || start == null || target == null) {
+            return null;
+        }
+
         TerrainGrid.GridCoordinate start_grid = worldToGrid(start);
         TerrainGrid.GridCoordinate target_grid = worldToGrid(target);
+        if (start_grid == null || target_grid == null) {
+            return null;
+        }
 
         // rows, cols của map
         int rows = terrainGrid.getRows();
@@ -142,11 +150,12 @@ public class WorldMap {
 
                 // Valiation
                 // Ngoài map
-                if(newRow < 0 || newCol < 0 || newRow > rows || newCol > cols) continue;
+                if(newRow < 0 || newCol < 0 || newRow >= rows || newCol >= cols) continue;
                 if(visited[newRow][newCol]) continue;
 
                 // Check đi vào được không
                 Vector2D titleCenter = gridToWorldCenter(newRow, newCol);
+                if (titleCenter == null) continue;
                 if(!canStandOn(entity, titleCenter)) continue;
 
                 AstarNode nextNode = allNodes[newRow][newCol];
@@ -259,6 +268,7 @@ public class WorldMap {
         TerrainType terrain = getTerrainAt(position);
         EntityType entityType = entity.getType();
         if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
+        if (terrain == TerrainType.BUSH) return entityType != EntityType.WOLF;
         if (terrain == TerrainType.PIT) return false;
         return terrain != TerrainType.ROCK;
     }
@@ -292,6 +302,7 @@ public class WorldMap {
         for (Entity entity : entities) {
             renderEntityWithImage(gc, entity);
             renderWanderDebug(gc, entity);
+            renderAStarPathDebug(gc, entity);
         }
     }
 
@@ -378,6 +389,42 @@ public class WorldMap {
         gc.strokeOval(randomPoint.x - 5, randomPoint.y - 5, 10, 10);
         gc.setFill(Color.YELLOW);
         gc.fillOval(randomPoint.x - 2, randomPoint.y - 2, 4, 4);
+        gc.restore();
+    }
+
+    private void renderAStarPathDebug(GraphicsContext gc, Entity entity) {
+        List<Vector2D> path = null;
+        HunterStrategy.DebugPathState hunterPath = HunterStrategy.getDebugPathState(entity.getId());
+        if (hunterPath != null) {
+            path = hunterPath.getPath();
+        } else {
+            FleeStrategy.DebugPathState fleePath = FleeStrategy.getDebugPathState(entity.getId());
+            if (fleePath != null) {
+                path = fleePath.getPath();
+            }
+        }
+
+        if (path == null || path.size() < 2) {
+            return;
+        }
+
+        gc.save();
+        gc.setLineWidth(2.0);
+        gc.setStroke(Color.web("#00D4FF", 0.85));
+        gc.setFill(Color.web("#00D4FF", 0.85));
+
+        Vector2D previous = null;
+        for (Vector2D point : path) {
+            if (point == null) {
+                continue;
+            }
+            if (previous != null) {
+                gc.strokeLine(previous.x, previous.y, point.x, point.y);
+            }
+            gc.fillOval(point.x - 2.5, point.y - 2.5, 5, 5);
+            previous = point;
+        }
+
         gc.restore();
     }
 

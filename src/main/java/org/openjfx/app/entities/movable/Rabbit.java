@@ -19,7 +19,7 @@ public class Rabbit extends Herbivore {
                 0.0,       // hungerRate (test wander-only)
                 0.0,       // thirstRate (test wander-only)
             20,      // maxSpeed (Thỏ cần nhanh hơn sói để có cơ hội thoát)
-            15,       // maxForce (Bẻ lái tốt hơn trên map có nhiều chướng ngại)
+            20,       // maxForce (Bẻ lái tốt hơn trên map có nhiều chướng ngại)
             0.5,       // mass (Giữ độ linh hoạt cao)
             10.0,      // wanderDistance (Đi ổn định hơn trên map rộng)
             10.0       // wanderRadius (Giảm lắc khi lang thang gần vật cản)
