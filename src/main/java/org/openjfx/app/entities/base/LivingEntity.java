@@ -8,8 +8,6 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.MoveStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 
-
-
 public abstract class LivingEntity extends MovableEntity {
     //Atribute
     protected MoveStrategy moveStrategy;
@@ -56,11 +54,16 @@ public abstract class LivingEntity extends MovableEntity {
         // Máu [0:100]
         this.health = Math.max(0, Math.min(100, health));
         
-        
         if (this.health <= 0 && this.isAlive == true) {
+            // Giữ nguyên dòng in ra console của bạn
             System.out.println("Death");
             this.isAlive = false;
         }
+    }
+
+    // --- PHẦN THÊM: Để Wolf có thể gọi hàm set thay vì gán trực tiếp ---
+    public void setMoveStrategy(MoveStrategy moveStrategy) {
+        this.moveStrategy = moveStrategy;
     }
 
     public void setHunger(double hunger) {
@@ -85,10 +88,18 @@ public abstract class LivingEntity extends MovableEntity {
         }
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
-        //Đói + Khát quá thì bị mất máu
+
+        // --- PHẦN THÊM: Logic Log tử vong ra Terminal ---
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
+            
+            // Nếu sau khi trừ máu mà bị chết thì bắn log
+            if (this.health <= 0) {
+                String reason = (hunger >= 100) ? "vì quá đói" : "vì quá khát";
+                world.broadcastDeath(this.type + " (ID: " + this.getId() + ") đã chết " + reason);
+            }
         }
+        // ------------------------------------------------
 
         // Move only when the next position is valid for this entity on the terrain grid.
         Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
