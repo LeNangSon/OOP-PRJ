@@ -8,16 +8,14 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.MoveStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 
-
-
 public abstract class LivingEntity extends MovableEntity {
     //Atribute
     protected MoveStrategy moveStrategy;
     private double hunger;
     private double thirst;
     private double health;
-    protected double wanderR;
-    protected double wanderSpeed;
+    protected double wanderRadius;
+    protected double wanderDistance;
 
     private double hungerRate;
     private double thirstRate;
@@ -26,15 +24,19 @@ public abstract class LivingEntity extends MovableEntity {
     protected  List<Entity> neighbors;
 
     //Constructor
-    public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate){
-        super(position, size, shape);
+    public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate,
+                        double maxSpeed, double maxForce, double mass,
+                        double wanderDistance, double wanderRadius){
+        super(position, size, shape, maxSpeed, maxForce, mass);
         this.health = initialHealth;
         this.hungerRate = hungerRate;
         this.thirstRate = thirstRate;
         this.hunger = 0.0;
         this.thirst = 0.0;
         this.isAlive = true;
-        this.moveStrategy = new WanderStrategy(this.wanderSpeed, this.wanderR);
+        this.wanderRadius = wanderRadius;
+        this.wanderDistance = wanderDistance;
+        this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
     }
 
 
@@ -44,18 +46,24 @@ public abstract class LivingEntity extends MovableEntity {
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
     public double getRadius() { return radius; }
-    
+    public double getThirstRate(){ return thirstRate; }
+    public double getHungerRate(){ return hungerRate; }
 
     //Setter
     public void setHealth(double health) {
         // Máu [0:100]
         this.health = Math.max(0, Math.min(100, health));
         
-        
         if (this.health <= 0 && this.isAlive == true) {
-            onDeath();
+            // Giữ nguyên dòng in ra console của bạn
+            System.out.println("Death");
             this.isAlive = false;
         }
+    }
+
+    // --- PHẦN THÊM: Để Wolf có thể gọi hàm set thay vì gán trực tiếp ---
+    public void setMoveStrategy(MoveStrategy moveStrategy) {
+        this.moveStrategy = moveStrategy;
     }
 
     public void setHunger(double hunger) {
@@ -69,7 +77,7 @@ public abstract class LivingEntity extends MovableEntity {
     }
 
     public void setRadius(double radius){
-        this.radius = Math.max(0, Math.min(100, radius));
+        this.radius = Math.max(0, radius);
     }
 
     //Method
@@ -78,15 +86,60 @@ public abstract class LivingEntity extends MovableEntity {
         if (!isAlive) {
             return;
         }
+        System.out.println(this.getHealth());
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
-        //Đói + Khát quá thì bị mất máu
+
+        // --- PHẦN THÊM: Logic Log tử vong ra Terminal ---
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
+            
+            // Nếu sau khi trừ máu mà bị chết thì bắn log
+            if (this.health <= 0) {
+                String reason = (hunger >= 100) ? "vì quá đói" : "vì quá khát";
+                world.broadcastDeath(this.type + " (ID: " + this.getId() + ") đã chết " + reason);
+            }
+        }
+        // ------------------------------------------------
+
+        // Move only when the next position is valid for this entity on the terrain grid.
+        Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
+        if (world.canStandOn(this, nextPosition)) {
+            this.position = nextPosition;
+        } else {
+            this.velocity = this.velocity.multiply(-1);
         }
 
-        super.move(dt);
+        handleOutOfMap(world);
 
+    }
+
+    protected void handleOutOfMap(WorldMap world) {
+        double halfSize = this.size * 0.5;
+        double minX = halfSize;
+        double minY = halfSize;
+        double maxX = Math.max(minX, world.getWidth() - halfSize);
+        double maxY = Math.max(minY, world.getHeight() - halfSize);
+
+        double clampedX = Math.max(minX, Math.min(maxX, this.position.x));
+        double clampedY = Math.max(minY, Math.min(maxY, this.position.y));
+
+        boolean hitX = clampedX != this.position.x;
+        boolean hitY = clampedY != this.position.y;
+        if (hitX || hitY) {
+            this.position = new Vector2D(clampedX, clampedY);
+
+            double vx = this.velocity.x;
+            double vy = this.velocity.y;
+            if (hitX) {
+                vx = -vx;
+            }
+            if (hitY) {
+                vy = -vy;
+            }
+
+            this.velocity = new Vector2D(vx, vy).multiply(0.9);
+        }
     }
 
     public boolean hasThreat(Entity owner, List<Entity> neighbors) {
@@ -99,10 +152,9 @@ public abstract class LivingEntity extends MovableEntity {
         
     }
 
-    public void onDeath(){
-        System.out.println("Death");
-    }
 
-    public abstract void eat();
-    public abstract void drink();
+    public abstract void eat(Entity target, double dt);
+    public void drink(double dt){
+        setThirst(this.thirst - 20.0*dt);
+    };
 }

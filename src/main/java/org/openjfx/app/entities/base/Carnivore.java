@@ -6,29 +6,37 @@ import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
-import org.openjfx.app.entities.staticobjs.Plant;
 
-public abstract class Herbivore extends LivingEntity {
+public abstract class Carnivore extends LivingEntity {
 
-    public Herbivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
+    public Carnivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
                      double maxSpeed, double maxForce, double mass,
                      double wanderDistance, double wanderRadius) {
-        super(position, size, shape, initialHealth, hungerRate, thirstRate, maxSpeed, maxForce, mass, wanderDistance, wanderRadius);
+        // Truyền đầy đủ thông số lên LivingEntity
+        super(position, size, shape, initialHealth, hungerRate, thirstRate,
+                maxSpeed, maxForce, mass, wanderDistance, wanderRadius);
     }
 
     @Override
     public void eat(Entity target, double dt) {
-        if (target instanceof Plant) {
-            setHunger(this.getHunger() - ((Plant) target).consume());
+        // Logic ăn thịt: Thường là kiểm tra target có phải LivingEntity không
+        // và cộng máu/giảm đói dựa trên kích thước con mồi
+        if (target instanceof LivingEntity) {
+            LivingEntity prey = (LivingEntity) target;
+            if (!prey.isAlive()) {
+                this.setHunger(this.getHunger() - 100.0); // Ví dụ: ăn xong giảm 50 đơn vị đói
+            }
         }
     }
 
     @Override
     public void update(double dt, WorldMap world) {
+        // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
         this.neighbors = world.getNeighbors(this, this.radius);
 
-        // Quyết định chiến thuật dựa trên nhu cầu
+        // Quyết định chiến thuật di chuyển
         if (hasThreat(this, neighbors)) {
+            // Thú ăn thịt vẫn có thể sợ kẻ thù lớn hơn hoặc con người
             if (!(this.moveStrategy instanceof FleeStrategy)) {
                 this.moveStrategy = new FleeStrategy();
             }
@@ -36,23 +44,23 @@ public abstract class Herbivore extends LivingEntity {
             if (!(this.moveStrategy instanceof SeekWaterStrategy)) {
                 this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
             }
-        } else if (this.getHunger() > 70.0) {
+        } else if (this.getHunger() > 60.0) { // Thú ăn thịt thường đi săn sớm hơn
             if (!(this.moveStrategy instanceof HunterStrategy)) {
                 this.moveStrategy = new HunterStrategy();
             }
         } else {
-            // Quay lại trạng thái lang thang nếu không có nhu cầu cấp bách
+            // Trạng thái bình thường: Đi tuần tra (Wander)
             if (!(this.moveStrategy instanceof WanderStrategy)) {
                 this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
             }
         }
 
-        // Cập nhật vận tốc từ Strategy
+        // Thực thi tính toán vận tốc
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
 
-        // Cập nhật vị trí và các chỉ số sinh tồn (Gọi lớp cha)
+        // Cập nhật vị trí và các chỉ số sinh tồn cơ bản
         super.update(dt, world);
     }
 }
