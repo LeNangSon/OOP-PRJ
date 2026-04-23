@@ -11,15 +11,15 @@ public class Wolf extends Carnivore {
     public Wolf(Vector2D position) {
         super(
                 position,
-                30.0,      // size
+                40.0,      // size
                 "circle",  // shape
-                150.0,     // initialHealth
-                2.0,       // hungerRate
-                1.5,       // thirstRate
-                70.0,      // maxSpeed
-                4.0,       // maxForce
-                5.0,       // mass
-                80.0,      // wanderDistance
+                100.0,     // initialHealth
+                5.0,       // hungerRate
+                0.0,       // thirstRate
+                30.0,      // maxSpeed
+                50.0,       // maxForce
+                3.0,       // mass
+                30.0,      // wanderDistance
                 30.0       // wanderRadius
         );
 
