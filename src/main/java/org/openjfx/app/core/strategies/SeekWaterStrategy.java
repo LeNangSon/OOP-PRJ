@@ -18,27 +18,29 @@ public class SeekWaterStrategy implements MoveStrategy {
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world){
         Vector2D currentPos = owner.getPosition();
 
-        // Nếu vị trí đang đứng là nước --> Uống
-        if (world.getTerrainAt(currentPos) == TerrainType.WATER) {
-            owner.setVelocity(new Vector2D(0, 0));
-            owner.drink(dt);
-            return;
-        }
+
 
         // Tìm nguồn nước từ vị trí hiện tại
         Vector2D nearestWater = world.findNearestTerrainPositionInRadius(currentPos, TerrainType.WATER,owner.getVisionRadius());
+
         // Nếu không tìm thấy thì đi lang thang
         if (nearestWater == null) {
             this.searchWander.updateVelocity(owner, neighbors, dt, world);
             return;
         }
 
+        // Nếu vị trí đang đứng là nước --> Uống
+        if (currentPos.distance(nearestWater) < 20) {
+            owner.setVelocity(new Vector2D(0, 0));
+            owner.drink(dt);
+            return;
+        }
         List<Vector2D> path = world.findPathAStar(owner, currentPos, nearestWater);
         Vector2D desiredVelocity = null;
         if (path != null && !path.isEmpty()) {
             Vector2D nextWaypoint = null;
             for (Vector2D waypoint : path) {
-                if (waypoint != null && currentPos.distance(waypoint) > 3) {
+                if (waypoint != null && currentPos.distance(waypoint) > 1) {
                     nextWaypoint = waypoint;
                     break;
                 }
