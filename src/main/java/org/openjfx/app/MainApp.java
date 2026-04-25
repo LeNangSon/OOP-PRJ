@@ -14,7 +14,8 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.ListView;
-import javafx.scene.layout.HBox; // Dùng HBox để xếp hàng ngang
+import javafx.scene.input.KeyCode; // Dùng HBox để xếp hàng ngang
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 public class MainApp extends Application {
@@ -38,6 +39,9 @@ public class MainApp extends Application {
         
         // Tạo ListView để hiển thị logData lên giao diện
         ListView<String> listView = new ListView<>(logData);
+        EntityStatusPanel entityStatusPanel = new EntityStatusPanel(worldMap);
+        entityStatusPanel.setVisible(false);
+        entityStatusPanel.setManaged(false);
         listView.setPrefWidth(400); // Độ rộng của bảng Terminal bên phải
         listView.setFocusTraversable(false); // Không cho phép focus vào list để tránh lag
         
@@ -68,25 +72,49 @@ public class MainApp extends Application {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         
         // 3. Vòng lặp mô phỏng
-        AnimationTimer timer = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                gc.clearRect(0, 0, WIDTH, HEIGHT);
-                worldMap.update(0.016); 
-                worldMap.render(gc);
-            }
-        };
+       AnimationTimer timer = new AnimationTimer() {
+         @Override
+          public void handle(long now) {
+               gc.clearRect(0, 0, WIDTH, HEIGHT);
+               worldMap.update(0.016);
+             worldMap.render(gc);
+
+               if (entityStatusPanel.isVisible()) {
+               entityStatusPanel.refreshData();
+               }
+           }
+         };
         timer.start();
 
         // --- THAY ĐỔI: Sử dụng HBox để chia đôi màn hình ---
         // HBox sẽ xếp Canvas bên trái và ListView bên phải
-        HBox root = new HBox(canvas, listView); 
+        HBox root = new HBox(canvas, listView, entityStatusPanel);
         
         // Cập nhật Scene với root mới (HBox)
         // Chiều rộng tổng cộng = WIDTH bản đồ + 300px Terminal
-        stage.setScene(new Scene(root, WIDTH + 400, HEIGHT)); 
-        stage.setTitle("Project - Ecology Simulation (Map & Terminal)");
-        stage.show();
+        Scene scene = new Scene(root, WIDTH + 400, HEIGHT);
+
+    scene.setOnKeyPressed(event -> {
+    if (event.getCode() == KeyCode.TAB) {
+        boolean showStats = !entityStatusPanel.isVisible();
+
+        entityStatusPanel.setVisible(showStats);
+        entityStatusPanel.setManaged(showStats);
+
+        listView.setVisible(!showStats);
+        listView.setManaged(!showStats);
+
+        if (showStats) {
+            entityStatusPanel.refreshData();
+        }
+
+        event.consume();
+    }
+});
+
+stage.setScene(scene);
+stage.setTitle("Project - Ecology Simulation (Map & Terminal)");
+stage.show();
     }
     
     public static void main(String[] args) {

@@ -292,6 +292,10 @@ public class WorldMap {
         }
         return null;
     }
+    
+    public List<Entity> getEntities() {
+    return Collections.unmodifiableList(entities);
+}
 
     public void render(GraphicsContext gc) {
         if (fixedBackgroundImage != null) {
