@@ -16,8 +16,8 @@ public class Wolf extends Carnivore {
                 200.0,     // initialHealth
                 3.0,       // hungerRate
                 0.0,       // thirstRate
-                30.0,      // maxSpeed
-                70.0,       // maxForce
+                50.0,      // maxSpeed
+                100.0,       // maxForce
                 3.0,       // mass
                 30.0,      // wanderDistance
                 30.0       // wanderRadius
