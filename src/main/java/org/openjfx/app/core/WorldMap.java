@@ -294,16 +294,28 @@ public class WorldMap {
     }
 
     public void render(GraphicsContext gc) {
+        // 1. Lưu trạng thái ban đầu của GraphicsContext
+        gc.save(); 
+        gc.translate(offsetX, offsetY);
+        // 2. Thực hiện phóng to/thu nhỏ dựa trên biến scale
+        gc.scale(scale, scale);
+
+        // --- GIỮ NGUYÊN LOGIC VẼ CỦA BẠN ---
         if (fixedBackgroundImage != null) {
             gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
         } else {
             drawGrassBackground(gc);
         }
+
         for (Entity entity : entities) {
             renderEntityWithImage(gc, entity);
             renderWanderDebug(gc, entity);
             renderAStarPathDebug(gc, entity);
         }
+        // ----------------------------------
+
+        // 3. Khôi phục lại trạng thái ban đầu (để tránh làm hỏng các phần vẽ khác bên ngoài WorldMap)
+        gc.restore(); 
     }
 
     public void setFixedBackgroundImageFromResource(String resourcePath) {
@@ -443,4 +455,36 @@ public class WorldMap {
             }
         }
     }
+    private double scale = 1.0;
+    // Thêm getter/setter để MainApp có thể gọi
+    public void setScale(double scale) {
+    this.scale = Math.max(1.0, Math.min(3.0, scale));
+    }
+    public double getScale() { return scale; }
+    private double offsetX = 0;
+    private double offsetY = 0;
+
+    // Getter và Setter cho Offset
+    public void setOffset(double x, double y) {
+    double scaledWidth = this.width * this.scale;
+    double scaledHeight = this.height * this.scale;
+
+    // Chặn biên X: Nếu bản đồ to hơn khung hình thì mới cho lia
+    if (scaledWidth > this.width) {
+        this.offsetX = Math.min(0, Math.max(x, this.width - scaledWidth));
+    } else {
+        // Nếu không muốn đứng yên tại 0, bạn có thể gán this.offsetX = x;
+        // Nhưng theo ý bạn là "bản đồ cố định" nên để là 0 hoặc căn giữa:
+        this.offsetX = (this.width - scaledWidth) / 2; 
+    }
+
+    // Chặn biên Y
+    if (scaledHeight > this.height) {
+        this.offsetY = Math.min(0, Math.max(y, this.height - scaledHeight));
+    } else {
+        this.offsetY = (this.height - scaledHeight) / 2;
+    }
+    }
+    public double getOffsetX() { return offsetX; }
+    public double getOffsetY() { return offsetY; }
 }
