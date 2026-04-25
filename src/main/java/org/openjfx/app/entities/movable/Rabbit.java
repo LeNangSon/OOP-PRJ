@@ -26,7 +26,7 @@ public class Rabbit extends Herbivore {
         );
 
         // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setRadius(180.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
+        this.setRadius(50.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
         this.type = EntityType.RABBIT;
     }
 

@@ -87,7 +87,7 @@ public class HunterStrategy implements MoveStrategy {
                             DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
                             Vector2D nextWaypoint = null;
                             for (Vector2D waypoint : path) {
-                                if (waypoint != null && ownerPos.distance(waypoint) > 1e-3) {
+                                if (waypoint != null && ownerPos.distance(waypoint) > 3) {
                                     nextWaypoint = waypoint;
                                     break;
                                 }
@@ -113,6 +113,7 @@ public class HunterStrategy implements MoveStrategy {
             } else {
                 logCooldown = 0;
                 clearDebugPathState(owner.getId());
+
             }
         }
     }

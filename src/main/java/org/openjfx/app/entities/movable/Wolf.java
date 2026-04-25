@@ -16,14 +16,14 @@ public class Wolf extends Carnivore {
                 200.0,     // initialHealth
                 3.0,       // hungerRate
                 0.0,       // thirstRate
-                50.0,      // maxSpeed
-                100.0,       // maxForce
+                40.0,      // maxSpeed
+                80.0,       // maxForce
                 3.0,       // mass
                 30.0,      // wanderDistance
                 30.0       // wanderRadius
         );
 
-        this.setRadius(300.0);
+        this.setRadius(200.0);
         this.type = EntityType.WOLF;
         
         // THAY ĐỔI Ở ĐÂY: Gán trực tiếp vào biến để tránh lỗi không tìm thấy method

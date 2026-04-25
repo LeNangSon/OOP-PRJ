@@ -113,12 +113,15 @@ public class FleeStrategy implements MoveStrategy {
         Vector2D ownerPos = owner.getPosition();
         Vector2D desiredVelocity = null;
 
-        // Prefer a path-driven flee direction first.
-        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getRadius());
-        if (destination == null) {
-            destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.LAND, owner.getRadius());
+        if(world.getTerrainAt(ownerPos) == TerrainType.BUSH){
+            owner.setVelocity(new Vector2D(0, 0));
+            owner.setAcceleration(new Vector2D(0, 0));
+            return;
         }
+        // Tâm grid của môi trường cần tìm gần nhất
+        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getRadius());
 
+        // Đi theo đường tìm thấy
         if (destination != null) {
             List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
             if (path != null && !path.isEmpty()) {
@@ -140,7 +143,7 @@ public class FleeStrategy implements MoveStrategy {
             clearDebugPathState(owner.getId());
         }
 
-        // Fallback: steer directly away from threat.
+        // Đi hết path hoặc không có path --> chạy khỏi hunter
         if (desiredVelocity == null) {
             desiredVelocity = threat.getPosition().directionTo(ownerPos).multiply(owner.getMaxSpeed());
         }
@@ -151,9 +154,5 @@ public class FleeStrategy implements MoveStrategy {
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
 
-        double distance = owner.getPosition().distance(threat.getPosition());
-        if (distance < 5) {
-            owner.setHealth(owner.getHealth() - 10*dt);
-        }
     }
 }

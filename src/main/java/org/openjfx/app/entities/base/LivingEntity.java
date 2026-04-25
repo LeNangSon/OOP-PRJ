@@ -14,6 +14,15 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
+
+    public double getWanderRadius() {
+        return wanderRadius;
+    }
+
+    public double getWanderDistance() {
+        return wanderDistance;
+    }
+
     protected double wanderRadius;
     protected double wanderDistance;
 
@@ -21,7 +30,12 @@ public abstract class LivingEntity extends MovableEntity {
     private double thirstRate;
     private boolean isAlive;
     protected double radius;
+    private final double wanderSpeed;
     protected  List<Entity> neighbors;
+
+    public double getWanderSpeed() {
+        return wanderSpeed;
+    }
 
     //Constructor
     public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate,
@@ -36,6 +50,7 @@ public abstract class LivingEntity extends MovableEntity {
         this.isAlive = true;
         this.wanderRadius = wanderRadius;
         this.wanderDistance = wanderDistance;
+        this.wanderSpeed = 20;
         this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
     }
 
@@ -49,10 +64,14 @@ public abstract class LivingEntity extends MovableEntity {
     public double getThirstRate(){ return thirstRate; }
     public double getHungerRate(){ return hungerRate; }
 
+    public void setAlive(boolean alive) {
+        isAlive = alive;
+    }
+
     //Setter
     public void setHealth(double health) {
-        // Máu [0:100]
-        this.health = Math.max(0, Math.min(100, health));
+        // Máu tuỳ theo con vật
+        this.health = health;
         
         if (this.health <= 0 && this.isAlive == true) {
             System.out.println("Death");
@@ -101,13 +120,13 @@ public abstract class LivingEntity extends MovableEntity {
                 world.broadcastDeath(entityNameWithId + " đã chết " + reason);
             }
         }
-        // ------------------------------------------------
 
+        // Đi ngược lại nếu không vào được
         Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
         if (world.canStandOn(this, nextPosition)) {
             this.position = nextPosition;
         } else {
-            this.velocity = this.velocity.multiply(-1);
+            this.velocity = this.velocity.multiply(-0.5);
         }
 
         handleOutOfMap(world);
