@@ -1,12 +1,15 @@
 package org.openjfx.app.core.strategies;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
@@ -14,6 +17,7 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class HunterStrategy implements MoveStrategy {
 
     private static final double STEERING_GAIN = 4.0;
+    private static final int BLOCKED_WAYPOINTS_TO_AVOID = 2;
     private double logCooldown = 0;
 
     public static final class DebugPathState {
@@ -80,14 +84,19 @@ public class HunterStrategy implements MoveStrategy {
                     } else {
                         Vector2D ownerPos = owner.getPosition();
                         Vector2D preyPos = prey.getPosition();
-                        List<Vector2D> path = world.findPathAStar(owner, ownerPos, preyPos);
+                        Set<String> avoidedGridKeys = null;
+                        if (owner.getBlockedLastStep()) {
+                            avoidedGridKeys = collectBlockedWaypointKeys(owner.getId(), world);
+                        }
+
+                        List<Vector2D> path = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
 
                         Vector2D desiredVelocity = null;
                         if (path != null && !path.isEmpty()) {
                             DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
                             Vector2D nextWaypoint = null;
                             for (Vector2D waypoint : path) {
-                                if (waypoint != null && ownerPos.distance(waypoint) > 3) {
+                                if (waypoint != null && ownerPos.distance(waypoint) > 1) {
                                     nextWaypoint = waypoint;
                                     break;
                                 }
@@ -116,5 +125,25 @@ public class HunterStrategy implements MoveStrategy {
 
             }
         }
+    }
+
+    private Set<String> collectBlockedWaypointKeys(int ownerId, WorldMap world) {
+        DebugPathState lastPathState = DEBUG_PATH_STATES.get(ownerId);
+        if (lastPathState == null || lastPathState.getPath() == null || lastPathState.getPath().isEmpty()) {
+            return null;
+        }
+
+        Set<String> blockedKeys = new HashSet<>();
+        List<Vector2D> lastPath = lastPathState.getPath();
+        int limit = Math.min(BLOCKED_WAYPOINTS_TO_AVOID, lastPath.size());
+        for (int i = 0; i < limit; i++) {
+            Vector2D point = lastPath.get(i);
+            if (point == null) continue;
+            TerrainGrid.GridCoordinate grid = world.worldToGrid(point);
+            if (grid != null) {
+                blockedKeys.add(grid.getRow() + ":" + grid.getCol());
+            }
+        }
+        return blockedKeys.isEmpty() ? null : blockedKeys;
     }
 }

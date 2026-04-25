@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
@@ -94,6 +95,10 @@ public class WorldMap {
     }
 
     public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
+        return findPathAStar(entity, start, target, null);
+    }
+
+    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target, Set<String> avoidedGridKeys){
         if (terrainGrid == null || entity == null || start == null || target == null) {
             return null;
         }
@@ -157,6 +162,7 @@ public class WorldMap {
                 Vector2D titleCenter = gridToWorldCenter(newRow, newCol);
                 if (titleCenter == null) continue;
                 if(!canStandOn(entity, titleCenter)) continue;
+                if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(newRow, newCol))) continue;
 
                 AstarNode nextNode = allNodes[newRow][newCol];
 
@@ -180,6 +186,10 @@ public class WorldMap {
             }
         }
         return null;
+    }
+
+    private String gridKey(int row, int col) {
+        return row + ":" + col;
     }
 
     private List<Vector2D> Path(AstarNode node){
