@@ -94,13 +94,17 @@ public class FleeStrategy implements MoveStrategy {
             return;
         }
 
-        // --- PHẦN THÊM: Gửi thông báo chạy trốn ---
+        // --- SỬA TÊN#ID Ở ĐÂY ---
         logCooldown -= dt;
         if (logCooldown <= 0) {
+            // Lấy tên lớp (ví dụ Rabbit, Wolf) và nối với ID
+            String ownerName = owner.getClass().getSimpleName() + "#" + owner.getId();
+            String threatName = threat.getClass().getSimpleName() + "#" + threat.getId();
+            
             world.notifyAction(
-                owner.getType().toString(), 
+                ownerName, 
                 "đang chạy trốn khỏi", 
-                threat.getType().toString()
+                threatName
             );
             logCooldown = 2.5; // 2.5 giây sau mới hiện lại
         }
