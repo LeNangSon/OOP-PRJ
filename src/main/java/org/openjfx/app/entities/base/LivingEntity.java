@@ -104,8 +104,6 @@ public abstract class LivingEntity extends MovableEntity {
         if (!isAlive) {
             return;
         }
-        System.out.println(this.getHealth());
-        System.out.println(this.getHunger());
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
 
