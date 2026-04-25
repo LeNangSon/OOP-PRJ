@@ -29,7 +29,7 @@ public abstract class LivingEntity extends MovableEntity {
     private double hungerRate;
     private double thirstRate;
     private boolean isAlive;
-    protected double radius;
+    protected double visionRadius;
     private final double wanderSpeed;
     protected  List<Entity> neighbors;
 
@@ -60,7 +60,7 @@ public abstract class LivingEntity extends MovableEntity {
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
-    public double getRadius() { return radius; }
+    public double getVisionRadius() { return visionRadius; }
     public double getThirstRate(){ return thirstRate; }
     public double getHungerRate(){ return hungerRate; }
 
@@ -94,8 +94,8 @@ public abstract class LivingEntity extends MovableEntity {
         this.thirst = Math.max(0, Math.min(100, thirst));
     }
 
-    public void setRadius(double radius){
-        this.radius = Math.max(0, radius);
+    public void setVisionRadius(double visionRadius){
+        this.visionRadius = Math.max(0, visionRadius);
     }
 
     //Method

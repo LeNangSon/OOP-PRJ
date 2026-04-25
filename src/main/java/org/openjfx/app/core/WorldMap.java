@@ -313,7 +313,7 @@ public class WorldMap {
         }
 
         LivingEntity livingEntity = (LivingEntity) entity;
-        double visionRadius = livingEntity.getRadius();
+        double visionRadius = livingEntity.getVisionRadius();
         if (visionRadius <= 0) {
             return;
         }

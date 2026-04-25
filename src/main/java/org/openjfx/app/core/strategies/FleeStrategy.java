@@ -74,7 +74,7 @@ public class FleeStrategy implements MoveStrategy {
             logCooldown = 0;
             clearDebugPathState(owner.getId());
 
-            double baseRadius = Math.max(owner.getRadius(), 10.0);
+            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
             double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
             double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
             WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
@@ -86,7 +86,7 @@ public class FleeStrategy implements MoveStrategy {
         if (threat == null) {
             logCooldown = 0;
             clearDebugPathState(owner.getId());
-            double baseRadius = Math.max(owner.getRadius(), 10.0);
+            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
             double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
             double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
             WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
@@ -115,7 +115,7 @@ public class FleeStrategy implements MoveStrategy {
             return;
         }
         // Tâm grid của môi trường cần tìm gần nhất
-        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getRadius());
+        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getVisionRadius());
 
         // Đi theo đường tìm thấy
         if (destination != null) {

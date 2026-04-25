@@ -39,7 +39,6 @@ public class WanderStrategy implements MoveStrategy {
 
     private double wanderDistance;
     private double wanderRadius;
-    private double wanderSpeed;
     private double wanderTheta = Math.PI / 2;
 
     public WanderStrategy(double wanderDistance,double wanderRadius) {

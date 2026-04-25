@@ -33,7 +33,7 @@ public abstract class Carnivore extends LivingEntity {
     @Override
     public void update(double dt, WorldMap world) {
         // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
-        this.neighbors = world.getNeighbors(this, this.radius);
+        this.neighbors = world.getNeighbors(this, this.visionRadius);
 
         // Quyết định chiến thuật di chuyển
         if (hasThreat(this, neighbors)) {

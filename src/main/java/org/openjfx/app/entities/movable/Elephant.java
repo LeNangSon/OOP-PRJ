@@ -26,7 +26,7 @@ public class Elephant extends Herbivore {
         );
 
         // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setRadius(150.0);
+        this.setVisionRadius(150.0);
 
         // Bạn muốn voi bắt đầu trong trạng thái hơi khát để test SeekWater
         this.setThirst(80.0);

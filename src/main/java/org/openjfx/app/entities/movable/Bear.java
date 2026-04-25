@@ -26,7 +26,7 @@ public class Bear extends Carnivore {
         );
 
         // Thiết lập tầm nhìn (radius) để phát hiện con mồi hoặc mối đe dọa
-        this.setRadius(200.0);
+        this.setVisionRadius(200.0);
         this.type = EntityType.BEAR;
     }
 

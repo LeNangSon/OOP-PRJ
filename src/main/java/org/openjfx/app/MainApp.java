@@ -54,10 +54,12 @@ public class MainApp extends Application {
         Rabbit rabbit1 = new Rabbit(new Vector2D(400, 350));
         worldMap.addEntity(rabbit1);
 
-        Wolf wolf1 = new Wolf(
-            new Vector2D(400, 300)
-        );
-        worldMap.addEntity(wolf1);
+        rabbit1.setThirst(70);
+
+//        Wolf wolf1 = new Wolf(
+//            new Vector2D(400, 300)
+//        );
+//        worldMap.addEntity(wolf1);
         
 
         

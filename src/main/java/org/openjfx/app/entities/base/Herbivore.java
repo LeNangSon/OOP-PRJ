@@ -25,7 +25,7 @@ public abstract class Herbivore extends LivingEntity {
 
     @Override
     public void update(double dt, WorldMap world) {
-        this.neighbors = world.getNeighbors(this, this.radius);
+        this.neighbors = world.getNeighbors(this, this.visionRadius);
 
         if (hasThreat(this, neighbors)) {
             if (!(this.moveStrategy instanceof FleeStrategy)) {
