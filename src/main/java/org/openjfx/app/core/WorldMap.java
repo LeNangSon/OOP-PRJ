@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
@@ -94,6 +95,10 @@ public class WorldMap {
     }
 
     public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
+        return findPathAStar(entity, start, target, null);
+    }
+
+    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target, Set<String> avoidedGridKeys){
         if (terrainGrid == null || entity == null || start == null || target == null) {
             return null;
         }
@@ -157,6 +162,7 @@ public class WorldMap {
                 Vector2D titleCenter = gridToWorldCenter(newRow, newCol);
                 if (titleCenter == null) continue;
                 if(!canStandOn(entity, titleCenter)) continue;
+                if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(newRow, newCol))) continue;
 
                 AstarNode nextNode = allNodes[newRow][newCol];
 
@@ -180,6 +186,10 @@ public class WorldMap {
             }
         }
         return null;
+    }
+
+    private String gridKey(int row, int col) {
+        return row + ":" + col;
     }
 
     private List<Vector2D> Path(AstarNode node){
@@ -298,16 +308,54 @@ public class WorldMap {
 }
 
     public void render(GraphicsContext gc) {
+        // 1. Lưu trạng thái ban đầu của GraphicsContext
+        gc.save(); 
+        gc.translate(offsetX, offsetY);
+        // 2. Thực hiện phóng to/thu nhỏ dựa trên biến scale
+        gc.scale(scale, scale);
+
+        // --- GIỮ NGUYÊN LOGIC VẼ CỦA BẠN ---
         if (fixedBackgroundImage != null) {
             gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
         } else {
             drawGrassBackground(gc);
         }
+
         for (Entity entity : entities) {
+            renderVisionRadius(gc, entity);
             renderEntityWithImage(gc, entity);
             renderWanderDebug(gc, entity);
             renderAStarPathDebug(gc, entity);
         }
+        // ----------------------------------
+
+        // 3. Khôi phục lại trạng thái ban đầu (để tránh làm hỏng các phần vẽ khác bên ngoài WorldMap)
+        gc.restore(); 
+    }
+
+    private void renderVisionRadius(GraphicsContext gc, Entity entity) {
+        if (!(entity instanceof LivingEntity)) {
+            return;
+        }
+
+        LivingEntity livingEntity = (LivingEntity) entity;
+        double visionRadius = livingEntity.getVisionRadius();
+        if (visionRadius <= 0) {
+            return;
+        }
+
+        gc.save();
+        gc.setLineWidth(1.2);
+        gc.setStroke(Color.web("#66E0FF", 0.55));
+        gc.setFill(Color.web("#66E0FF", 0.08));
+
+        double diameter = visionRadius * 2;
+        double topLeftX = livingEntity.getPosition().x - visionRadius;
+        double topLeftY = livingEntity.getPosition().y - visionRadius;
+
+        gc.fillOval(topLeftX, topLeftY, diameter, diameter);
+        gc.strokeOval(topLeftX, topLeftY, diameter, diameter);
+        gc.restore();
     }
 
     public void setFixedBackgroundImageFromResource(String resourcePath) {
@@ -447,4 +495,36 @@ public class WorldMap {
             }
         }
     }
+    private double scale = 1.0;
+    // Thêm getter/setter để MainApp có thể gọi
+    public void setScale(double scale) {
+    this.scale = Math.max(1.0, Math.min(3.0, scale));
+    }
+    public double getScale() { return scale; }
+    private double offsetX = 0;
+    private double offsetY = 0;
+
+    // Getter và Setter cho Offset
+    public void setOffset(double x, double y) {
+    double scaledWidth = this.width * this.scale;
+    double scaledHeight = this.height * this.scale;
+
+    // Chặn biên X: Nếu bản đồ to hơn khung hình thì mới cho lia
+    if (scaledWidth > this.width) {
+        this.offsetX = Math.min(0, Math.max(x, this.width - scaledWidth));
+    } else {
+        // Nếu không muốn đứng yên tại 0, bạn có thể gán this.offsetX = x;
+        // Nhưng theo ý bạn là "bản đồ cố định" nên để là 0 hoặc căn giữa:
+        this.offsetX = (this.width - scaledWidth) / 2; 
+    }
+
+    // Chặn biên Y
+    if (scaledHeight > this.height) {
+        this.offsetY = Math.min(0, Math.max(y, this.height - scaledHeight));
+    } else {
+        this.offsetY = (this.height - scaledHeight) / 2;
+    }
+    }
+    public double getOffsetX() { return offsetX; }
+    public double getOffsetY() { return offsetY; }
 }

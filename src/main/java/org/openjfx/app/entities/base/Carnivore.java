@@ -19,12 +19,13 @@ public abstract class Carnivore extends LivingEntity {
 
     @Override
     public void eat(Entity target, double dt) {
-        // Logic ăn thịt: Thường là kiểm tra target có phải LivingEntity không
-        // và cộng máu/giảm đói dựa trên kích thước con mồi
         if (target instanceof LivingEntity) {
             LivingEntity prey = (LivingEntity) target;
-            if (!prey.isAlive()) {
-                this.setHunger(this.getHunger() - 100.0); // Ví dụ: ăn xong giảm 50 đơn vị đói
+            if (prey.isAlive()) {
+                prey.setHealth(0);
+                this.setHunger(0);
+                this.setHealth(200);
+                this.setVelocity(new Vector2D(0, 0));
             }
         }
     }
@@ -32,7 +33,7 @@ public abstract class Carnivore extends LivingEntity {
     @Override
     public void update(double dt, WorldMap world) {
         // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
-        this.neighbors = world.getNeighbors(this, this.radius);
+        this.neighbors = world.getNeighbors(this, this.visionRadius);
 
         // Quyết định chiến thuật di chuyển
         if (hasThreat(this, neighbors)) {
@@ -49,13 +50,13 @@ public abstract class Carnivore extends LivingEntity {
                 this.moveStrategy = new HunterStrategy();
             }
         } else {
-            // Trạng thái bình thường: Đi tuần tra (Wander)
+            // Trạng thái bình thường: Wander
             if (!(this.moveStrategy instanceof WanderStrategy)) {
                 this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
             }
         }
 
-        // Thực thi tính toán vận tốc
+        // Tính toán vận tốc
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }

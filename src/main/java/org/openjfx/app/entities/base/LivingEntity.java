@@ -8,20 +8,37 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.MoveStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 
+
+
 public abstract class LivingEntity extends MovableEntity {
     //Atribute
     protected MoveStrategy moveStrategy;
     private double hunger;
     private double thirst;
     private double health;
+    private boolean blockedLastStep;
+    private static final double Cooldown = 0.5;
+    private double blockedCooldown;
+
+
+    public double getWanderRadius() {
+        return wanderRadius;
+    }
+
+    public double getWanderDistance() {
+        return wanderDistance;
+    }
+
     protected double wanderRadius;
     protected double wanderDistance;
 
     private double hungerRate;
     private double thirstRate;
     private boolean isAlive;
-    protected double radius;
+    protected double visionRadius;
+    private final double wanderSpeed;
     protected  List<Entity> neighbors;
+
 
     //Constructor
     public LivingEntity(Vector2D position, double size, String shape, double initialHealth,double hungerRate, double thirstRate,
@@ -36,32 +53,49 @@ public abstract class LivingEntity extends MovableEntity {
         this.isAlive = true;
         this.wanderRadius = wanderRadius;
         this.wanderDistance = wanderDistance;
+        this.wanderSpeed = 20;
         this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
     }
 
 
     //Getter 
+    public double getWanderSpeed() {
+        return wanderSpeed;
+    }
+
+    public boolean getBlockedLastStep() {
+        return blockedLastStep;
+    }
     public double getHealth() { return health; }
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
-    public double getRadius() { return radius; }
+    public double getVisionRadius() { return visionRadius; }
     public double getThirstRate(){ return thirstRate; }
     public double getHungerRate(){ return hungerRate; }
 
+    public void setAlive(boolean alive) {
+        isAlive = alive;
+    }
+    public void setBlockedLastStep(boolean blockedLastStep) {
+        this.blockedLastStep = blockedLastStep;
+    }
+
+    public void setBlockedCooldown() {
+        this.blockedCooldown = Cooldown;
+    }
+
     //Setter
     public void setHealth(double health) {
-        // Máu [0:100]
-        this.health = Math.max(0, Math.min(100, health));
+        // Máu tuỳ theo con vật
+        this.health = health;
         
         if (this.health <= 0 && this.isAlive == true) {
-            // Giữ nguyên dòng in ra console của bạn
             System.out.println("Death");
             this.isAlive = false;
         }
     }
 
-    // --- PHẦN THÊM: Để Wolf có thể gọi hàm set thay vì gán trực tiếp ---
     public void setMoveStrategy(MoveStrategy moveStrategy) {
         this.moveStrategy = moveStrategy;
     }
@@ -76,38 +110,49 @@ public abstract class LivingEntity extends MovableEntity {
         this.thirst = Math.max(0, Math.min(100, thirst));
     }
 
-    public void setRadius(double radius){
-        this.radius = Math.max(0, radius);
+    public void setVisionRadius(double visionRadius){
+        this.visionRadius = Math.max(0, visionRadius);
     }
 
     //Method
     @Override
     public void update(double dt, WorldMap world) {
+
+
         if (!isAlive) {
             return;
         }
-        System.out.println(this.getHealth());
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
 
-        // --- PHẦN THÊM: Logic Log tử vong ra Terminal ---
+
+        // --- ĐOẠN SỬA: Logic hiển thị Tên#ID khi tử vong ---
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
             
-            // Nếu sau khi trừ máu mà bị chết thì bắn log
             if (this.health <= 0) {
                 String reason = (hunger >= 100) ? "vì quá đói" : "vì quá khát";
-                world.broadcastDeath(this.type + " (ID: " + this.getId() + ") đã chết " + reason);
+                // Lấy tên Class (Wolf, Rabbit...) nối với dấu # và ID
+                String entityNameWithId = this.getClass().getSimpleName() + "#" + this.getId();
+                world.broadcastDeath(entityNameWithId + " đã chết " + reason);
             }
         }
-        // ------------------------------------------------
 
-        // Move only when the next position is valid for this entity on the terrain grid.
+        // Đi ngược lại nếu không vào được
         Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
         if (world.canStandOn(this, nextPosition)) {
             this.position = nextPosition;
+            
         } else {
-            this.velocity = this.velocity.multiply(-1);
+            this.velocity = this.velocity.multiply(-0.5);
+            this.setBlockedLastStep(true);
+            this.setBlockedCooldown();
+        }
+
+        if (blockedCooldown > 0) {
+            blockedCooldown -= dt;
+        } else {
+            blockedLastStep = false;
         }
 
         handleOutOfMap(world);
@@ -149,7 +194,6 @@ public abstract class LivingEntity extends MovableEntity {
             }
         }
         return false;
-        
     }
 
 

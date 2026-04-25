@@ -74,7 +74,7 @@ public class FleeStrategy implements MoveStrategy {
             logCooldown = 0;
             clearDebugPathState(owner.getId());
 
-            double baseRadius = Math.max(owner.getRadius(), 10.0);
+            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
             double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
             double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
             WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
@@ -86,7 +86,7 @@ public class FleeStrategy implements MoveStrategy {
         if (threat == null) {
             logCooldown = 0;
             clearDebugPathState(owner.getId());
-            double baseRadius = Math.max(owner.getRadius(), 10.0);
+            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
             double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
             double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
             WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
@@ -94,13 +94,17 @@ public class FleeStrategy implements MoveStrategy {
             return;
         }
 
-        // --- PHẦN THÊM: Gửi thông báo chạy trốn ---
+        // --- SỬA TÊN#ID Ở ĐÂY ---
         logCooldown -= dt;
         if (logCooldown <= 0) {
+            // Lấy tên lớp (ví dụ Rabbit, Wolf) và nối với ID
+            String ownerName = owner.getClass().getSimpleName() + "#" + owner.getId();
+            String threatName = threat.getClass().getSimpleName() + "#" + threat.getId();
+            
             world.notifyAction(
-                owner.getType().toString(), 
+                ownerName, 
                 "đang chạy trốn khỏi", 
-                threat.getType().toString()
+                threatName
             );
             logCooldown = 2.5; // 2.5 giây sau mới hiện lại
         }
@@ -109,12 +113,15 @@ public class FleeStrategy implements MoveStrategy {
         Vector2D ownerPos = owner.getPosition();
         Vector2D desiredVelocity = null;
 
-        // Prefer a path-driven flee direction first.
-        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getRadius());
-        if (destination == null) {
-            destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.LAND, owner.getRadius());
+        if(world.getTerrainAt(ownerPos) == TerrainType.BUSH){
+            owner.setVelocity(new Vector2D(0, 0));
+            owner.setAcceleration(new Vector2D(0, 0));
+            return;
         }
+        // Tâm grid của môi trường cần tìm gần nhất
+        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getVisionRadius());
 
+        // Đi theo đường tìm thấy
         if (destination != null) {
             List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
             if (path != null && !path.isEmpty()) {
@@ -136,7 +143,7 @@ public class FleeStrategy implements MoveStrategy {
             clearDebugPathState(owner.getId());
         }
 
-        // Fallback: steer directly away from threat.
+        // Đi hết path hoặc không có path --> chạy khỏi hunter
         if (desiredVelocity == null) {
             desiredVelocity = threat.getPosition().directionTo(ownerPos).multiply(owner.getMaxSpeed());
         }
@@ -147,9 +154,5 @@ public class FleeStrategy implements MoveStrategy {
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
 
-        double distance = owner.getPosition().distance(threat.getPosition());
-        if (distance < 5) {
-            owner.setHealth(owner.getHealth() - 10*dt);
-        }
     }
 }

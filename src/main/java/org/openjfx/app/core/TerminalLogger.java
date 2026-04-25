@@ -22,12 +22,12 @@ public class TerminalLogger implements GameObserver {
 
     @Override
     public void onEntityDeath(String message) {
-        addLog("💀 " + message);
+        addLog(message);
     }
 
     @Override
     public void onActionOccurred(String actor, String action, String target) {
-        addLog("⚔️ " + actor + " " + action + " " + target);
+        addLog(actor + " " + action + " " + target);
     }
 
     private void addLog(String msg) {
@@ -37,9 +37,9 @@ public class TerminalLogger implements GameObserver {
         // Giữ nguyên logic cập nhật UI cũ của Tuấn
         if (logData != null) {
             Platform.runLater(() -> {
-                logData.add(0, msg); 
+                logData.add(msg);
                 if (logData.size() > 20) {
-                    logData.remove(logData.size() - 1);
+                    logData.remove(0);
                 }
             });
         }

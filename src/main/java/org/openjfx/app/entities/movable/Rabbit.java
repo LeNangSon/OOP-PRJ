@@ -13,20 +13,20 @@ public class Rabbit extends Herbivore {
         // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
         super(
                 position,
-            20,      // size
-                "circle",  // shape
-                100.0,     // initialHealth
-                0.0,       // hungerRate (test wander-only)
-                0.0,       // thirstRate (test wander-only)
-            20,      // maxSpeed (Thỏ cần nhanh hơn sói để có cơ hội thoát)
-            20,       // maxForce (Bẻ lái tốt hơn trên map có nhiều chướng ngại)
-            0.5,       // mass (Giữ độ linh hoạt cao)
-            10.0,      // wanderDistance (Đi ổn định hơn trên map rộng)
-            10.0       // wanderRadius (Giảm lắc khi lang thang gần vật cản)
+            20,
+                "circle",
+                100.0,
+                0.0,
+                0.15,
+            20,
+            20,
+            0.5,
+            10.0,
+            10.0
         );
 
         // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setRadius(180.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
+        this.setVisionRadius(100.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
         this.type = EntityType.RABBIT;
     }
 

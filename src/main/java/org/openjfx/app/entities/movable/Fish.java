@@ -26,7 +26,7 @@ public class Fish extends Herbivore {
         );
 
         // Thiết lập tầm nhìn để tìm thức ăn hoặc tránh kẻ thù
-        this.setRadius(80.0);
+        this.setVisionRadius(80.0);
         this.type = EntityType.FISH;
     }
 
