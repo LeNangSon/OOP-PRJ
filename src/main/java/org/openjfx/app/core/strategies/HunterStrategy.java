@@ -14,25 +14,17 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class HunterStrategy implements MoveStrategy {
 
     private static final double STEERING_GAIN = 4.0;
-    // --- PHẦN THÊM: Biến kiểm soát tần suất log ---
     private double logCooldown = 0;
 
     public static final class DebugPathState {
         private final List<Vector2D> path;
-
-        public DebugPathState(List<Vector2D> path) {
-            this.path = path;
-        }
-
-        public List<Vector2D> getPath() {
-            return path;
-        }
+        public DebugPathState(List<Vector2D> path) { this.path = path; }
+        public List<Vector2D> getPath() { return path; }
     }
 
     private static final Map<Integer, DebugPathState> DEBUG_PATH_STATES = new ConcurrentHashMap<>(); 
 
-    public HunterStrategy() {
-    }
+    public HunterStrategy() {}
 
     public static DebugPathState getDebugPathState(int entityId) {
         return DEBUG_PATH_STATES.get(entityId);
@@ -42,18 +34,12 @@ public class HunterStrategy implements MoveStrategy {
         DEBUG_PATH_STATES.remove(entityId);
     }
 
-    /**
-     * Tìm con mồi gần nhất trong danh sách hàng xóm
-     */
     public int findClosestPrey(LivingEntity owner, List<Entity> neighbors, WorldMap world) {
         double minDistance = Double.MAX_VALUE;
         int closestID = -1;
-
         for (Entity neighbor : neighbors) {
-            // Kiểm tra xem hàng xóm này có phải là con mồi của chủ thể không
             if (RelationManager.isPrey(neighbor.getType(), owner.getType()) && world.getTerrainAt(neighbor.getPosition()) != TerrainType.BUSH) {
                 double distance = owner.getPosition().distance(neighbor.getPosition());
-
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestID = neighbor.getId();
@@ -71,17 +57,15 @@ public class HunterStrategy implements MoveStrategy {
             if (targetId != -1) {
                 Entity prey = world.getEntityById(targetId);
                 if (prey != null) {
-                    // --- PHẦN THÊM: Bắn tin nhắn săn đuổi ra Terminal ---
+                    // --- SỬA TÊN#ID Ở ĐÂY ---
+                    String ownerName = owner.getClass().getSimpleName() + "#" + owner.getId();
+                    String preyName = prey.getClass().getSimpleName() + "#" + prey.getId();
+
                     logCooldown -= dt;
                     if (logCooldown <= 0) {
-                        world.notifyAction(
-                            owner.getType().toString(), 
-                            "đang săn đuổi", 
-                            prey.getType().toString()
-                        );
-                        logCooldown = 3.0; // 3 giây sau mới báo lại để tránh spam log
+                        world.notifyAction(ownerName, "đang săn đuổi", preyName);
+                        logCooldown = 3.0; 
                     }
-                    // ------------------------------------------------
 
                     double range = owner.getPosition().distance(prey.getPosition());
 
@@ -89,12 +73,11 @@ public class HunterStrategy implements MoveStrategy {
                         owner.setAcceleration(new Vector2D(0, 0));
                         owner.setVelocity(new Vector2D(0, 0));
                         
-                        // --- PHẦN THÊM: Báo tin khi bắt được mục tiêu ---
-                        world.notifyAction(owner.getType().toString(), "đã bắt được", prey.getType().toString());
+                        // --- SỬA TÊN#ID Ở ĐÂY ---
+                        world.notifyAction(ownerName, "đã bắt được", preyName);
                         
                         owner.eat(prey, dt);
                     } else {
-                        // Ưu tiên sử dụng A* pathfinding
                         Vector2D ownerPos = owner.getPosition();
                         Vector2D preyPos = prey.getPosition();
                         List<Vector2D> path = world.findPathAStar(owner, ownerPos, preyPos);
@@ -116,7 +99,6 @@ public class HunterStrategy implements MoveStrategy {
                             clearDebugPathState(owner.getId());
                         }
 
-                        // Fallback: direct steering if no path found
                         if (desiredVelocity == null) {
                             desiredVelocity = ownerPos.directionTo(preyPos).multiply(owner.getMaxSpeed());
                         }
@@ -127,10 +109,8 @@ public class HunterStrategy implements MoveStrategy {
                         owner.setAcceleration(acceleration);
                         owner.setVelocity(newVelocity);
                     }
-
                 }
             } else {
-                // Nếu không thấy mồi, reset cooldown để khi gặp mồi mới sẽ báo ngay
                 logCooldown = 0;
                 clearDebugPathState(owner.getId());
             }

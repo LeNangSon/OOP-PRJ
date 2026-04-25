@@ -55,13 +55,11 @@ public abstract class LivingEntity extends MovableEntity {
         this.health = Math.max(0, Math.min(100, health));
         
         if (this.health <= 0 && this.isAlive == true) {
-            // Giữ nguyên dòng in ra console của bạn
             System.out.println("Death");
             this.isAlive = false;
         }
     }
 
-    // --- PHẦN THÊM: Để Wolf có thể gọi hàm set thay vì gán trực tiếp ---
     public void setMoveStrategy(MoveStrategy moveStrategy) {
         this.moveStrategy = moveStrategy;
     }
@@ -92,19 +90,19 @@ public abstract class LivingEntity extends MovableEntity {
         setThirst(this.thirst + thirstRate * dt);
 
 
-        // --- PHẦN THÊM: Logic Log tử vong ra Terminal ---
-        if (hunger >= 100 || thirst >= 100 ) {
+        // --- ĐOẠN SỬA: Logic hiển thị Tên#ID khi tử vong ---
+        if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
             
-            // Nếu sau khi trừ máu mà bị chết thì bắn log
             if (this.health <= 0) {
                 String reason = (hunger >= 100) ? "vì quá đói" : "vì quá khát";
-                world.broadcastDeath(this.type + " (ID: " + this.getId() + ") đã chết " + reason);
+                // Lấy tên Class (Wolf, Rabbit...) nối với dấu # và ID
+                String entityNameWithId = this.getClass().getSimpleName() + "#" + this.getId();
+                world.broadcastDeath(entityNameWithId + " đã chết " + reason);
             }
         }
         // ------------------------------------------------
 
-        // Move only when the next position is valid for this entity on the terrain grid.
         Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
         if (world.canStandOn(this, nextPosition)) {
             this.position = nextPosition;
@@ -151,7 +149,6 @@ public abstract class LivingEntity extends MovableEntity {
             }
         }
         return false;
-        
     }
 
 
