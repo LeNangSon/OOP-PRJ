@@ -83,15 +83,17 @@ public abstract class LivingEntity extends MovableEntity {
     //Method
     @Override
     public void update(double dt, WorldMap world) {
+
+
         if (!isAlive) {
             return;
         }
-        System.out.println(this.getHealth());
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
 
+
         // --- PHẦN THÊM: Logic Log tử vong ra Terminal ---
-        if (hunger >= 100 || thirst >= 100) {
+        if (hunger >= 100 || thirst >= 100 ) {
             setHealth(this.health - 5*dt);
             
             // Nếu sau khi trừ máu mà bị chết thì bắn log
