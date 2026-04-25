@@ -108,6 +108,9 @@ public class MainApp extends Application {
                 gc.clearRect(0, 0, WIDTH, HEIGHT);
                 worldMap.update(0.016);
                 worldMap.render(gc);
+                if (entityStatusPanel.isVisible()) {
+                    entityStatusPanel.refreshData();
+                }
             }
         };
         timer.start();
