@@ -54,14 +54,6 @@ public class MainApp extends Application {
         Rabbit rabbit1 = new Rabbit(new Vector2D(400, 350));
         worldMap.addEntity(rabbit1);
 
-        Rabbit rabbit2 = new Rabbit(new Vector2D(400, 350));
-        worldMap.addEntity(rabbit2);
-        Rabbit rabbit13 = new Rabbit(new Vector2D(400, 350));
-        worldMap.addEntity(rabbit13);
-        Rabbit rabbit3 = new Rabbit(new Vector2D(400, 350));
-        worldMap.addEntity(rabbit3);
-        Rabbit rabbit14 = new Rabbit(new Vector2D(400, 350));
-        worldMap.addEntity(rabbit14);
         Wolf wolf1 = new Wolf(
             new Vector2D(400, 300)
         );

@@ -300,10 +300,36 @@ public class WorldMap {
             drawGrassBackground(gc);
         }
         for (Entity entity : entities) {
+            renderVisionRadius(gc, entity);
             renderEntityWithImage(gc, entity);
             renderWanderDebug(gc, entity);
             renderAStarPathDebug(gc, entity);
         }
+    }
+
+    private void renderVisionRadius(GraphicsContext gc, Entity entity) {
+        if (!(entity instanceof LivingEntity)) {
+            return;
+        }
+
+        LivingEntity livingEntity = (LivingEntity) entity;
+        double visionRadius = livingEntity.getRadius();
+        if (visionRadius <= 0) {
+            return;
+        }
+
+        gc.save();
+        gc.setLineWidth(1.2);
+        gc.setStroke(Color.web("#66E0FF", 0.55));
+        gc.setFill(Color.web("#66E0FF", 0.08));
+
+        double diameter = visionRadius * 2;
+        double topLeftX = livingEntity.getPosition().x - visionRadius;
+        double topLeftY = livingEntity.getPosition().y - visionRadius;
+
+        gc.fillOval(topLeftX, topLeftY, diameter, diameter);
+        gc.strokeOval(topLeftX, topLeftY, diameter, diameter);
+        gc.restore();
     }
 
     public void setFixedBackgroundImageFromResource(String resourcePath) {

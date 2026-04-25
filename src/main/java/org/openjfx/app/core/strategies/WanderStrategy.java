@@ -39,6 +39,7 @@ public class WanderStrategy implements MoveStrategy {
 
     private double wanderDistance;
     private double wanderRadius;
+    private double wanderSpeed;
     private double wanderTheta = Math.PI / 2;
 
     public WanderStrategy(double wanderDistance,double wanderRadius) {
@@ -55,7 +56,7 @@ public class WanderStrategy implements MoveStrategy {
         Vector2D currentVel = owner.getVelocity();
         Vector2D currentPos = owner.getPosition();
 
-        double maxSpeed = owner.getMaxSpeed();
+        double maxSpeed = owner.getWanderSpeed();
 
         double maxForce = owner.getMaxForce();
         double mass = owner.getMass();

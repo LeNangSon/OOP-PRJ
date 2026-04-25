@@ -91,7 +91,6 @@ public class HunterStrategy implements MoveStrategy {
                         
                         // --- PHẦN THÊM: Báo tin khi bắt được mục tiêu ---
                         world.notifyAction(owner.getType().toString(), "đã bắt được", prey.getType().toString());
-                        
                         owner.eat(prey, dt);
                     } else {
                         // Ưu tiên sử dụng A* pathfinding
@@ -104,7 +103,7 @@ public class HunterStrategy implements MoveStrategy {
                             DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
                             Vector2D nextWaypoint = null;
                             for (Vector2D waypoint : path) {
-                                if (waypoint != null && ownerPos.distance(waypoint) > 1e-3) {
+                                if (waypoint != null && ownerPos.distance(waypoint) > 3) {
                                     nextWaypoint = waypoint;
                                     break;
                                 }
@@ -133,6 +132,7 @@ public class HunterStrategy implements MoveStrategy {
                 // Nếu không thấy mồi, reset cooldown để khi gặp mồi mới sẽ báo ngay
                 logCooldown = 0;
                 clearDebugPathState(owner.getId());
+
             }
         }
     }

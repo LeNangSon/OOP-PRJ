@@ -27,7 +27,6 @@ public abstract class Herbivore extends LivingEntity {
     public void update(double dt, WorldMap world) {
         this.neighbors = world.getNeighbors(this, this.radius);
 
-        // Quyết định chiến thuật dựa trên nhu cầu
         if (hasThreat(this, neighbors)) {
             if (!(this.moveStrategy instanceof FleeStrategy)) {
                 this.moveStrategy = new FleeStrategy();
