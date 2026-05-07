@@ -1,5 +1,6 @@
 package org.openjfx.app.core;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,7 +32,76 @@ public class WorldMap {
 
     // --- PHẦN THÊM MỚI: Kho chứa ảnh để tránh lag máy ---
     private final Map<String, Image> imageCache = new HashMap<>();
+    private String getFolderByTerrain(TerrainType type) {
+    switch (type) {
+        case LAND:     return "Co";
+        case WATER:    return "Song_duongdi";
+        case PATH:     return "Song_duongdi";
+        case OBSTACLE: return "Da_buihoa";
+        case ROCK:     return "Da_buihoa";
+        case BUSH:     return "Cay";
+        default:       return "Co";
+    }
+}
+// Sửa hàm khởi tạo Grid ban đầu
+public void setTerrainGridFromCsvResource(String path, int tileSize, TerrainType type) {
+    this.terrainGrid = TerrainGrid.fromCsvResource(path, tileSize,  type);
+}
 
+// Sửa hàm đè Layer
+public void overlayTerrainFromCsv(String path, TerrainType type) {
+    if (terrainGrid != null) {
+        terrainGrid.loadLayerFromCSV(path, type);
+    }
+}
+    // Trong WorldMap.java
+private void drawTiles(GraphicsContext gc) {
+    if (terrainGrid == null) return;
+
+    TerrainTile[][] grid = terrainGrid.getGrid();
+    int tileSize = terrainGrid.getTileSize();
+    int rows = terrainGrid.getRows();
+    int cols = terrainGrid.getCols();
+
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            TerrainTile tile = grid[r][c];
+
+            // Chỉ vẽ nếu ô đó có ID hợp lệ (ID >= 0)
+            if (tile == null || tile.getTileId() < 0) continue;
+
+            int id = tile.getTileId();
+            String folder = getFolderByTerrain(tile.getType());
+            String imagePath = "/org/openjfx/app/tile/" + folder + "/tileset.png";
+
+            // Lấy ảnh từ bộ nhớ đệm (cache)
+            Image tilesetImg = imageCache.computeIfAbsent(imagePath, path -> {
+                try (InputStream is = getClass().getResourceAsStream(path)) {
+                    if (is == null) {
+                        System.err.println("Không thấy ảnh Tileset tại: " + path);
+                        return null;
+                    }
+                    return new Image(is);
+                } catch (Exception e) {
+                    return null;
+                }
+            });
+
+            // Vẽ ảnh lên Canvas
+            if (tilesetImg != null && !tilesetImg.isError()) {
+                int columnsInTileset = (int) (tilesetImg.getWidth() / tileSize);
+                if (columnsInTileset > 0) {
+                    double sx = (id % columnsInTileset) * tileSize;
+                    double sy = (id / columnsInTileset) * tileSize;
+
+                    gc.drawImage(tilesetImg, 
+                                 sx, sy, tileSize, tileSize,
+                                 c * tileSize, r * tileSize, tileSize, tileSize);
+                }
+            }
+        }
+    }
+}
     public WorldMap(double width, double height) {
         this.width = width;
         this.height = height;
@@ -46,9 +116,6 @@ public class WorldMap {
         this.terrainGrid = terrainGrid;
     }
 
-    public void setTerrainGridFromCsvResource(String resourcePath, int tileSize) {
-        this.terrainGrid = TerrainGrid.fromCsvResource(resourcePath, tileSize);
-    }
 
     public double getWidth() { return width; }
     public double getHeight() { return height; }
@@ -279,7 +346,6 @@ public class WorldMap {
         EntityType entityType = entity.getType();
         if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
         if (terrain == TerrainType.BUSH) return entityType != EntityType.WOLF;
-        if (terrain == TerrainType.PIT) return false;
         return terrain != TerrainType.ROCK;
     }
 
@@ -315,11 +381,12 @@ public class WorldMap {
         gc.scale(scale, scale);
 
         // --- GIỮ NGUYÊN LOGIC VẼ CỦA BẠN ---
-        if (fixedBackgroundImage != null) {
-            gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
-        } else {
-            drawGrassBackground(gc);
-        }
+       if (fixedBackgroundImage != null) {
+        gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
+    } else {
+        // THAY THẾ drawGrassBackground(gc) BẰNG:
+        drawTiles(gc); 
+    }
 
         for (Entity entity : entities) {
             renderVisionRadius(gc, entity);

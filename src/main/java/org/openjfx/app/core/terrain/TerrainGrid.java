@@ -3,166 +3,140 @@ package org.openjfx.app.core.terrain;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.openjfx.app.core.Vector2D;
 
 public class TerrainGrid {
-    public static final class GridCoordinate {
-        private final int row;
-        private final int col;
-
-        public GridCoordinate(int row, int col) {
-            this.row = row;
-            this.col = col;
-        }
-
-        public int getRow() {
-            return row;
-        }
-
-        public int getCol() {
-            return col;
-        }
-    }
-
-    // Mapping for Tiled CSV numeric IDs.
-    // Update this map if your tileset IDs change.
-    private static final Map<Integer, TerrainType> NUMERIC_TILE_MAPPING = new HashMap<>();
-    static {
-        NUMERIC_TILE_MAPPING.put(0, TerrainType.WATER);
-        NUMERIC_TILE_MAPPING.put(1, TerrainType.BUSH);
-        NUMERIC_TILE_MAPPING.put(2, TerrainType.LAND);
-        NUMERIC_TILE_MAPPING.put(3, TerrainType.PIT);
-        NUMERIC_TILE_MAPPING.put(4, TerrainType.ROCK);
-    }
-
+    private final int rows = 80;
+    private final int cols = 80;
+    private final TerrainTile[][] grid;
     private final int tileSize;
-    private final int rows;
-    private final int cols;
-    private final TerrainTile[][] tiles;
 
-    private TerrainGrid(int tileSize, int rows, int cols) {
+    public TerrainGrid(int tileSize) {
         this.tileSize = tileSize;
-        this.rows = rows;
-        this.cols = cols;
-        this.tiles = new TerrainTile[rows][cols];
+        this.grid = new TerrainTile[rows][cols];
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                // Mặc định ban đầu là ô trống (ID -1)
+                grid[r][c] = new TerrainTile(c, r, TerrainType.LAND, -1);
+            }
+        }
+    }
+    /**
+ * Cập nhật một ô tile tại vị trí (row, col).
+ */
+public void setTile(int row, int col, TerrainTile tile) {
+    if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        grid[row][col] = tile;
+    }
+}
+public TerrainTile[][] getGrid() {
+    return this.grid;
+}
+
+    public void loadLayerFromCSV(String path, TerrainType type) {
+    int[][] overlayData = loadRawDataFromCsv(path); 
+    
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            int id = overlayData[r][c];
+            
+            if (id > 0) { // Nếu ô có ID (không phải ô trống)
+                if (grid[r][c] == null) {
+                    grid[r][c] = new TerrainTile(c, r, type, id);
+                } else {
+                    grid[r][c].setTileId(id);
+                    grid[r][c].setType(type); // Gán loại địa hình của Layer này
+                }
+            }
+        }
+    }
+}
+private int[][] loadRawDataFromCsv(String path) {
+    int[][] data = new int[rows][cols];
+    
+    // Khởi tạo mảng với giá trị -1 để biết chỗ nào chưa có dữ liệu
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) data[i][j] = -1;
     }
 
-    public static TerrainGrid fromCsvResource(String resourcePath, int tileSize) {
-        try (InputStream in = TerrainGrid.class.getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                throw new IllegalArgumentException("Cannot find terrain csv: " + resourcePath);
-            }
+    try (InputStream is = getClass().getResourceAsStream(path)) {
+        if (is == null) {
+            // CỰC KỲ QUAN TRỌNG: In ra để biết đường dẫn nào đang bị sai
+            System.err.println("LỖI: Không tìm thấy file CSV tại: " + path);
+            return data;
+        }
 
-            List<String[]> lines = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    if (!trimmed.isEmpty()) {
-                        lines.add(trimmed.split("\\s*,\\s*"));
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+            String line;
+            int r = 0;
+            while ((line = br.readLine()) != null && r < rows) {
+                // Xử lý dòng trống nếu có
+                if (line.trim().isEmpty()) continue;
+
+                String[] values = line.split(",");
+                for (int c = 0; c < values.length && c < cols; c++) {
+                    try {
+                        String val = values[c].trim();
+                        if (!val.isEmpty()) {
+                            data[r][c] = Integer.parseInt(val);
+                        }
+                    } catch (NumberFormatException e) {
+                        data[r][c] = -1; // Nếu không phải số thì bỏ qua
                     }
                 }
+                r++;
             }
-
-            if (lines.isEmpty()) {
-                throw new IllegalArgumentException("Terrain csv is empty: " + resourcePath);
-            }
-
-            int rows = lines.size();
-            int cols = lines.get(0).length;
-            TerrainGrid grid = new TerrainGrid(tileSize, rows, cols);
-
-            for (int r = 0; r < rows; r++) {
-                String[] row = lines.get(r);
-                if (row.length != cols) {
-                    throw new IllegalArgumentException("Inconsistent column count in terrain csv at row " + r);
-                }
-                for (int c = 0; c < cols; c++) {
-                    TerrainType type = decode(row[c]);
-                    grid.tiles[r][c] = new TerrainTile(r, c, type);
-                }
-            }
-            return grid;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load terrain grid from " + resourcePath, e);
         }
+    } catch (Exception e) {
+        System.err.println("Lỗi đọc dữ liệu CSV: " + e.getMessage());
     }
-
-    private static TerrainType decode(String code) {
-        String normalized = code.trim().toUpperCase();
-
-        // Support Tiled CSV numeric IDs (e.g., 0,1,2,3,4)
-        try {
-            int numericId = Integer.parseInt(normalized);
-            return NUMERIC_TILE_MAPPING.getOrDefault(numericId, TerrainType.LAND);
-        } catch (NumberFormatException ignored) {
-            // Not numeric, continue to alphabetic mapping below.
-        }
-
-        switch (normalized) {
-            case "W":
-                return TerrainType.WATER;
-            case "R":
-                return TerrainType.ROCK;
-            case "B":
-                return TerrainType.BUSH;
-            case "H":
-                return TerrainType.PIT;
-            case "L":
-            default:
-                return TerrainType.LAND;
-        }
-    }
-
-    public TerrainType getTerrainAt(Vector2D worldPosition) {
-        GridCoordinate coordinate = worldToGrid(worldPosition);
-        int row = coordinate.getRow();
-        int col = coordinate.getCol();
-        if (!isInside(row, col)) {
-            return TerrainType.ROCK;
-        }
-        return tiles[row][col].getType();
-    }
-
-    public GridCoordinate worldToGrid(Vector2D worldPosition) {
-        int col = (int) (worldPosition.x / tileSize);
-        int row = (int) (worldPosition.y / tileSize);
-        return new GridCoordinate(row, col);
+    return data;
+}
+    // --- CÁC HÀM HỖ TRỢ WORLDMAP ---[cite: 45]
+    
+    public GridCoordinate worldToGrid(Vector2D position) {
+        if (position == null) return null;
+        int c = (int) (position.x / tileSize);
+        int r = (int) (position.y / tileSize);
+        return isInside(r, c) ? new GridCoordinate(r, c) : null;
     }
 
     public Vector2D gridToWorldCenter(int row, int col) {
-        return new Vector2D(
-            (col + 0.5) * tileSize,
-            (row + 0.5) * tileSize
-        );
+        if (!isInside(row, col)) return null;
+        return new Vector2D((col + 0.5) * tileSize, (row + 0.5) * tileSize);
     }
 
-    public TerrainTile getTile(int row, int col) {
-        if (!isInside(row, col)) {
-            return null;
-        }
-        return tiles[row][col];
+    public TerrainType getTerrainAt(Vector2D pos) {
+        GridCoordinate coord = worldToGrid(pos);
+        return (coord != null) ? grid[coord.getRow()][coord.getCol()].getType() : TerrainType.OBSTACLE;
     }
 
-    public boolean isInside(int row, int col) {
-        return row >= 0 && row < rows && col >= 0 && col < cols;
+    public boolean isInside(int r, int c) {
+        return r >= 0 && r < rows && c >= 0 && c < cols;
     }
 
-    public int getTileSize() {
-        return tileSize;
+    public TerrainTile getTile(int r, int c) {
+        return isInside(r, c) ? grid[r][c] : null;
     }
 
-    public int getRows() {
-        return rows;
-    }
+    public int getRows() { return rows; }
+    public int getCols() { return cols; }
+    public int getTileSize() { return tileSize; }
 
-    public int getCols() {
-        return cols;
+    // Dùng cho WorldMap.setTerrainGridFromCsvResource[cite: 46]
+    // Tìm đến cuối file TerrainGrid.java và sửa lại hàm này:
+public static TerrainGrid fromCsvResource(String path, int tileSize, TerrainType type) {
+    TerrainGrid tg = new TerrainGrid(tileSize);
+    tg.loadLayerFromCSV(path, type); // Phải gọi hàm loadLayer có kèm type
+    return tg;
+}
+
+    // Lớp tọa độ hỗ trợ[cite: 45]
+    public static class GridCoordinate {
+        private final int row, col;
+        public GridCoordinate(int r, int c) { this.row = r; this.col = c; }
+        public int getRow() { return row; }
+        public int getCol() { return col; }
     }
 }

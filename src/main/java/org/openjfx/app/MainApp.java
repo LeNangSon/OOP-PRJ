@@ -3,6 +3,7 @@ package org.openjfx.app;
 import org.openjfx.app.core.TerminalLogger;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.movable.Rabbit;
 import org.openjfx.app.entities.movable.Wolf;
 
@@ -27,18 +28,28 @@ public class MainApp extends Application {
     private WorldMap worldMap;
     private final double WIDTH = 1032;
     private final double HEIGHT = 576;
-    private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/map-final.png";
-    private static final String TERRAIN_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain.csv";
-    private static final int TERRAIN_TILE_SIZE = 24;
-
+    private static final int TERRAIN_TILE_SIZE = 16;
+    // Các file CSV xuất từ các Layer trong Tiled
+private static final String CSV_CO = "/org/openjfx/app/tile/Co/Co.csv";
+private static final String CSV_SONG = "/org/openjfx/app/tile/Song_duongdi/Song_duongdi.csv";
+private static final String CSV_DA = "/org/openjfx/app/tile/Da_buihoa/Da_buihoa.csv";
+private static final String CSV_CAY = "/org/openjfx/app/tile/Cay/Cay.csv";
+private static final String CSV_THAC = "/org/openjfx/app/tile/Bacthem_thacnuoc/Bacthem_thacnuoc.csv";
     private HBox menuBox; 
 
     @Override
     public void start(Stage stage) {
         worldMap = new WorldMap(WIDTH, HEIGHT);
-        worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
-        worldMap.setTerrainGridFromCsvResource(TERRAIN_CSV_RESOURCE_PATH, TERRAIN_TILE_SIZE);
+        //worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
+        //worldMap.setTerrainGridFromCsvResource(TERRAIN_CSV_RESOURCE_PATH, TERRAIN_TILE_SIZE);
+        // Lớp nền ban đầu
+worldMap.setTerrainGridFromCsvResource(CSV_CO, TERRAIN_TILE_SIZE, TerrainType.LAND); 
 
+// Các lớp đè lên với định nghĩa vật cản cụ thể
+worldMap.overlayTerrainFromCsv(CSV_SONG, TerrainType.WATER); 
+worldMap.overlayTerrainFromCsv(CSV_DA, TerrainType.ROCK); 
+worldMap.overlayTerrainFromCsv(CSV_CAY, TerrainType.BUSH); 
+worldMap.overlayTerrainFromCsv(CSV_THAC, TerrainType.WATER);
         ObservableList<String> logData = FXCollections.observableArrayList();
         ListView<String> listView = new ListView<>(logData);
         EntityStatusPanel entityStatusPanel = new EntityStatusPanel(worldMap);
