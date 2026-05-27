@@ -13,7 +13,7 @@ public class Elephant extends Herbivore {
         // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
         super(
                 position,
-                120.0,     // size (Kích thước lớn)
+                35.0,     // size (Kích thước lớn)
                 "rect",    // shape (Hình chữ nhật)
                 100.0,     // initialHealth
                 5.0,       // hungerRate (Voi ăn nhiều nên tốc độ đói nhanh)

@@ -13,7 +13,7 @@ public class Bear extends Carnivore {
         // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
         super(
                 position,
-                80.0,      // size (Gấu khá to, nên để tầm 80)
+                30.0,      // size (Gấu khá to, nên để tầm 80)
                 "circle",  // shape
                 200.0,     // initialHealth (Gấu rất trâu)
                 1.5,       // hungerRate (Tốc độ đói vừa phải)

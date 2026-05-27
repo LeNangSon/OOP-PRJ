@@ -13,7 +13,7 @@ public class Fish extends Herbivore {
         // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
         super(
                 position,
-                50.0,      // size
+                5.0,      // size
                 "ellipse", // shape
                 100.0,     // initialHealth
                 0.5,       // hungerRate (Cá ăn ít, đói chậm)
