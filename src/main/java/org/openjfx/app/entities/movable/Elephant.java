@@ -18,18 +18,18 @@ public class Elephant extends Herbivore {
                 100.0,     // initialHealth
                 5.0,       // hungerRate (Voi ăn nhiều nên tốc độ đói nhanh)
                 6.0,       // thirstRate (Voi uống nhiều nước)
-                30.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
-                2.0,       // maxForce (Lực lái vừa phải)
-                50.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
-                100.0,     // wanderDistance (Khoảng cách điểm ảo xa để đi thẳng ổn định)
-                40.0       // wanderRadius (Bán kính nhiễu lớn hơn để quẹo vòng cung rộng)
+                40.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
+                80.0,       // maxForce (Lực lái vừa phải)
+                3.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
+                30.0,     // wanderDistance (Khoảng cách điểm ảo xa để đi thẳng ổn định)
+                30.0       // wanderRadius (Bán kính nhiễu lớn hơn để quẹo vòng cung rộng)
         );
 
         // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setVisionRadius(150.0);
+        this.setVisionRadius(100.0);
 
         // Bạn muốn voi bắt đầu trong trạng thái hơi khát để test SeekWater
-        this.setThirst(80.0);
+        this.setThirst(0.0);
 
         this.type = EntityType.ELEPHANT;
     }

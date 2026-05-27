@@ -111,39 +111,16 @@ public class FleeStrategy implements MoveStrategy {
         // ----------------------------------------
 
         Vector2D ownerPos = owner.getPosition();
-        Vector2D desiredVelocity = null;
-
-        if(world.getTerrainAt(ownerPos) == TerrainType.BUSH){
+        Vector2D destination = pickFleeDestination(owner, world, ownerPos, threat.getPosition());
+        if (owner.getType() == EntityType.RABBIT
+                && destination == null
+                && world.getTerrainAt(ownerPos) == TerrainType.BUSH) {
             owner.setVelocity(new Vector2D(0, 0));
             owner.setAcceleration(new Vector2D(0, 0));
             return;
         }
-        // Tâm grid của môi trường cần tìm gần nhất
-        Vector2D destination = world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, owner.getVisionRadius());
+        Vector2D desiredVelocity = desiredVelocityAlongPath(owner, world, ownerPos, destination);
 
-        // Đi theo đường tìm thấy
-        if (destination != null) {
-            List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
-            if (path != null && !path.isEmpty()) {
-                DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
-                Vector2D nextWaypoint = null;
-                for (Vector2D waypoint : path) {
-                    if (waypoint != null && ownerPos.distance(waypoint) > 1e-3) {
-                        nextWaypoint = waypoint;
-                        break;
-                    }
-                }
-                if (nextWaypoint != null) {
-                    desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
-                }
-            } else {
-                clearDebugPathState(owner.getId());
-            }
-        } else {
-            clearDebugPathState(owner.getId());
-        }
-
-        // Đi hết path hoặc không có path --> chạy khỏi hunter
         if (desiredVelocity == null) {
             desiredVelocity = threat.getPosition().directionTo(ownerPos).multiply(owner.getMaxSpeed());
         }
@@ -154,5 +131,51 @@ public class FleeStrategy implements MoveStrategy {
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
 
+    }
+
+    private Vector2D pickFleeDestination(
+            LivingEntity owner,
+            WorldMap world,
+            Vector2D ownerPos,
+            Vector2D threatPos) {
+        double searchRadius = owner.getVisionRadius();
+        EntityType type = owner.getType();
+
+        if (type == EntityType.RABBIT) {
+            if (world.getTerrainAt(ownerPos) == TerrainType.BUSH) {
+                return null;
+            }
+            return world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, searchRadius);
+        }
+        if (type == EntityType.FISH) {
+            return world.findFarthestTerrainPositionFromThreat(
+                    ownerPos, threatPos, TerrainType.WATER, searchRadius, owner);
+        }
+        return world.findFarthestTerrainPositionFromThreat(
+                ownerPos, threatPos, TerrainType.LAND, searchRadius, owner);
+    }
+
+    private Vector2D desiredVelocityAlongPath(
+            LivingEntity owner,
+            WorldMap world,
+            Vector2D ownerPos,
+            Vector2D destination) {
+        if (destination == null) {
+            clearDebugPathState(owner.getId());
+            return null;
+        }
+        List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
+        if (path == null || path.isEmpty()) {
+            clearDebugPathState(owner.getId());
+            return null;
+        }
+        DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
+        for (Vector2D waypoint : path) {
+            if (waypoint != null && ownerPos.distance(waypoint) > 1e-3) {
+                return ownerPos.directionTo(waypoint).multiply(owner.getMaxSpeed());
+            }
+        }
+        clearDebugPathState(owner.getId());
+        return null;
     }
 }

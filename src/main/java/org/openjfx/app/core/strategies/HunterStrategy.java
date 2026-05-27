@@ -73,7 +73,7 @@ public class HunterStrategy implements MoveStrategy {
 
                     double range = owner.getPosition().distance(prey.getPosition());
 
-                    if (range < 5) {
+                    if (range < 2) {
                         owner.setAcceleration(new Vector2D(0, 0));
                         owner.setVelocity(new Vector2D(0, 0));
                         
@@ -120,8 +120,13 @@ public class HunterStrategy implements MoveStrategy {
                     }
                 }
             } else {
-                logCooldown = 0;
-                clearDebugPathState(owner.getId());
+                 // Nếu không tìm thấy mồi: reset trạng thái path và tạm thời lang thang
+                 logCooldown = 0;
+                 clearDebugPathState(owner.getId());
+ 
+                 // Delegation: dùng WanderStrategy tạm thời để con vật không đứng yên khi đang săn nhưng chưa thấy mồi
+                 WanderStrategy fallback = new WanderStrategy(owner.getWanderDistance(), owner.getWanderRadius());
+                 fallback.updateVelocity(owner, neighbors, dt, world);
 
             }
         }
