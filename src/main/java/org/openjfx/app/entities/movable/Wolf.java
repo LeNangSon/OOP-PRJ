@@ -11,7 +11,7 @@ public class Wolf extends Carnivore {
     public Wolf(Vector2D position) {
         super(
                 position,
-                40.0,      // size
+                20.0,      // size (chiều cao hiển thị)
                 "circle",  // shape
                 200.0,     // initialHealth
                 3.0,       // hungerRate
@@ -39,6 +39,6 @@ public class Wolf extends Carnivore {
 
     @Override
     public String toString() {
-        return "org/openjfx/app/Wolf.png";
+        return "org/openjfx/app/wolf.png";
     }
 }

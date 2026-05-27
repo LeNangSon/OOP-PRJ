@@ -401,9 +401,12 @@ public class WorldMap {
                 imageCache.put(imagePath, img);
             }
 
-            double renderX = entity.getPosition().x - (entity.getSize() / 2);
-            double renderY = entity.getPosition().y - (entity.getSize() / 2);
-            gc.drawImage(img, renderX, renderY, entity.getSize(), entity.getSize());
+            double aspect = img.getWidth() / img.getHeight();
+            double drawH = entity.getSize();
+            double drawW = drawH * aspect;
+            double renderX = entity.getPosition().x - drawW / 2;
+            double renderY = entity.getPosition().y - drawH / 2;
+            gc.drawImage(img, renderX, renderY, drawW, drawH);
             
         } catch (Exception e) {
             gc.setFill(Color.RED);

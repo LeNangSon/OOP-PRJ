@@ -38,6 +38,6 @@ public class Bear extends Carnivore {
 
     @Override
     public String toString() {
-        return "org/openjfx/app/Bear.png";
+        return "org/openjfx/app/bear.png";
     }
 }

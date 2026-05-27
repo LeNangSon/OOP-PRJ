@@ -39,6 +39,6 @@ public class Fish extends Herbivore {
     @Override
     public String toString() {
         // Đảm bảo đường dẫn này khớp với file trong resources
-        return "org/openjfx/app/Fish.png";
+        return "org/openjfx/app/fish.png";
     }
 }

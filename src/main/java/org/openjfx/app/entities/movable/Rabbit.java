@@ -13,7 +13,7 @@ public class Rabbit extends Herbivore {
         // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
         super(
                 position,
-            20,
+            28,
                 "circle",
                 100.0,
                 0.0,
@@ -40,6 +40,6 @@ public class Rabbit extends Herbivore {
     @Override
     public String toString() {
         // Đường dẫn đến tài nguyên hình ảnh
-        return "org/openjfx/app/Rabbit.png";
+        return "org/openjfx/app/rabbit.png";
     }
 }

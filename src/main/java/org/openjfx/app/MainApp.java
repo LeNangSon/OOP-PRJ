@@ -56,12 +56,9 @@ public class MainApp extends Application {
         worldMap.addEntity(new Rabbit(new Vector2D(410, 350)));
         worldMap.addEntity(new Rabbit(new Vector2D(450, 350)));
         worldMap.addEntity(new Rabbit(new Vector2D(400, 350)));
-        worldMap.addEntity(new Rabbit(new Vector2D(430, 350)));
-        //worldMap.addEntity(new Wolf(new Vector2D(330, 350)));
+
         worldMap.addEntity(new Wolf(new Vector2D(500, 300)));
 
-        //worldMap.addEntity(new Grass(new Vector2D(550, 200)));
-        //worldMap.addEntity(new Grass(new Vector2D(500, 200)));
 
         Canvas canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();

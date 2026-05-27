@@ -43,6 +43,6 @@ public class Elephant extends Herbivore {
     @Override
     public String toString() {
         // Đảm bảo file này tồn tại trong resources
-        return "org/openjfx/app/Elephant.png";
+        return "org/openjfx/app/elephant.png";
     }
 }
