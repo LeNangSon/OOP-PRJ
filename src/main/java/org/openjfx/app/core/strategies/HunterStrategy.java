@@ -18,7 +18,10 @@ public class HunterStrategy implements MoveStrategy {
 
     private static final double STEERING_GAIN = 4.0;
     private static final int BLOCKED_WAYPOINTS_TO_AVOID = 2;
+    private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
+    private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
     private double logCooldown = 0;
+    private WanderStrategy wanderFallback;
 
     public static final class DebugPathState {
         private final List<Vector2D> path;
@@ -120,16 +123,24 @@ public class HunterStrategy implements MoveStrategy {
                     }
                 }
             } else {
-                 // Nếu không tìm thấy mồi: reset trạng thái path và tạm thời lang thang
-                 logCooldown = 0;
-                 clearDebugPathState(owner.getId());
- 
-                 // Delegation: dùng WanderStrategy tạm thời để con vật không đứng yên khi đang săn nhưng chưa thấy mồi
-                 WanderStrategy fallback = new WanderStrategy(owner.getWanderDistance(), owner.getWanderRadius());
-                 fallback.updateVelocity(owner, neighbors, dt, world);
+                // Nếu không tìm thấy mồi: reset trạng thái path và tạm thời lang thang
+                logCooldown = 0;
+                clearDebugPathState(owner.getId());
 
+                runWanderFallback(owner, neighbors, dt, world);
+                return;
             }
         }
+    }
+
+    private void runWanderFallback(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
+        if (wanderFallback == null) {
+            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
+            wanderFallback = new WanderStrategy(
+                    baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR,
+                    baseRadius * DEFAULT_WANDER_RADIUS_FACTOR);
+        }
+        wanderFallback.updateVelocity(owner, neighbors, dt, world);
     }
 
     private Set<String> collectBlockedWaypointKeys(int ownerId, WorldMap world) {

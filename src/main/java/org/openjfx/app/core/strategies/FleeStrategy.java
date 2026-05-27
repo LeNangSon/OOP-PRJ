@@ -19,6 +19,7 @@ public class FleeStrategy implements MoveStrategy {
 
     // --- PHẦN THÊM: Biến kiểm soát tần suất log ---
     private double logCooldown = 0;
+    private WanderStrategy wanderFallback;
 
     public static final class DebugPathState {
         private final List<Vector2D> path;
@@ -74,11 +75,7 @@ public class FleeStrategy implements MoveStrategy {
             logCooldown = 0;
             clearDebugPathState(owner.getId());
 
-            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
-            double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
-            double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
-            WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
-            wanderFallback.updateVelocity(owner, neighbors, dt, world);
+            runWanderFallback(owner, neighbors, dt, world);
             return;
         }
 
@@ -86,11 +83,7 @@ public class FleeStrategy implements MoveStrategy {
         if (threat == null) {
             logCooldown = 0;
             clearDebugPathState(owner.getId());
-            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
-            double wanderDistance = baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR;
-            double wanderRadius = baseRadius * DEFAULT_WANDER_RADIUS_FACTOR;
-            WanderStrategy wanderFallback = new WanderStrategy(wanderDistance, wanderRadius);
-            wanderFallback.updateVelocity(owner, neighbors, dt, world);
+            runWanderFallback(owner, neighbors, dt, world);
             return;
         }
 
@@ -131,6 +124,16 @@ public class FleeStrategy implements MoveStrategy {
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
 
+    }
+
+    private void runWanderFallback(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
+        if (wanderFallback == null) {
+            double baseRadius = Math.max(owner.getVisionRadius(), 10.0);
+            wanderFallback = new WanderStrategy(
+                    baseRadius * DEFAULT_WANDER_DISTANCE_FACTOR,
+                    baseRadius * DEFAULT_WANDER_RADIUS_FACTOR);
+        }
+        wanderFallback.updateVelocity(owner, neighbors, dt, world);
     }
 
     private Vector2D pickFleeDestination(
