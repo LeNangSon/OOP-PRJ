@@ -4,6 +4,7 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Herbivore;
+import org.openjfx.app.entities.base.LivingEntity;
 
 public class Elephant extends Herbivore {
 
@@ -32,6 +33,14 @@ public class Elephant extends Herbivore {
         this.setThirst(0.0);
 
         this.type = EntityType.ELEPHANT;
+        this.matureAge = 20.0;
+        this.reproduceCooldownMax = 60.0;
+        this.reproduceHungerCost = 40.0;
+    }
+
+    @Override
+    protected LivingEntity createOffspring(Vector2D spawnPos) {
+        return new Elephant(spawnPos);
     }
 
     @Override

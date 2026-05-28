@@ -4,6 +4,7 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Herbivore;
+import org.openjfx.app.entities.base.LivingEntity;
 
 public class Fish extends Herbivore {
 
@@ -28,6 +29,14 @@ public class Fish extends Herbivore {
         // Thiết lập tầm nhìn để tìm thức ăn hoặc tránh kẻ thù
         this.setVisionRadius(80.0);
         this.type = EntityType.FISH;
+        this.matureAge = 3.0;
+        this.reproduceCooldownMax = 8.0;
+        this.reproduceHungerCost = 15.0;
+    }
+
+    @Override
+    protected LivingEntity createOffspring(Vector2D spawnPos) {
+        return new Fish(spawnPos);
     }
 
     @Override

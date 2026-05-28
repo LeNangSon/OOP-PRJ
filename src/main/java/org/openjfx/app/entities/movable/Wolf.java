@@ -5,6 +5,7 @@ import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.entities.base.Carnivore;
+import org.openjfx.app.entities.base.LivingEntity;
 
 public class Wolf extends Carnivore {
 
@@ -28,7 +29,15 @@ public class Wolf extends Carnivore {
         
         // THAY ĐỔI Ở ĐÂY: Gán trực tiếp vào biến để tránh lỗi không tìm thấy method
         // Đảm bảo HunterStrategy được thực thi để bắn Log ra Terminal cho Nam
-        this.moveStrategy = new HunterStrategy(); 
+        this.moveStrategy = new HunterStrategy();
+        this.matureAge = 10.0;
+        this.reproduceCooldownMax = 30.0;
+        this.reproduceHungerCost = 35.0;
+    }
+
+    @Override
+    protected LivingEntity createOffspring(Vector2D spawnPos) {
+        return new Wolf(spawnPos);
     }
 
     @Override

@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainTile;
@@ -25,6 +26,7 @@ public class WorldMap {
     private final double width;
     private final double height;
     private final List<Entity> entities;
+    private final List<Entity> pendingSpawns = new ArrayList<>();
     private TerrainGrid terrainGrid;
     private Image fixedBackgroundImage;
     private final List<GameObserver> observers = new ArrayList<>();
@@ -40,6 +42,12 @@ public class WorldMap {
 
     public void addEntity(Entity entity) {
         entities.add(entity);
+    }
+
+    public void queueSpawn(Entity entity) {
+        if (entity != null) {
+            pendingSpawns.add(entity);
+        }
     }
 
     public void setTerrainGrid(TerrainGrid terrainGrid) {
@@ -411,6 +419,10 @@ public class WorldMap {
                 entities.remove(i);
             }
         }
+        if (!pendingSpawns.isEmpty()) {
+            entities.addAll(pendingSpawns);
+            pendingSpawns.clear();
+        }
     }
 
     public Entity getEntityById(int id) {
@@ -573,6 +585,11 @@ public class WorldMap {
             FleeStrategy.DebugPathState fleePath = FleeStrategy.getDebugPathState(entity.getId());
             if (fleePath != null) {
                 path = fleePath.getPath();
+            } else {
+                MateStrategy.DebugPathState matePath = MateStrategy.getDebugPathState(entity.getId());
+                if (matePath != null) {
+                    path = matePath.getPath();
+                }
             }
         }
 

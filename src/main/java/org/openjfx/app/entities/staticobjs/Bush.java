@@ -5,7 +5,7 @@ import org.openjfx.app.core.Vector2D;
 public class Bush extends Obstacle {
 
     public Bush(Vector2D position) {
-        super(position, 60, "Bush");
+        super(position, 15, "Bush");
     }
 
     @Override

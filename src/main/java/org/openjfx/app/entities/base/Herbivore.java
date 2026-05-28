@@ -4,6 +4,7 @@ import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.entities.staticobjs.Plant;
@@ -28,6 +29,7 @@ public abstract class Herbivore extends LivingEntity {
         this.neighbors = world.getNeighbors(this, this.visionRadius);
         boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
         boolean isSeekingFood = this.moveStrategy instanceof HunterStrategy;
+        boolean isMating = this.moveStrategy instanceof MateStrategy;
         if (hasThreat(this, neighbors)) {
             if (!(this.moveStrategy instanceof FleeStrategy)) {
                 this.moveStrategy = new FleeStrategy();
@@ -39,6 +41,10 @@ public abstract class Herbivore extends LivingEntity {
         } else if (this.getHunger() > 70.0 || (isSeekingFood && this.getHunger()>0.1)) {
             if (!(this.moveStrategy instanceof HunterStrategy)) {
                 this.moveStrategy = new HunterStrategy();
+            }
+        } else if ((canReproduce() && hasMateNearby()) || (isMating && canReproduce())) {
+            if (!isMating) {
+                this.moveStrategy = new MateStrategy();
             }
         } else {
             // Quay lại trạng thái lang thang nếu không có nhu cầu cấp bách

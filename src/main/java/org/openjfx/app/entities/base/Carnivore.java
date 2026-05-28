@@ -4,6 +4,7 @@ import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 
@@ -33,6 +34,7 @@ public abstract class Carnivore extends LivingEntity {
     @Override
     public void update(double dt, WorldMap world) {
         boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
+        boolean isMating = this.moveStrategy instanceof MateStrategy;
         // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
         this.neighbors = world.getNeighbors(this, this.visionRadius);
 
@@ -49,6 +51,10 @@ public abstract class Carnivore extends LivingEntity {
         } else if (this.getHunger() > 60.0) { // Thú ăn thịt thường đi săn sớm hơn
             if (!(this.moveStrategy instanceof HunterStrategy)) {
                 this.moveStrategy = new HunterStrategy();
+            }
+        } else if ((canReproduce() && hasMateNearby()) || (isMating && canReproduce())) {
+            if (!isMating) {
+                this.moveStrategy = new MateStrategy();
             }
         } else {
             // Trạng thái bình thường: Wander

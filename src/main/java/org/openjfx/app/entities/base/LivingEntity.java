@@ -37,7 +37,14 @@ public abstract class LivingEntity extends MovableEntity {
     private boolean isAlive;
     protected double visionRadius;
     private final double wanderSpeed;
-    protected  List<Entity> neighbors;
+    protected List<Entity> neighbors;
+
+    protected double age = 0.0;
+    protected double matureAge = 5.0;
+    protected double reproduceCooldown = 0.0;
+    protected double reproduceCooldownMax = 20.0;
+    protected double reproduceHungerCost = 30.0;
+    protected double reproduceMinHealth = 50.0;
 
 
     //Constructor
@@ -125,6 +132,10 @@ public abstract class LivingEntity extends MovableEntity {
         setHunger(this.hunger + hungerRate * dt);
         setThirst(this.thirst + thirstRate * dt);
 
+        age += dt;
+        if (reproduceCooldown > 0) {
+            reproduceCooldown -= dt;
+        }
 
         // --- ĐOẠN SỬA: Logic hiển thị Tên#ID khi tử vong ---
         if (hunger >= 100 || thirst >= 100) {
@@ -196,6 +207,66 @@ public abstract class LivingEntity extends MovableEntity {
         return false;
     }
 
+    public boolean canReproduce() {
+        return isAlive
+                && age >= matureAge
+                && reproduceCooldown <= 0
+                && getHunger() < 50.0
+                && getThirst() < 50.0
+                && getHealth() >= reproduceMinHealth;
+    }
+
+    public boolean hasMateNearby() {
+        if (neighbors == null) {
+            return false;
+        }
+        for (Entity n : neighbors) {
+            if (n instanceof LivingEntity
+                    && n.getClass() == this.getClass()
+                    && ((LivingEntity) n).canReproduce()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected abstract LivingEntity createOffspring(Vector2D spawnPos);
+
+    public void spawnOffspring(WorldMap world, LivingEntity mate) {
+        if (!canReproduce() || mate == null || !mate.canReproduce()) {
+            return;
+        }
+        Vector2D spawnPos = pickSafeSpawnPos(world);
+        if (spawnPos == null) {
+            return;
+        }
+        LivingEntity child = createOffspring(spawnPos);
+        world.queueSpawn(child);
+        applyReproductionCost();
+        mate.applyReproductionCost();
+
+        String childName = child.getClass().getSimpleName() + "#" + child.getId();
+        String parentName = this.getClass().getSimpleName() + "#" + this.getId();
+        world.notifyAction(parentName, "sinh ra", childName);
+    }
+
+    protected void applyReproductionCost() {
+        setHunger(getHunger() + reproduceHungerCost);
+        reproduceCooldown = reproduceCooldownMax;
+    }
+
+    private Vector2D pickSafeSpawnPos(WorldMap world) {
+        for (int i = 0; i < 6; i++) {
+            double angle = Math.random() * Math.PI * 2;
+            double r = size * (1.0 + Math.random());
+            Vector2D candidate = position.add(
+                    new Vector2D(Math.cos(angle), Math.sin(angle)).multiply(r));
+            if (world.canStandOn(this, candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
 
     public abstract void eat(Entity target, double dt);
     public void drink(double dt){

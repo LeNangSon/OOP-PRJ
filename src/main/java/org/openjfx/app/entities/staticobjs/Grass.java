@@ -2,6 +2,8 @@ package org.openjfx.app.entities.staticobjs;
 
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
+import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainType;
 
 public class Grass extends Plant {
 
@@ -13,6 +15,11 @@ public class Grass extends Plant {
     @Override
     protected Plant createNewPlant(Vector2D position) {
         return new Grass(position);
+    }
+
+    @Override
+    protected boolean canReproduceAt(WorldMap world, Vector2D position) {
+        return world.getTerrainAt(position) == TerrainType.LAND;
     }
 
     @Override

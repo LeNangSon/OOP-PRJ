@@ -4,6 +4,7 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Carnivore;
+import org.openjfx.app.entities.base.LivingEntity;
 
 public class Bear extends Carnivore {
 
@@ -29,6 +30,14 @@ public class Bear extends Carnivore {
         this.setVisionRadius(150.0);
         this.setHunger(50);
         this.type = EntityType.BEAR;
+        this.matureAge = 15.0;
+        this.reproduceCooldownMax = 40.0;
+        this.reproduceHungerCost = 35.0;
+    }
+
+    @Override
+    protected LivingEntity createOffspring(Vector2D spawnPos) {
+        return new Bear(spawnPos);
     }
 
     @Override
