@@ -1,8 +1,11 @@
 package org.openjfx.app;
 
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
+import org.openjfx.app.core.DeathCause;
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Entity;
@@ -83,14 +86,29 @@ public class EntityStatusPanel extends VBox {
 
         TableColumn<SummaryRow, String> typeCol = new TableColumn<>("Loài");
         typeCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().type.toString()));
-        typeCol.setPrefWidth(180);
+        typeCol.setPrefWidth(95);
 
-        TableColumn<SummaryRow, String> countCol = new TableColumn<>("Số lượng");
-        countCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().count)));
-        countCol.setPrefWidth(120);
+        TableColumn<SummaryRow, String> aliveCol = new TableColumn<>("Sống");
+        aliveCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().alive)));
+        aliveCol.setPrefWidth(55);
+
+        TableColumn<SummaryRow, String> hungerDeathCol = new TableColumn<>("Đói");
+        hungerDeathCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().diedHunger)));
+        hungerDeathCol.setPrefWidth(55);
+
+        TableColumn<SummaryRow, String> thirstDeathCol = new TableColumn<>("Khát");
+        thirstDeathCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().diedThirst)));
+        thirstDeathCol.setPrefWidth(55);
+
+        TableColumn<SummaryRow, String> predationDeathCol = new TableColumn<>("Bị săn");
+        predationDeathCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().diedPredation)));
+        predationDeathCol.setPrefWidth(65);
 
         summaryTable.getColumns().add(typeCol);
-        summaryTable.getColumns().add(countCol);
+        summaryTable.getColumns().add(aliveCol);
+        summaryTable.getColumns().add(hungerDeathCol);
+        summaryTable.getColumns().add(thirstDeathCol);
+        summaryTable.getColumns().add(predationDeathCol);
 
         summaryTable.setRowFactory(tv -> {
             javafx.scene.control.TableRow<SummaryRow> row = new javafx.scene.control.TableRow<>();
@@ -143,19 +161,32 @@ public class EntityStatusPanel extends VBox {
     }
 
     private void refreshSummary() {
-        Map<EntityType, Integer> counts = new EnumMap<>(EntityType.class);
+        Map<EntityType, Integer> aliveCounts = new EnumMap<>(EntityType.class);
         for (Entity entity : worldMap.getEntities()) {
             EntityType type = entity.getType();
             if (type == null) {
                 continue;
             }
-            counts.merge(type, 1, Integer::sum);
+            aliveCounts.merge(type, 1, Integer::sum);
         }
+
+        // Hiển thị mọi loài có ít nhất 1 con đang sống HOẶC từng có cá thể chết.
+        Set<EntityType> allTypes = new HashSet<>(aliveCounts.keySet());
+        allTypes.addAll(worldMap.getDeathCountsByType().keySet());
+
         summaryRows.clear();
-        for (Map.Entry<EntityType, Integer> e : counts.entrySet()) {
-            summaryRows.add(new SummaryRow(e.getKey(), e.getValue()));
+        for (EntityType type : allTypes) {
+            int alive = aliveCounts.getOrDefault(type, 0);
+            int diedHunger = worldMap.getDeathCount(type, DeathCause.HUNGER);
+            int diedThirst = worldMap.getDeathCount(type, DeathCause.THIRST);
+            int diedPredation = worldMap.getDeathCount(type, DeathCause.PREDATION);
+            summaryRows.add(new SummaryRow(type, alive, diedHunger, diedThirst, diedPredation));
         }
-        summaryRows.sort((a, b) -> Integer.compare(b.count, a.count));
+        summaryRows.sort((a, b) -> {
+            int byAlive = Integer.compare(b.alive, a.alive);
+            if (byAlive != 0) return byAlive;
+            return a.type.name().compareTo(b.type.name());
+        });
     }
 
     private void refreshDetail() {
@@ -220,11 +251,17 @@ public class EntityStatusPanel extends VBox {
 
     public static class SummaryRow {
         public final EntityType type;
-        public final int count;
+        public final int alive;
+        public final int diedHunger;
+        public final int diedThirst;
+        public final int diedPredation;
 
-        public SummaryRow(EntityType type, int count) {
+        public SummaryRow(EntityType type, int alive, int diedHunger, int diedThirst, int diedPredation) {
             this.type = type;
-            this.count = count;
+            this.alive = alive;
+            this.diedHunger = diedHunger;
+            this.diedThirst = diedThirst;
+            this.diedPredation = diedPredation;
         }
     }
 

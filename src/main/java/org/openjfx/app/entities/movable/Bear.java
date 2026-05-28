@@ -18,7 +18,7 @@ public class Bear extends Carnivore {
                 "circle",  // shape
                 200.0,     // initialHealth (Gấu rất trâu)
                 5.0,       // hungerRate (Tốc độ đói vừa phải)
-                5.0,       // thirstRate
+                3.0,       // thirstRate
                 45.0,      // maxSpeed (Chậm hơn sói nhưng nhanh hơn voi)
                 30.0,       // maxForce (Lực lái tốt để vồ mồi)
                 10.0,      // mass (Khối lượng lớn tạo độ đà)

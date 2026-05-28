@@ -32,6 +32,7 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
@@ -61,17 +62,25 @@ public class MainApp extends Application {
 
     /** Mỗi loài có nhiều "ổ" (den): tâm cố định, thành viên spawn ngẫu nhiên quanh tâm. */
     private static final double[][] WOLF_DEN_CENTERS = {
-            {372, 60}, {828, 60},
+            {372, 60}, {828, 60}, {60, 228}, {492, 396},
     };
-    private static final int WOLF_PER_DEN = 9;
-    private static final double WOLF_DEN_RADIUS = 55.0;
+    private static final int WOLF_PER_DEN = 4;
+    private static final double WOLF_DEN_RADIUS = 40.0;
 
     private static final double[][] RABBIT_DEN_CENTERS = {
-            {84, 108}, {588, 108}, {972, 204}, {756, 252},
-            {324, 276}, {60, 324}, {540, 324}, {876, 420},
+            {516, 60}, {84, 108}, {876, 132}, {372, 156},
+            {660, 156}, {516, 228}, {780, 252}, {300, 300},
+            {60, 324}, {636, 324}, {828, 396}, {204, 420},
     };
-    private static final int RABBIT_PER_DEN = 6;
-    private static final double RABBIT_DEN_RADIUS = 40.0;
+    private static final int RABBIT_PER_DEN = 4;
+    private static final double RABBIT_DEN_RADIUS = 30.0;
+
+    /** Đợt thỏ bổ sung — 5 ổ nhỏ × 3 con = 15 con. */
+    private static final double[][] RABBIT_EXTRA_DEN_CENTERS = {
+            {972, 204}, {420, 300}, {60, 444}, {924, 468}, {732, 492},
+    };
+    private static final int RABBIT_EXTRA_PER_DEN = 3;
+    private static final double RABBIT_EXTRA_DEN_RADIUS = 25.0;
 
     private static final double[][] BEAR_DEN_CENTERS = {
             {252, 60}, {948, 60}, {708, 84}, {468, 132},
@@ -82,10 +91,10 @@ public class MainApp extends Application {
     private static final double BEAR_DEN_RADIUS = 30.0;
 
     private static final double[][] ELEPHANT_DEN_CENTERS = {
-            {396, 420},
+            {180, 156}, {780, 156}, {324, 444},
     };
-    private static final int ELEPHANT_PER_DEN = 12;
-    private static final double ELEPHANT_DEN_RADIUS = 70.0;
+    private static final int ELEPHANT_PER_DEN = 4;
+    private static final double ELEPHANT_DEN_RADIUS = 45.0;
 
     private static final int DEN_PLACEMENT_MAX_ATTEMPTS = 60;
 
@@ -108,6 +117,11 @@ public class MainApp extends Application {
     private boolean updatingZoomSlider;
     private final Random spawnRandom = new Random();
 
+    // Bộ đếm thời gian sinh tồn của hệ sinh thái.
+    private Label survivalLabel;
+    private double survivalTime;
+    private boolean survivalEnded;
+
     @Override
     public void start(Stage stage) {
         worldMap = new WorldMap(WIDTH, HEIGHT);
@@ -128,8 +142,8 @@ public class MainApp extends Application {
 
         worldMap.addObserver(new TerminalLogger(logData));
         worldMap.notifyAction("Hệ thống", "đã khởi tạo",
-                "48 thỏ (8 ổ), 18 sói (2 ổ), 18 gấu (9 ổ), 12 voi (1 ổ), "
-                        + INITIAL_GRASS_COUNT + " cỏ");
+                "63 thỏ (12 ổ × 4 + 5 ổ × 3), 16 sói (4 ổ × 4), 18 gấu (9 ổ × 2), "
+                        + "12 voi (3 ổ × 4), " + INITIAL_GRASS_COUNT + " cỏ");
 
         canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -142,6 +156,7 @@ public class MainApp extends Application {
                 gc.clearRect(0, 0, WIDTH, HEIGHT);
                 worldMap.update(0.016);
                 worldMap.render(gc);
+                tickSurvivalClock(0.016);
                 if (entityStatusPanel.isVisible()) {
                     entityStatusPanel.refreshData();
                 }
@@ -229,11 +244,23 @@ public class MainApp extends Application {
         HBox zoomBox = new HBox(6, btnMinus, zoomSlider, btnPlus, btnReset);
         zoomBox.setAlignment(Pos.CENTER_RIGHT);
 
+        Label clockIcon = new Label("⏱");
+        clockIcon.setStyle("-fx-text-fill: #ffe066; -fx-font-size: 14px;");
+        survivalLabel = new Label("00:00");
+        survivalLabel.setStyle(
+                "-fx-text-fill: #ffe066; -fx-font-size: 14px; -fx-font-weight: bold; "
+                        + "-fx-font-family: 'Consolas', 'Monospaced';");
+        survivalLabel.setTooltip(new Tooltip("Thời gian hệ sinh thái sinh tồn"));
+        HBox timeBox = new HBox(4, clockIcon, survivalLabel);
+        timeBox.setAlignment(Pos.CENTER_LEFT);
+
         HBox toolbar = new HBox(
                 8,
                 animalBox,
                 new Separator(Orientation.VERTICAL),
                 staticBox,
+                new Separator(Orientation.VERTICAL),
+                timeBox,
                 new Separator(Orientation.VERTICAL),
                 zoomBox);
         toolbar.setAlignment(Pos.CENTER_LEFT);
@@ -242,6 +269,53 @@ public class MainApp extends Application {
         zoomBox.setMaxWidth(Double.MAX_VALUE);
 
         return toolbar;
+    }
+
+    private void tickSurvivalClock(double dt) {
+        if (survivalEnded) {
+            return;
+        }
+        if (hasAliveMovable()) {
+            survivalTime += dt;
+            updateSurvivalLabel(false);
+        } else {
+            survivalEnded = true;
+            updateSurvivalLabel(true);
+            worldMap.notifyAction("Hệ thống", "kết thúc",
+                    "hệ sinh thái sinh tồn được " + formatTime(survivalTime));
+        }
+    }
+
+    private boolean hasAliveMovable() {
+        for (Entity e : worldMap.getEntities()) {
+            if (e instanceof LivingEntity living && living.isAlive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateSurvivalLabel(boolean ended) {
+        if (survivalLabel == null) {
+            return;
+        }
+        String text = formatTime(survivalTime);
+        survivalLabel.setText(ended ? text + " (đã kết thúc)" : text);
+        survivalLabel.setStyle(
+                "-fx-text-fill: " + (ended ? "#ff6b6b" : "#ffe066") + ";"
+                        + " -fx-font-size: 14px; -fx-font-weight: bold;"
+                        + " -fx-font-family: 'Consolas', 'Monospaced';");
+    }
+
+    private String formatTime(double seconds) {
+        int total = (int) Math.floor(seconds);
+        int hh = total / 3600;
+        int mm = (total % 3600) / 60;
+        int ss = total % 60;
+        if (hh > 0) {
+            return String.format("%d:%02d:%02d", hh, mm, ss);
+        }
+        return String.format("%02d:%02d", mm, ss);
     }
 
     private ToggleButton createSpawnToggle(String label, SpawnKind kind) {
@@ -333,6 +407,8 @@ public class MainApp extends Application {
 
     private void seedInitialAnimals() {
         spawnDens(SpawnKind.RABBIT, RABBIT_DEN_CENTERS, RABBIT_PER_DEN, RABBIT_DEN_RADIUS);
+        spawnDens(SpawnKind.RABBIT, RABBIT_EXTRA_DEN_CENTERS,
+                RABBIT_EXTRA_PER_DEN, RABBIT_EXTRA_DEN_RADIUS);
         spawnDens(SpawnKind.WOLF, WOLF_DEN_CENTERS, WOLF_PER_DEN, WOLF_DEN_RADIUS);
         spawnDens(SpawnKind.BEAR, BEAR_DEN_CENTERS, BEAR_PER_DEN, BEAR_DEN_RADIUS);
         spawnDens(SpawnKind.ELEPHANT, ELEPHANT_DEN_CENTERS, ELEPHANT_PER_DEN, ELEPHANT_DEN_RADIUS);
@@ -357,12 +433,35 @@ public class MainApp extends Application {
                 Vector2D center = new Vector2D(
                         (c + 0.5) * TERRAIN_TILE_SIZE,
                         (r + 0.5) * TERRAIN_TILE_SIZE);
-                if (worldMap.getTerrainAt(center) == TerrainType.LAND) {
-                    result.add(center);
+                if (worldMap.getTerrainAt(center) != TerrainType.LAND) {
+                    continue;
                 }
+                if (hasNearbyHazard(center)) {
+                    continue;
+                }
+                result.add(center);
             }
         }
         return result;
+    }
+
+    /** Đúng nếu trong vòng 1 ô (8 hướng) có ROCK/WATER/PIT — dùng để cỏ tránh mọc sát đá/sông. */
+    private boolean hasNearbyHazard(Vector2D center) {
+        int[][] offsets = {
+                {-1, -1}, {-1, 0}, {-1, 1},
+                {0, -1},           {0, 1},
+                {1, -1},  {1, 0},  {1, 1},
+        };
+        for (int[] o : offsets) {
+            Vector2D probe = new Vector2D(
+                    center.x + o[1] * TERRAIN_TILE_SIZE,
+                    center.y + o[0] * TERRAIN_TILE_SIZE);
+            TerrainType t = worldMap.getTerrainAt(probe);
+            if (t == TerrainType.ROCK || t == TerrainType.WATER || t == TerrainType.PIT) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void spawnDens(SpawnKind kind, double[][] centers, int perDen, double radius) {

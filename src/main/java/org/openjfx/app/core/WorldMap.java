@@ -2,17 +2,13 @@ package org.openjfx.app.core;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-import org.openjfx.app.core.strategies.FleeStrategy;
-import org.openjfx.app.core.strategies.HunterStrategy;
-import org.openjfx.app.core.strategies.MateStrategy;
-import org.openjfx.app.core.strategies.MoveStrategy;
-import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainTile;
 import org.openjfx.app.core.terrain.TerrainType;
@@ -34,6 +30,9 @@ public class WorldMap {
 
     // --- PHẦN THÊM MỚI: Kho chứa ảnh để tránh lag máy ---
     private final Map<String, Image> imageCache = new HashMap<>();
+
+    // Thống kê tử vong: cho mỗi EntityType, đếm số con đã chết theo nguyên nhân.
+    private final Map<EntityType, EnumMap<DeathCause, Integer>> deathCounts = new EnumMap<>(EntityType.class);
 
     public WorldMap(double width, double height) {
         this.width = width;
@@ -452,40 +451,12 @@ public class WorldMap {
         }
 
         for (Entity entity : entities) {
-            renderVisionRadius(gc, entity);
             renderEntityWithImage(gc, entity);
-            renderWanderDebug(gc, entity);
-            renderAStarPathDebug(gc, entity);
         }
         // ----------------------------------
 
         // 3. Khôi phục lại trạng thái ban đầu (để tránh làm hỏng các phần vẽ khác bên ngoài WorldMap)
         gc.restore(); 
-    }
-
-    private void renderVisionRadius(GraphicsContext gc, Entity entity) {
-        if (!(entity instanceof LivingEntity)) {
-            return;
-        }
-
-        LivingEntity livingEntity = (LivingEntity) entity;
-        double visionRadius = livingEntity.getVisionRadius();
-        if (visionRadius <= 0) {
-            return;
-        }
-
-        gc.save();
-        gc.setLineWidth(1.2);
-        gc.setStroke(Color.web("#66E0FF", 0.55));
-        gc.setFill(Color.web("#66E0FF", 0.08));
-
-        double diameter = visionRadius * 2;
-        double topLeftX = livingEntity.getPosition().x - visionRadius;
-        double topLeftY = livingEntity.getPosition().y - visionRadius;
-
-        gc.fillOval(topLeftX, topLeftY, diameter, diameter);
-        gc.strokeOval(topLeftX, topLeftY, diameter, diameter);
-        gc.restore();
     }
 
     public void setFixedBackgroundImageFromResource(String resourcePath) {
@@ -560,75 +531,23 @@ public class WorldMap {
         }
     }
 
-    private void renderWanderDebug(GraphicsContext gc, Entity entity) {
-        WanderStrategy.DebugWanderState debugState = WanderStrategy.getDebugState(entity.getId());
-        if (debugState == null) return;
-        Vector2D center = debugState.getCircleCenter();
-        Vector2D randomPoint = debugState.getRandomPoint();
-        double radius = debugState.getWanderRadius();
-        gc.save();
-        gc.setLineWidth(1.5);
-        gc.setStroke(Color.ORANGE);
-        gc.strokeOval(center.x - radius, center.y - radius, radius * 2, radius * 2);
-        gc.setStroke(Color.YELLOW);
-        gc.strokeOval(randomPoint.x - 5, randomPoint.y - 5, 10, 10);
-        gc.setFill(Color.YELLOW);
-        gc.fillOval(randomPoint.x - 2, randomPoint.y - 2, 4, 4);
-        gc.restore();
+    public void recordDeath(EntityType type, DeathCause cause) {
+        if (type == null || cause == null) {
+            return;
+        }
+        EnumMap<DeathCause, Integer> perCause = deathCounts.computeIfAbsent(
+                type, k -> new EnumMap<>(DeathCause.class));
+        perCause.merge(cause, 1, Integer::sum);
     }
 
-    private void renderAStarPathDebug(GraphicsContext gc, Entity entity) {
-        if (!(entity instanceof LivingEntity)) {
-            return;
-        }
-        LivingEntity living = (LivingEntity) entity;
-        MoveStrategy current = living.getMoveStrategy();
+    public int getDeathCount(EntityType type, DeathCause cause) {
+        EnumMap<DeathCause, Integer> perCause = deathCounts.get(type);
+        if (perCause == null) return 0;
+        return perCause.getOrDefault(cause, 0);
+    }
 
-        List<Vector2D> path = null;
-        Color color = null;
-
-        if (current instanceof HunterStrategy) {
-            HunterStrategy.DebugPathState s = HunterStrategy.getDebugPathState(entity.getId());
-            if (s != null) {
-                path = s.getPath();
-                color = Color.web("#00D4FF", 0.85);
-            }
-        } else if (current instanceof FleeStrategy) {
-            FleeStrategy.DebugPathState s = FleeStrategy.getDebugPathState(entity.getId());
-            if (s != null) {
-                path = s.getPath();
-                color = Color.web("#FFEB3B", 0.9);
-            }
-        } else if (current instanceof MateStrategy) {
-            MateStrategy.DebugPathState s = MateStrategy.getDebugPathState(entity.getId());
-            if (s != null) {
-                path = s.getPath();
-                color = Color.web("#FF4FB8", 0.9);
-            }
-        }
-
-        if (path == null || path.size() < 2 || color == null) {
-            return;
-        }
-
-        gc.save();
-        gc.setLineWidth(2.0);
-        gc.setStroke(color);
-        gc.setFill(color);
-
-        Vector2D previous = null;
-        for (Vector2D point : path) {
-            if (point == null) {
-                continue;
-            }
-            if (previous != null) {
-                gc.strokeLine(previous.x, previous.y, point.x, point.y);
-            }
-            gc.fillOval(point.x - 2.5, point.y - 2.5, 5, 5);
-            previous = point;
-        }
-
-        gc.restore();
+    public Map<EntityType, EnumMap<DeathCause, Integer>> getDeathCountsByType() {
+        return Collections.unmodifiableMap(deathCounts);
     }
 
     private void drawGrassBackground(GraphicsContext gc) {

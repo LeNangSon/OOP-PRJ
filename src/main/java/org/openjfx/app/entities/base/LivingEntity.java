@@ -2,6 +2,7 @@ package org.openjfx.app.entities.base;
 
 import java.util.List;
 
+import org.openjfx.app.core.DeathCause;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
@@ -143,12 +144,14 @@ public abstract class LivingEntity extends MovableEntity {
 
         // --- ĐOẠN SỬA: Logic hiển thị Tên#ID khi tử vong ---
         if (hunger >= 100 || thirst >= 100) {
+            boolean wasAlive = this.isAlive;
             setHealth(this.health - 5*dt);
-            
-            if (this.health <= 0) {
-                String reason = (hunger >= 100) ? "vì quá đói" : "vì quá khát";
-                // Lấy tên Class (Wolf, Rabbit...) nối với dấu # và ID
+
+            if (wasAlive && !this.isAlive) {
+                DeathCause cause = (hunger >= 100) ? DeathCause.HUNGER : DeathCause.THIRST;
+                String reason = (cause == DeathCause.HUNGER) ? "vì quá đói" : "vì quá khát";
                 String entityNameWithId = this.getClass().getSimpleName() + "#" + this.getId();
+                world.recordDeath(this.getType(), cause);
                 world.broadcastDeath(entityNameWithId + " đã chết " + reason);
             }
         }

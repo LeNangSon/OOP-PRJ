@@ -52,6 +52,27 @@ public class WanderStrategy implements MoveStrategy {
 
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
+        // Nếu vừa bị chặn (đụng đá / biên / nước), thử nhiều hướng và chọn hướng
+        // có terrain walkable phía trước — đảm bảo entity thoát được khỏi chướng ngại.
+        if (owner.getBlockedLastStep()) {
+            double probeDist = Math.max(owner.getSize(), 20.0);
+            double pickedAngle = Math.random() * Math.PI * 2;
+            for (int i = 0; i < 12; i++) {
+                double candidate = Math.random() * Math.PI * 2;
+                Vector2D probe = owner.getPosition().add(
+                        new Vector2D(Math.cos(candidate), Math.sin(candidate)).multiply(probeDist));
+                if (world.canStandOn(owner, probe)) {
+                    pickedAngle = candidate;
+                    break;
+                }
+            }
+            double mag = Math.max(owner.getVelocity().magnitude(), owner.getWanderSpeed() * 0.5);
+            owner.setVelocity(
+                    new Vector2D(Math.cos(pickedAngle), Math.sin(pickedAngle)).multiply(mag));
+            wanderTheta = Math.random() * Math.PI * 2;
+            owner.setBlockedLastStep(false);
+        }
+
         Vector2D currentVel = owner.getVelocity();
         Vector2D currentPos = owner.getPosition();
 

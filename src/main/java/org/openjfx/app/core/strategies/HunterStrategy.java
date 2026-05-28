@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.openjfx.app.core.DeathCause;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
@@ -85,11 +86,18 @@ public class HunterStrategy implements MoveStrategy {
                     if (range < 2) {
                         owner.setAcceleration(new Vector2D(0, 0));
                         owner.setVelocity(new Vector2D(0, 0));
-                        
+
                         // --- SỬA TÊN#ID Ở ĐÂY ---
                         world.notifyAction(ownerName, "đã bắt được", preyName);
-                        
+
+                        boolean preyWasAlive = prey instanceof LivingEntity
+                                && ((LivingEntity) prey).isAlive();
                         owner.eat(prey, dt);
+                        if (preyWasAlive && prey instanceof LivingEntity preyLiving
+                                && !preyLiving.isAlive()) {
+                            world.recordDeath(prey.getType(), DeathCause.PREDATION);
+                            world.broadcastDeath(preyName + " đã chết vì bị " + ownerName + " săn");
+                        }
                     } else {
                         Vector2D ownerPos = owner.getPosition();
                         Vector2D preyPos = prey.getPosition();
