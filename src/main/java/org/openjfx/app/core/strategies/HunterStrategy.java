@@ -1,6 +1,5 @@
 package org.openjfx.app.core.strategies;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
@@ -17,7 +15,6 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class HunterStrategy implements MoveStrategy {
 
     private static final double STEERING_GAIN = 4.0;
-    private static final int BLOCKED_WAYPOINTS_TO_AVOID = 2;
     private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
     private double logCooldown = 0;
@@ -41,6 +38,11 @@ public class HunterStrategy implements MoveStrategy {
         DEBUG_PATH_STATES.remove(entityId);
     }
 
+    private static boolean isWithinEatRange(LivingEntity owner, Entity prey) {
+        double eatRange = (owner.getSize() + prey.getSize()) * 0.4;
+        return owner.getPosition().distance(prey.getPosition()) < eatRange;
+    }
+
     public int findClosestPrey(LivingEntity owner, List<Entity> neighbors, WorldMap world) {
         double minDistance = Double.MAX_VALUE;
         int closestID = -1;
@@ -48,6 +50,9 @@ public class HunterStrategy implements MoveStrategy {
             // Bỏ qua cây đã bị ăn (consume) trong cùng frame nhưng chưa kịp remove khỏi entities.
             if (neighbor instanceof org.openjfx.app.entities.staticobjs.Plant
                     && !((org.openjfx.app.entities.staticobjs.Plant) neighbor).isAlive()) {
+                continue;
+            }
+            if (PathAvoidance.isGivenUp(owner.getId(), neighbor.getId())) {
                 continue;
             }
             if (RelationManager.isPrey(neighbor.getType(), owner.getType()) && world.getTerrainAt(neighbor.getPosition()) != TerrainType.BUSH) {
@@ -79,22 +84,26 @@ public class HunterStrategy implements MoveStrategy {
                         logCooldown = 3.0; 
                     }
 
-                    double range = owner.getPosition().distance(prey.getPosition());
-
-                    if (range < 2) {
+                    if (isWithinEatRange(owner, prey)) {
                         owner.setAcceleration(new Vector2D(0, 0));
                         owner.setVelocity(new Vector2D(0, 0));
                         
                         // --- SỬA TÊN#ID Ở ĐÂY ---
                         world.notifyAction(ownerName, "đã bắt được", preyName);
                         
+                        PathAvoidance.noteSuccess(owner.getId(), targetId);
                         owner.eat(prey, dt);
                     } else {
                         Vector2D ownerPos = owner.getPosition();
                         Vector2D preyPos = prey.getPosition();
-                        Set<String> avoidedGridKeys = null;
+                        Set<String> avoidedGridKeys;
                         if (owner.getBlockedLastStep()) {
-                            avoidedGridKeys = collectBlockedWaypointKeys(owner.getId(), world);
+                            DebugPathState lastPathState = DEBUG_PATH_STATES.get(owner.getId());
+                            List<Vector2D> lastPath = lastPathState != null ? lastPathState.getPath() : null;
+                            avoidedGridKeys = PathAvoidance.recordAndCollect(owner.getId(), lastPath, world);
+                            PathAvoidance.noteFail(owner.getId(), targetId);
+                        } else {
+                            avoidedGridKeys = PathAvoidance.getAvoidedKeys(owner.getId());
                         }
 
                         List<Vector2D> path = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
@@ -114,6 +123,7 @@ public class HunterStrategy implements MoveStrategy {
                             }
                         } else {
                             clearDebugPathState(owner.getId());
+                            PathAvoidance.noteFail(owner.getId(), targetId);
                         }
 
                         if (desiredVelocity == null) {
@@ -148,23 +158,4 @@ public class HunterStrategy implements MoveStrategy {
         wanderFallback.updateVelocity(owner, neighbors, dt, world);
     }
 
-    private Set<String> collectBlockedWaypointKeys(int ownerId, WorldMap world) {
-        DebugPathState lastPathState = DEBUG_PATH_STATES.get(ownerId);
-        if (lastPathState == null || lastPathState.getPath() == null || lastPathState.getPath().isEmpty()) {
-            return null;
-        }
-
-        Set<String> blockedKeys = new HashSet<>();
-        List<Vector2D> lastPath = lastPathState.getPath();
-        int limit = Math.min(BLOCKED_WAYPOINTS_TO_AVOID, lastPath.size());
-        for (int i = 0; i < limit; i++) {
-            Vector2D point = lastPath.get(i);
-            if (point == null) continue;
-            TerrainGrid.GridCoordinate grid = world.worldToGrid(point);
-            if (grid != null) {
-                blockedKeys.add(grid.getRow() + ":" + grid.getCol());
-            }
-        }
-        return blockedKeys.isEmpty() ? null : blockedKeys;
-    }
 }
