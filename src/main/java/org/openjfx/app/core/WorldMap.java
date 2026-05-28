@@ -57,6 +57,13 @@ public class WorldMap {
         if (terrainGrid == null) return TerrainType.LAND;
         return terrainGrid.getTerrainAt(position);
     }
+
+    public boolean setTerrainAt(Vector2D position, TerrainType type) {
+        if (terrainGrid == null || position == null || type == null) {
+            return false;
+        }
+        return terrainGrid.setTerrainAt(position, type);
+    }
     
     // Khởi tạo các node
     private class AstarNode implements Comparable<AstarNode>{

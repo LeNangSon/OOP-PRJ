@@ -3,37 +3,72 @@ package org.openjfx.app;
 import org.openjfx.app.core.TerminalLogger;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.terrain.TerrainType;
+import org.openjfx.app.entities.base.Entity;
+import org.openjfx.app.entities.base.LivingEntity;
 import org.openjfx.app.entities.movable.Bear;
 import org.openjfx.app.entities.movable.Elephant;
+import org.openjfx.app.entities.movable.Fish;
 import org.openjfx.app.entities.movable.Rabbit;
 import org.openjfx.app.entities.movable.Wolf;
+import org.openjfx.app.entities.staticobjs.Algae;
+import org.openjfx.app.entities.staticobjs.Bush;
+import org.openjfx.app.entities.staticobjs.Grass;
+import org.openjfx.app.entities.staticobjs.Rock;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Slider;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public class MainApp extends Application {
-    private WorldMap worldMap;
-    private final double WIDTH = 1032;
-    private final double HEIGHT = 576;
+    private enum SpawnKind {
+        RABBIT, WOLF, BEAR, ELEPHANT, FISH,
+        GRASS, ALGAE, BUSH, ROCK
+    }
+
+    private static final double WIDTH = 1032;
+    private static final double HEIGHT = 576;
+    private static final double MIN_ZOOM = 1.0;
+    private static final double MAX_ZOOM = 3.0;
     private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/map-final.png";
     private static final String TERRAIN_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain.csv";
     private static final int TERRAIN_TILE_SIZE = 24;
 
-    private HBox menuBox; 
+    private static final String TOOLBAR_STYLE =
+            "-fx-background-color: #2a2a2a; -fx-padding: 6 10;";
+    private static final String SPAWN_BTN_STYLE =
+            "-fx-background-color: #3d3d3d; -fx-text-fill: white; -fx-font-size: 11px; "
+                    + "-fx-cursor: hand; -fx-padding: 4 8;";
+    private static final String SPAWN_BTN_SELECTED_STYLE =
+            "-fx-background-color: #5a8f5a; -fx-text-fill: white; -fx-font-size: 11px; "
+                    + "-fx-cursor: crosshair; -fx-padding: 4 8; -fx-font-weight: bold;";
+
+    private WorldMap worldMap;
+    private Canvas canvas;
+    private SpawnKind pendingSpawnKind;
+    private ToggleGroup spawnGroup;
+    private Slider zoomSlider;
+    private boolean updatingZoomSlider;
 
     @Override
     public void start(Stage stage) {
@@ -46,61 +81,18 @@ public class MainApp extends Application {
         EntityStatusPanel entityStatusPanel = new EntityStatusPanel(worldMap);
         entityStatusPanel.setVisible(false);
         entityStatusPanel.setManaged(false);
-        listView.setPrefWidth(400); // Độ rộng của bảng Terminal bên phải
-        listView.setFocusTraversable(false); // Không cho phép focus vào list để tránh lag
-        
-        // Thêm CSS để ListView trông giống Terminal (Nền tối, chữ xanh/trắng)
-        listView.setStyle("-fx-control-inner-background: #1e1e1e; " +
-                         "-fx-font-family: 'Consolas', 'Monospaced'; " +
-                         "-fx-font-size: 13px;");
+        listView.setPrefWidth(400);
+        listView.setFocusTraversable(false);
+        listView.setStyle("-fx-control-inner-background: #1e1e1e; "
+                + "-fx-font-family: 'Consolas', 'Monospaced'; "
+                + "-fx-font-size: 13px;");
 
         worldMap.addObserver(new TerminalLogger(logData));
-        worldMap.addEntity(new Rabbit(new Vector2D(410, 350)));
-        worldMap.addEntity(new Rabbit(new Vector2D(450, 350)));
-        worldMap.addEntity(new Rabbit(new Vector2D(400, 350)));
-        worldMap.addEntity(new Elephant(new Vector2D(430, 350)));
-        
-        worldMap.addEntity(new Wolf(new Vector2D(400, 300)));
-        worldMap.addEntity(new Bear(new Vector2D(400, 300)));
 
-        Canvas canvas = new Canvas(WIDTH, HEIGHT);
+        canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
         canvas.setFocusTraversable(true);
-
-        // --- FIX LỖI LIA CHUỘT (PANNING) ---
-        final double[] mouseAnchor = new double[2];
-        final double[] lastOffset = new double[2];
-
-        canvas.setOnMousePressed(e -> {
-            if (menuBox.isVisible()) {
-                menuBox.setVisible(false);
-                menuBox.setManaged(false);
-            }
-            mouseAnchor[0] = e.getX();
-            mouseAnchor[1] = e.getY();
-            lastOffset[0] = worldMap.getOffsetX();
-            lastOffset[1] = worldMap.getOffsetY();
-            canvas.requestFocus();
-        });
-
-        canvas.setOnMouseDragged(e -> {
-            if (worldMap.getScale() > 1.0) {
-                double dx = e.getX() - mouseAnchor[0];
-                double dy = e.getY() - mouseAnchor[1];
-                worldMap.setOffset(lastOffset[0] + dx, lastOffset[1] + dy);
-            }
-        });
-
-        canvas.setOnMouseClicked(e -> {
-            double oldScale = worldMap.getScale();
-            double newScale = oldScale;
-            if (e.getButton() == MouseButton.PRIMARY) newScale = Math.min(3.0, oldScale + 0.2);
-            else if (e.getButton() == MouseButton.SECONDARY) newScale = Math.max(1.0, oldScale - 0.2);
-            
-            if (newScale != oldScale) {
-                zoomAtPoint(newScale, oldScale, e.getX(), e.getY());
-            }
-        });
+        setupCanvasInput();
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
@@ -115,51 +107,12 @@ public class MainApp extends Application {
         };
         timer.start();
 
-        // --- GIAO DIỆN SIÊU NHỎ GỌN ---
-        Button btnSearch = new Button("🔍");
-        btnSearch.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-font-size: 12px; " +
-                          "-fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
+        HBox toolbar = buildToolbar();
+        VBox mapColumn = new VBox(toolbar, canvas);
+        VBox.setVgrow(canvas, Priority.ALWAYS);
 
-        Button btnPlus = new Button("+");
-        Button btnMinus = new Button("-");
-        Button btnReset = new Button("Đặt lại");
-        
-        String styleBtn = "-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 13px; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 0 4;";
-        btnPlus.setStyle(styleBtn);
-        btnMinus.setStyle(styleBtn);
-        btnReset.setStyle("-fx-background-color: #444444; -fx-text-fill: #ffaaaa; -fx-background-radius: 4; -fx-padding: 1 5; -fx-cursor: hand; -fx-font-size: 10px;");
-
-        menuBox = new HBox(6, btnPlus, btnMinus, btnReset);
-        menuBox.setAlignment(Pos.CENTER);
-        // Ép khung đen nhỏ xíu
-        menuBox.setStyle("-fx-background-color: rgba(20, 20, 20, 0.9); -fx-background-radius: 8; -fx-padding: 2 6;");
-        menuBox.setVisible(false);
-        menuBox.setManaged(false);
-        menuBox.setMaxHeight(26);
-
-        btnSearch.setOnAction(e -> {
-            boolean isVisible = menuBox.isVisible();
-            menuBox.setVisible(!isVisible);
-            menuBox.setManaged(!isVisible);
-        });
-
-        btnPlus.setOnAction(e -> zoomAtPoint(Math.min(3.0, worldMap.getScale() + 0.1), worldMap.getScale(), WIDTH/2, HEIGHT/2));
-        btnMinus.setOnAction(e -> zoomAtPoint(Math.max(1.0, worldMap.getScale() - 0.1), worldMap.getScale(), WIDTH/2, HEIGHT/2));
-        btnReset.setOnAction(e -> { worldMap.setScale(1.0); worldMap.setOffset(0, 0); });
-
-        // --- QUAN TRỌNG: SỬA LỖI CHẶN CHUỘT ---
-        HBox zoomContainer = new HBox(8, btnSearch, menuBox);
-        zoomContainer.setAlignment(Pos.TOP_CENTER);
-        zoomContainer.setPadding(new Insets(10, 0, 0, 0));
-        // Chỉ nhận sự kiện lên chính các nút, không chặn vùng trống xung quanh
-        zoomContainer.setPickOnBounds(false); 
-        zoomContainer.setMaxHeight(40); // Khống chế chiều cao container
-
-        StackPane canvasPane = new StackPane(canvas, zoomContainer);
-        canvasPane.setAlignment(Pos.TOP_CENTER);
-
-        HBox root = new HBox(canvasPane, listView, entityStatusPanel);
-        Scene scene = new Scene(root, WIDTH + 400, HEIGHT);
+        HBox root = new HBox(mapColumn, listView, entityStatusPanel);
+        Scene scene = new Scene(root, WIDTH + 400, HEIGHT + 40);
 
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.TAB) {
@@ -168,11 +121,12 @@ public class MainApp extends Application {
                 entityStatusPanel.setManaged(showStats);
                 listView.setVisible(!showStats);
                 listView.setManaged(!showStats);
-
                 if (showStats) {
                     entityStatusPanel.refreshData();
                 }
-
+                event.consume();
+            } else if (event.getCode() == KeyCode.ESCAPE) {
+                clearPlacementMode();
                 event.consume();
             }
         });
@@ -180,15 +134,283 @@ public class MainApp extends Application {
         stage.setScene(scene);
         stage.setTitle("Project - Ecology Simulation (Map & Terminal)");
         stage.show();
+        canvas.requestFocus();
+    }
+
+    private HBox buildToolbar() {
+        spawnGroup = new ToggleGroup();
+
+        ToggleButton btnRabbit = createSpawnToggle("Thỏ", SpawnKind.RABBIT);
+        ToggleButton btnWolf = createSpawnToggle("Sói", SpawnKind.WOLF);
+        ToggleButton btnBear = createSpawnToggle("Gấu", SpawnKind.BEAR);
+        ToggleButton btnElephant = createSpawnToggle("Voi", SpawnKind.ELEPHANT);
+        ToggleButton btnFish = createSpawnToggle("Cá", SpawnKind.FISH);
+
+        HBox animalBox = new HBox(4, btnRabbit, btnWolf, btnBear, btnElephant, btnFish);
+        animalBox.setAlignment(Pos.CENTER_LEFT);
+
+        ToggleButton btnGrass = createSpawnToggle("Cỏ", SpawnKind.GRASS);
+        ToggleButton btnAlgae = createSpawnToggle("Tảo", SpawnKind.ALGAE);
+        ToggleButton btnBush = createSpawnToggle("Bụi", SpawnKind.BUSH);
+        ToggleButton btnRock = createSpawnToggle("Đá", SpawnKind.ROCK);
+
+        HBox staticBox = new HBox(4, btnGrass, btnAlgae, btnBush, btnRock);
+        staticBox.setAlignment(Pos.CENTER_LEFT);
+
+        zoomSlider = new Slider(MIN_ZOOM, MAX_ZOOM, MIN_ZOOM);
+        zoomSlider.setPrefWidth(120);
+        zoomSlider.setTooltip(new Tooltip("Phóng to / thu nhỏ"));
+        zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (updatingZoomSlider) {
+                return;
+            }
+            zoomAtPoint(newVal.doubleValue(), worldMap.getScale(), WIDTH / 2, HEIGHT / 2);
+        });
+
+        Button btnPlus = new Button("+");
+        Button btnMinus = new Button("−");
+        Button btnReset = new Button("Đặt lại");
+        styleZoomButton(btnPlus);
+        styleZoomButton(btnMinus);
+        btnReset.setStyle(
+                "-fx-background-color: #444444; -fx-text-fill: #ffaaaa; -fx-background-radius: 4; "
+                        + "-fx-padding: 2 8; -fx-cursor: hand; -fx-font-size: 11px;");
+
+        btnPlus.setOnAction(e -> applyZoom(worldMap.getScale() + 0.1));
+        btnMinus.setOnAction(e -> applyZoom(worldMap.getScale() - 0.1));
+        btnReset.setOnAction(e -> {
+            worldMap.setScale(MIN_ZOOM);
+            worldMap.setOffset(0, 0);
+            syncZoomSlider(MIN_ZOOM);
+        });
+
+        HBox zoomBox = new HBox(6, btnMinus, zoomSlider, btnPlus, btnReset);
+        zoomBox.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox toolbar = new HBox(
+                8,
+                animalBox,
+                new Separator(Orientation.VERTICAL),
+                staticBox,
+                new Separator(Orientation.VERTICAL),
+                zoomBox);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setStyle(TOOLBAR_STYLE);
+        HBox.setHgrow(zoomBox, Priority.ALWAYS);
+        zoomBox.setMaxWidth(Double.MAX_VALUE);
+
+        return toolbar;
+    }
+
+    private ToggleButton createSpawnToggle(String label, SpawnKind kind) {
+        ToggleButton btn = new ToggleButton(label);
+        btn.setToggleGroup(spawnGroup);
+        btn.setStyle(SPAWN_BTN_STYLE);
+        btn.setTooltip(new Tooltip("Chọn rồi click trên bản đồ để đặt " + label));
+        btn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            if (isSelected) {
+                pendingSpawnKind = kind;
+                canvas.setCursor(Cursor.CROSSHAIR);
+            } else if (pendingSpawnKind == kind) {
+                pendingSpawnKind = null;
+                canvas.setCursor(Cursor.DEFAULT);
+            }
+        });
+        btn.selectedProperty().addListener((obs, was, now) ->
+                btn.setStyle(now ? SPAWN_BTN_SELECTED_STYLE : SPAWN_BTN_STYLE));
+        return btn;
+    }
+
+    private void styleZoomButton(Button btn) {
+        btn.setStyle("-fx-background-color: #3d3d3d; -fx-text-fill: white; -fx-font-size: 13px; "
+                + "-fx-cursor: hand; -fx-font-weight: bold; -fx-min-width: 28; -fx-padding: 2 6;");
+    }
+
+    private void setupCanvasInput() {
+        final double[] mouseAnchor = new double[2];
+        final double[] lastOffset = new double[2];
+
+        canvas.setOnMousePressed(e -> {
+            mouseAnchor[0] = e.getX();
+            mouseAnchor[1] = e.getY();
+            lastOffset[0] = worldMap.getOffsetX();
+            lastOffset[1] = worldMap.getOffsetY();
+            canvas.requestFocus();
+        });
+
+        canvas.setOnMouseDragged(e -> {
+            if (isPlacementMode() || worldMap.getScale() <= MIN_ZOOM) {
+                return;
+            }
+            double dx = e.getX() - mouseAnchor[0];
+            double dy = e.getY() - mouseAnchor[1];
+            worldMap.setOffset(lastOffset[0] + dx, lastOffset[1] + dy);
+        });
+
+        canvas.setOnMouseClicked(e -> {
+            if (isPlacementMode()) {
+                if (e.getButton() == MouseButton.PRIMARY) {
+                    spawnAt(pendingSpawnKind, screenToWorld(e.getX(), e.getY()));
+                } else if (e.getButton() == MouseButton.SECONDARY) {
+                    clearPlacementMode();
+                }
+                return;
+            }
+
+            double oldScale = worldMap.getScale();
+            double newScale = oldScale;
+            if (e.getButton() == MouseButton.PRIMARY) {
+                newScale = Math.min(MAX_ZOOM, oldScale + 0.2);
+            } else if (e.getButton() == MouseButton.SECONDARY) {
+                newScale = Math.max(MIN_ZOOM, oldScale - 0.2);
+            }
+            if (newScale != oldScale) {
+                zoomAtPoint(newScale, oldScale, e.getX(), e.getY());
+            }
+        });
+    }
+
+    private boolean isPlacementMode() {
+        return pendingSpawnKind != null;
+    }
+
+    private void clearPlacementMode() {
+        pendingSpawnKind = null;
+        canvas.setCursor(Cursor.DEFAULT);
+        if (spawnGroup != null) {
+            spawnGroup.selectToggle(null);
+        }
+    }
+
+    private Vector2D screenToWorld(double screenX, double screenY) {
+        double scale = worldMap.getScale();
+        double wx = (screenX - worldMap.getOffsetX()) / scale;
+        double wy = (screenY - worldMap.getOffsetY()) / scale;
+        return new Vector2D(wx, wy);
+    }
+
+    private void spawnAt(SpawnKind kind, Vector2D position) {
+        if (kind == null || position == null) {
+            return;
+        }
+
+        switch (kind) {
+            case RABBIT:
+            case WOLF:
+            case BEAR:
+            case ELEPHANT:
+            case FISH:
+                spawnLiving(kind, position);
+                break;
+            case GRASS:
+                spawnGrass(position);
+                break;
+            case ALGAE:
+                spawnAlgae(position);
+                break;
+            case BUSH:
+                spawnTerrainObstacle(position, TerrainType.BUSH, new Bush(position));
+                break;
+            case ROCK:
+                spawnTerrainObstacle(position, TerrainType.ROCK, new Rock(position));
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void spawnLiving(SpawnKind kind, Vector2D position) {
+        LivingEntity entity = createLivingByKind(kind, position);
+        if (entity == null) {
+            return;
+        }
+        if (!worldMap.canStandOn(entity, position)) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt", entity.getType() + " tại vị trí này");
+            return;
+        }
+        addEntityAndLog(entity);
+    }
+
+    private void spawnGrass(Vector2D position) {
+        if (worldMap.getTerrainAt(position) != TerrainType.LAND) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt", "Cỏ chỉ đặt trên đất (LAND)");
+            return;
+        }
+        addEntityAndLog(new Grass(position));
+    }
+
+    private void spawnAlgae(Vector2D position) {
+        if (worldMap.getTerrainAt(position) != TerrainType.WATER) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt", "Tảo chỉ đặt trên nước (WATER)");
+            return;
+        }
+        addEntityAndLog(new Algae(position));
+    }
+
+    private void spawnTerrainObstacle(Vector2D position, TerrainType terrainType, Entity entity) {
+        TerrainType current = worldMap.getTerrainAt(position);
+        if (current == TerrainType.WATER || current == TerrainType.PIT) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt",
+                    entity.getClass().getSimpleName() + " tại vị trí này");
+            return;
+        }
+        if (!worldMap.setTerrainAt(position, terrainType)) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt",
+                    entity.getClass().getSimpleName() + " ngoài bản đồ");
+            return;
+        }
+        addEntityAndLog(entity);
+    }
+
+    private void addEntityAndLog(Entity entity) {
+        worldMap.addEntity(entity);
+        String name = entity.getClass().getSimpleName() + "#" + entity.getId();
+        worldMap.notifyAction("Hệ thống", "đã thêm", name);
+    }
+
+    private LivingEntity createLivingByKind(SpawnKind kind, Vector2D position) {
+        switch (kind) {
+            case RABBIT:
+                return new Rabbit(position);
+            case WOLF:
+                return new Wolf(position);
+            case BEAR:
+                return new Bear(position);
+            case ELEPHANT:
+                return new Elephant(position);
+            case FISH:
+                return new Fish(position);
+            default:
+                return null;
+        }
+    }
+
+    private void applyZoom(double targetScale) {
+        double clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetScale));
+        zoomAtPoint(clamped, worldMap.getScale(), WIDTH / 2, HEIGHT / 2);
     }
 
     private void zoomAtPoint(double newScale, double oldScale, double cx, double cy) {
-        if (oldScale == newScale) return;
+        if (oldScale == newScale) {
+            return;
+        }
         double ox = cx - (cx - worldMap.getOffsetX()) * (newScale / oldScale);
         double oy = cy - (cy - worldMap.getOffsetY()) * (newScale / oldScale);
         worldMap.setScale(newScale);
         worldMap.setOffset(ox, oy);
+        syncZoomSlider(newScale);
     }
 
-    public static void main(String[] args) { launch(args); }
+    private void syncZoomSlider(double scale) {
+        if (zoomSlider == null) {
+            return;
+        }
+        updatingZoomSlider = true;
+        zoomSlider.setValue(scale);
+        updatingZoomSlider = false;
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
 }

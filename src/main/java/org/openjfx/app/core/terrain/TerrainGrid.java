@@ -130,6 +130,20 @@ public class TerrainGrid {
         return tiles[row][col].getType();
     }
 
+    public boolean setTerrainAt(Vector2D worldPosition, TerrainType type) {
+        if (worldPosition == null || type == null) {
+            return false;
+        }
+        GridCoordinate coordinate = worldToGrid(worldPosition);
+        int row = coordinate.getRow();
+        int col = coordinate.getCol();
+        if (!isInside(row, col)) {
+            return false;
+        }
+        tiles[row][col].setType(type);
+        return true;
+    }
+
     public GridCoordinate worldToGrid(Vector2D worldPosition) {
         int col = (int) (worldPosition.x / tileSize);
         int row = (int) (worldPosition.y / tileSize);

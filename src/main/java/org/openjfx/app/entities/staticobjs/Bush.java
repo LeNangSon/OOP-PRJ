@@ -7,4 +7,9 @@ public class Bush extends Obstacle {
     public Bush(Vector2D position) {
         super(position, 60, "Bush");
     }
+
+    @Override
+    public String toString() {
+        return "org/openjfx/app/bush.png";
+    }
 }
