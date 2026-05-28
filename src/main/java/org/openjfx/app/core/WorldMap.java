@@ -11,6 +11,7 @@ import java.util.Set;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.MateStrategy;
+import org.openjfx.app.core.strategies.MoveStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainTile;
@@ -577,30 +578,43 @@ public class WorldMap {
     }
 
     private void renderAStarPathDebug(GraphicsContext gc, Entity entity) {
+        if (!(entity instanceof LivingEntity)) {
+            return;
+        }
+        LivingEntity living = (LivingEntity) entity;
+        MoveStrategy current = living.getMoveStrategy();
+
         List<Vector2D> path = null;
-        HunterStrategy.DebugPathState hunterPath = HunterStrategy.getDebugPathState(entity.getId());
-        if (hunterPath != null) {
-            path = hunterPath.getPath();
-        } else {
-            FleeStrategy.DebugPathState fleePath = FleeStrategy.getDebugPathState(entity.getId());
-            if (fleePath != null) {
-                path = fleePath.getPath();
-            } else {
-                MateStrategy.DebugPathState matePath = MateStrategy.getDebugPathState(entity.getId());
-                if (matePath != null) {
-                    path = matePath.getPath();
-                }
+        Color color = null;
+
+        if (current instanceof HunterStrategy) {
+            HunterStrategy.DebugPathState s = HunterStrategy.getDebugPathState(entity.getId());
+            if (s != null) {
+                path = s.getPath();
+                color = Color.web("#00D4FF", 0.85);
+            }
+        } else if (current instanceof FleeStrategy) {
+            FleeStrategy.DebugPathState s = FleeStrategy.getDebugPathState(entity.getId());
+            if (s != null) {
+                path = s.getPath();
+                color = Color.web("#FFEB3B", 0.9);
+            }
+        } else if (current instanceof MateStrategy) {
+            MateStrategy.DebugPathState s = MateStrategy.getDebugPathState(entity.getId());
+            if (s != null) {
+                path = s.getPath();
+                color = Color.web("#FF4FB8", 0.9);
             }
         }
 
-        if (path == null || path.size() < 2) {
+        if (path == null || path.size() < 2 || color == null) {
             return;
         }
 
         gc.save();
         gc.setLineWidth(2.0);
-        gc.setStroke(Color.web("#00D4FF", 0.85));
-        gc.setFill(Color.web("#00D4FF", 0.85));
+        gc.setStroke(color);
+        gc.setFill(color);
 
         Vector2D previous = null;
         for (Vector2D point : path) {

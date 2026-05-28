@@ -11,6 +11,7 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class SeekWaterStrategy implements MoveStrategy {
     private WanderStrategy searchWander;
     private static final double STEERING_GAIN = 4.0;
+
     public SeekWaterStrategy(double wanderSpeed, double wanderR) {
         this.searchWander = new WanderStrategy(wanderSpeed, wanderR);
     }

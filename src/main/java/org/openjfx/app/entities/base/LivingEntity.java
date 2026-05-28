@@ -107,6 +107,10 @@ public abstract class LivingEntity extends MovableEntity {
         this.moveStrategy = moveStrategy;
     }
 
+    public MoveStrategy getMoveStrategy() {
+        return moveStrategy;
+    }
+
     public void setHunger(double hunger) {
         // Đói thuộc [0:100]
         this.hunger = Math.max(0, Math.min(100, hunger));
@@ -212,8 +216,7 @@ public abstract class LivingEntity extends MovableEntity {
                 && age >= matureAge
                 && reproduceCooldown <= 0
                 && getHunger() < 50.0
-                && getThirst() < 50.0
-                && getHealth() >= reproduceMinHealth;
+                && getThirst() < 50.0;
     }
 
     public boolean hasMateNearby() {

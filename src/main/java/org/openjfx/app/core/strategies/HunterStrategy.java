@@ -17,7 +17,8 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class HunterStrategy implements MoveStrategy {
 
     private static final double STEERING_GAIN = 4.0;
-    private static final int BLOCKED_WAYPOINTS_TO_AVOID = 2;
+    private static final int MIN_BLOCKED_WAYPOINTS = 3;
+    private static final int MAX_BLOCKED_WAYPOINTS = 20;
     private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
     private double logCooldown = 0;
@@ -156,7 +157,10 @@ public class HunterStrategy implements MoveStrategy {
 
         Set<String> blockedKeys = new HashSet<>();
         List<Vector2D> lastPath = lastPathState.getPath();
-        int limit = Math.min(BLOCKED_WAYPOINTS_TO_AVOID, lastPath.size());
+        int halfPlusOne = (lastPath.size() / 2) + 1;
+        int limit = Math.min(lastPath.size(),
+                    Math.min(MAX_BLOCKED_WAYPOINTS,
+                    Math.max(MIN_BLOCKED_WAYPOINTS, halfPlusOne)));
         for (int i = 0; i < limit; i++) {
             Vector2D point = lastPath.get(i);
             if (point == null) continue;
