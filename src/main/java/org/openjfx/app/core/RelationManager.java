@@ -22,10 +22,6 @@ public class RelationManager {
     moveAway.put(EntityType.WOLF, Arrays.asList(EntityType.ELEPHANT, EntityType.BEAR));
     moveAway.put(EntityType.BEAR, Arrays.asList(EntityType.ELEPHANT));
 
-    threat.put(EntityType.GRASS, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT));
-    threat.put(EntityType.FRUIT, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT, EntityType.BEAR));
-    threat.put(EntityType.ALGAE, Arrays.asList(EntityType.FISH));
-
 
 
    }

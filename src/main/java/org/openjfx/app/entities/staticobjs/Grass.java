@@ -6,7 +6,7 @@ import org.openjfx.app.core.Vector2D;
 public class Grass extends Plant {
 
     public Grass(Vector2D position) {
-        super(position, 10, "Grass", 10, 15);
+        super(position, 10, "Grass", 15);
         this.type = EntityType.GRASS;
     }
 

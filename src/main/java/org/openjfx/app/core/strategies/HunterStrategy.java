@@ -45,6 +45,11 @@ public class HunterStrategy implements MoveStrategy {
         double minDistance = Double.MAX_VALUE;
         int closestID = -1;
         for (Entity neighbor : neighbors) {
+            // Bỏ qua cây đã bị ăn (consume) trong cùng frame nhưng chưa kịp remove khỏi entities.
+            if (neighbor instanceof org.openjfx.app.entities.staticobjs.Plant
+                    && !((org.openjfx.app.entities.staticobjs.Plant) neighbor).isAlive()) {
+                continue;
+            }
             if (RelationManager.isPrey(neighbor.getType(), owner.getType()) && world.getTerrainAt(neighbor.getPosition()) != TerrainType.BUSH) {
                 double distance = owner.getPosition().distance(neighbor.getPosition());
                 if (distance < minDistance) {

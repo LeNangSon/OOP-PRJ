@@ -388,6 +388,7 @@ public class WorldMap {
         TerrainType terrain = getTerrainAt(position);
         EntityType entityType = entity.getType();
         if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
+        if (terrain == TerrainType.LAND) return entityType != EntityType.FISH;
         if (terrain == TerrainType.BUSH) {
             return entityType == EntityType.RABBIT;
         }
@@ -401,8 +402,12 @@ public class WorldMap {
             Entity e = entities.get(i);
             e.update(dt, this);
 
-            // Nếu thực thể sống đã chết, xóa khỏi danh sách để Terminal không bị rác
+            // Xóa thực thể sống đã chết
             if (e instanceof LivingEntity && !((LivingEntity) e).isAlive()) {
+                entities.remove(i);
+            } else if (e instanceof org.openjfx.app.entities.staticobjs.Plant
+                    && !((org.openjfx.app.entities.staticobjs.Plant) e).isAlive()) {
+                // Cây bị ăn (consume() đã đánh dấu chết) -> remove khỏi map
                 entities.remove(i);
             }
         }
