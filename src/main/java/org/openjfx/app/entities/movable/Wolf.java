@@ -16,7 +16,7 @@ public class Wolf extends Carnivore {
     "circle",
     200.0,     // ← tăng máu: 300.0
     3.0,       // ← giảm đói chậm hơn: 2.0
-    5.0,       // thirstRate
+    2.0,       // thirstRate
     40.0,      // ← tăng tốc độ: 55.0
     80.0,      // maxForce
     3.0,       // mass
