@@ -5,9 +5,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+
 import org.openjfx.app.core.TerminalLogger;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
@@ -43,6 +49,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.AudioClip;
 import javafx.stage.Stage;
 
 public class MainApp extends Application {
@@ -55,8 +62,15 @@ public class MainApp extends Application {
     private static final double HEIGHT = 576;
     private static final double MIN_ZOOM = 1.0;
     private static final double MAX_ZOOM = 3.0;
+    private static final double SOUND_ZOOM_THRESHOLD = 1.8;
     private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/map-final.png";
     private static final String TERRAIN_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain.csv";
+    private static final String WOLF_MATING_SOUND_RESOURCE_PATH =
+            "/sounds/soitimbantinh.wav";
+    private static final String BEAR_MATING_SOUND_RESOURCE_PATH = "/sounds/gautimbantinh.mp3";
+    private static final String WOLF_EATING_SOUND_RESOURCE_PATH = "/sounds/anthit.mp3";
+    private static final String ELEPHANT_SOUND_RESOURCE_PATH = "/sounds/voi.mp3";
+    private static final String FISH_SWIMMING_SOUND_RESOURCE_PATH = "/sounds/ca.wav";
     private static final int TERRAIN_TILE_SIZE = 24;
 
     /** Mỗi loài có nhiều "ổ" (den): tâm cố định, thành viên spawn ngẫu nhiên quanh tâm. */
@@ -106,6 +120,11 @@ public class MainApp extends Application {
     private ToggleGroup spawnGroup;
     private Slider zoomSlider;
     private boolean updatingZoomSlider;
+    private Clip wolfMatingSoundClip;
+    private AudioClip bearMatingSoundClip;
+    private AudioClip wolfEatingSoundClip;
+    private AudioClip elephantSoundClip;
+    private AudioClip fishSwimmingSoundClip;
     private final Random spawnRandom = new Random();
 
     @Override
@@ -127,6 +146,21 @@ public class MainApp extends Application {
                 + "-fx-font-size: 13px;");
 
         worldMap.addObserver(new TerminalLogger(logData));
+        worldMap.addObserver(new org.openjfx.app.core.GameObserver() {
+            @Override
+            public void onEntityDeath(String message) {
+            }
+
+            @Override
+            public void onActionOccurred(String actor, String action, String target) {
+                if (isSoundZoomedIn()
+                        && actor != null
+                        && (actor.startsWith("Wolf#") || actor.startsWith("Bear#"))
+                        && action != null && action.contains("bắt")) {
+                    playWolfEatingSound();
+                }
+            }
+        });
         worldMap.notifyAction("Hệ thống", "đã khởi tạo",
                 "48 thỏ (8 ổ), 18 sói (2 ổ), 18 gấu (9 ổ), 12 voi (1 ổ), "
                         + INITIAL_GRASS_COUNT + " cỏ");
@@ -141,6 +175,10 @@ public class MainApp extends Application {
             public void handle(long now) {
                 gc.clearRect(0, 0, WIDTH, HEIGHT);
                 worldMap.update(0.016);
+                updateWolfMatingSound();
+                updateBearMatingSound();
+                updateElephantSound();
+                updateFishSwimmingSound();
                 worldMap.render(gc);
                 if (entityStatusPanel.isVisible()) {
                     entityStatusPanel.refreshData();
@@ -502,6 +540,7 @@ public class MainApp extends Application {
         worldMap.setScale(newScale);
         worldMap.setOffset(ox, oy);
         syncZoomSlider(newScale);
+        updateElephantSound();
     }
 
     private void syncZoomSlider(double scale) {
@@ -511,6 +550,271 @@ public class MainApp extends Application {
         updatingZoomSlider = true;
         zoomSlider.setValue(scale);
         updatingZoomSlider = false;
+    }
+
+    private void updateWolfMatingSound() {
+        if (isSoundZoomedIn() && hasWolfSearchingMate()) {
+            playWolfMatingSound();
+        } else {
+            stopWolfMatingSound();
+        }
+    }
+
+    private boolean hasWolfSearchingMate() {
+        for (Entity entity : worldMap.getEntities()) {
+            if (entity instanceof Wolf
+                    && entity instanceof LivingEntity
+                    && ((LivingEntity) entity).getMoveStrategy() instanceof MateStrategy) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateBearMatingSound() {
+        if (isSoundZoomedIn() && hasBearSearchingMate()) {
+            playBearMatingSound();
+        } else {
+            stopBearMatingSound();
+        }
+    }
+
+    private boolean hasBearSearchingMate() {
+        for (Entity entity : worldMap.getEntities()) {
+            if (entity instanceof Bear
+                    && entity instanceof LivingEntity
+                    && ((LivingEntity) entity).getMoveStrategy() instanceof MateStrategy) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isSoundZoomedIn() {
+        return worldMap != null && worldMap.getScale() >= SOUND_ZOOM_THRESHOLD;
+    }
+
+    private void updateElephantSound() {
+        if (isSoundZoomedIn() && hasElephant()) {
+            playElephantSound();
+        } else {
+            stopElephantSound();
+        }
+    }
+
+    private boolean hasElephant() {
+        for (Entity entity : worldMap.getEntities()) {
+            if (entity instanceof Elephant) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateFishSwimmingSound() {
+        if (isSoundZoomedIn() && hasFishSwimmingInWater()) {
+            playFishSwimmingSound();
+        } else {
+            stopFishSwimmingSound();
+        }
+    }
+
+    private boolean hasFishSwimmingInWater() {
+        if (worldMap == null) {
+            return false;
+        }
+
+        for (Entity entity : worldMap.getEntities()) {
+            if (entity instanceof Fish) {
+                Fish fish = (Fish) entity;
+                if (worldMap.getTerrainAt(fish.getPosition()) == TerrainType.WATER
+                        && fish.getVelocity().magnitude() > 0.1) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void playWolfMatingSound() {
+        Clip clip = getWolfMatingSoundClip();
+        if (clip != null && !clip.isRunning()) {
+            clip.setFramePosition(0);
+            clip.loop(Clip.LOOP_CONTINUOUSLY);
+        }
+    }
+
+    private void stopWolfMatingSound() {
+        if (wolfMatingSoundClip != null && wolfMatingSoundClip.isRunning()) {
+            wolfMatingSoundClip.stop();
+        }
+    }
+
+    private Clip getWolfMatingSoundClip() {
+        if (wolfMatingSoundClip != null) {
+            return wolfMatingSoundClip;
+        }
+
+        try {
+            var resource = getClass().getResource(WOLF_MATING_SOUND_RESOURCE_PATH);
+            if (resource == null) {
+                System.err.println("Wolf mating sound not found: " + WOLF_MATING_SOUND_RESOURCE_PATH);
+                return null;
+            }
+
+            AudioInputStream originalStream = AudioSystem.getAudioInputStream(resource);
+            AudioFormat originalFormat = originalStream.getFormat();
+            AudioFormat playableFormat = new AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    originalFormat.getSampleRate(),
+                    16,
+                    originalFormat.getChannels(),
+                    originalFormat.getChannels() * 2,
+                    originalFormat.getSampleRate(),
+                    false);
+            AudioInputStream playableStream = AudioSystem.getAudioInputStream(playableFormat, originalStream);
+
+            wolfMatingSoundClip = AudioSystem.getClip();
+            wolfMatingSoundClip.open(playableStream);
+            return wolfMatingSoundClip;
+        } catch (Exception e) {
+            System.err.println("Cannot play wolf mating sound.");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void playBearMatingSound() {
+        AudioClip clip = getBearMatingSoundClip();
+        if (clip != null && !clip.isPlaying()) {
+            clip.play();
+        }
+    }
+
+    private void stopBearMatingSound() {
+        if (bearMatingSoundClip != null && bearMatingSoundClip.isPlaying()) {
+            bearMatingSoundClip.stop();
+        }
+    }
+
+    private AudioClip getBearMatingSoundClip() {
+        if (bearMatingSoundClip != null) {
+            return bearMatingSoundClip;
+        }
+
+        try {
+            var resource = getClass().getResource(BEAR_MATING_SOUND_RESOURCE_PATH);
+            if (resource == null) {
+                System.err.println("Bear mating sound not found: " + BEAR_MATING_SOUND_RESOURCE_PATH);
+                return null;
+            }
+            bearMatingSoundClip = new AudioClip(resource.toExternalForm());
+            bearMatingSoundClip.setCycleCount(AudioClip.INDEFINITE);
+            bearMatingSoundClip.setVolume(0.8);
+            return bearMatingSoundClip;
+        } catch (Exception e) {
+            System.err.println("Cannot play bear mating sound.");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void playWolfEatingSound() {
+        AudioClip clip = getWolfEatingSoundClip();
+        if (clip != null) {
+            clip.play();
+        }
+    }
+
+    private AudioClip getWolfEatingSoundClip() {
+        if (wolfEatingSoundClip != null) {
+            return wolfEatingSoundClip;
+        }
+
+        try {
+            var resource = getClass().getResource(WOLF_EATING_SOUND_RESOURCE_PATH);
+            if (resource == null) {
+                System.err.println("Wolf eating sound not found: " + WOLF_EATING_SOUND_RESOURCE_PATH);
+                return null;
+            }
+            wolfEatingSoundClip = new AudioClip(resource.toExternalForm());
+            wolfEatingSoundClip.setVolume(0.85);
+            return wolfEatingSoundClip;
+        } catch (Exception e) {
+            System.err.println("Cannot play wolf eating sound.");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void playElephantSound() {
+        AudioClip clip = getElephantSoundClip();
+        if (clip != null && !clip.isPlaying()) {
+            clip.play();
+        }
+    }
+
+    private void stopElephantSound() {
+        if (elephantSoundClip != null && elephantSoundClip.isPlaying()) {
+            elephantSoundClip.stop();
+        }
+    }
+
+    private AudioClip getElephantSoundClip() {
+        if (elephantSoundClip != null) {
+            return elephantSoundClip;
+        }
+
+        try {
+            var resource = getClass().getResource(ELEPHANT_SOUND_RESOURCE_PATH);
+            if (resource == null) {
+                System.err.println("Elephant sound not found: " + ELEPHANT_SOUND_RESOURCE_PATH);
+                return null;
+            }
+            elephantSoundClip = new AudioClip(resource.toExternalForm());
+            elephantSoundClip.setCycleCount(AudioClip.INDEFINITE);
+            elephantSoundClip.setVolume(0.8);
+            return elephantSoundClip;
+        } catch (Exception e) {
+            System.err.println("Cannot play elephant sound.");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void playFishSwimmingSound() {
+        AudioClip clip = getFishSwimmingSoundClip();
+        if (clip != null && !clip.isPlaying()) {
+            clip.play();
+        }
+    }
+
+    private void stopFishSwimmingSound() {
+        if (fishSwimmingSoundClip != null && fishSwimmingSoundClip.isPlaying()) {
+            fishSwimmingSoundClip.stop();
+        }
+    }
+
+    private AudioClip getFishSwimmingSoundClip() {
+        if (fishSwimmingSoundClip != null) {
+            return fishSwimmingSoundClip;
+        }
+
+        try {
+            var resource = getClass().getResource(FISH_SWIMMING_SOUND_RESOURCE_PATH);
+            if (resource == null) {
+                System.err.println("Fish swimming sound not found: " + FISH_SWIMMING_SOUND_RESOURCE_PATH);
+                return null;
+            }
+            fishSwimmingSoundClip = new AudioClip(resource.toExternalForm());
+            fishSwimmingSoundClip.setCycleCount(AudioClip.INDEFINITE);
+            fishSwimmingSoundClip.setVolume(0.65);
+            return fishSwimmingSoundClip;
+        } catch (Exception e) {
+            System.err.println("Cannot play fish swimming sound.");
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public static void main(String[] args) {
