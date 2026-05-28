@@ -324,6 +324,59 @@ public class WorldMap {
         return best;
     }
 
+    // Tìm ô an toàn nhất so với DANH SÁCH threats: max của (min khoảng cách tới mọi threat).
+    // Khác findFarthestTerrainPositionFromThreat: hàm đó chỉ xét 1 threat, có thể chọn ô xa centroid
+    // nhưng vẫn sát một threat cụ thể.
+    public Vector2D findSafestTerrainPosition(
+            Vector2D from,
+            List<Vector2D> threatPositions,
+            TerrainType targetType,
+            double searchRadius,
+            LivingEntity entity) {
+        if (terrainGrid == null || from == null || threatPositions == null || threatPositions.isEmpty()
+                || targetType == null || searchRadius <= 0) {
+            return null;
+        }
+        TerrainGrid.GridCoordinate centerCoordinate = worldToGrid(from);
+        if (centerCoordinate == null) {
+            return null;
+        }
+        int tileSize = terrainGrid.getTileSize();
+        int tileRadius = (int) Math.ceil(searchRadius / tileSize);
+        int centerRow = centerCoordinate.getRow();
+        int centerCol = centerCoordinate.getCol();
+        Vector2D best = null;
+        double bestScore = -1.0;
+        double searchRadiusSq = searchRadius * searchRadius;
+        for (int row = centerRow - tileRadius; row <= centerRow + tileRadius; row++) {
+            for (int col = centerCol - tileRadius; col <= centerCol + tileRadius; col++) {
+                if (!terrainGrid.isInside(row, col)) continue;
+                TerrainTile tile = terrainGrid.getTile(row, col);
+                if (tile == null || tile.getType() != targetType) continue;
+                Vector2D center = terrainGrid.gridToWorldCenter(row, col);
+                double dxFrom = center.x - from.x;
+                double dyFrom = center.y - from.y;
+                if (dxFrom * dxFrom + dyFrom * dyFrom > searchRadiusSq) continue;
+                if (!canStandOn(entity, center)) continue;
+
+                double minThreatDistSq = Double.MAX_VALUE;
+                for (Vector2D threatPos : threatPositions) {
+                    if (threatPos == null) continue;
+                    double dxT = center.x - threatPos.x;
+                    double dyT = center.y - threatPos.y;
+                    double dSq = dxT * dxT + dyT * dyT;
+                    if (dSq < minThreatDistSq) minThreatDistSq = dSq;
+                }
+
+                if (minThreatDistSq > bestScore) {
+                    bestScore = minThreatDistSq;
+                    best = center;
+                }
+            }
+        }
+        return best;
+    }
+
     public boolean canStandOn(LivingEntity entity, Vector2D position) {
         TerrainType terrain = getTerrainAt(position);
         EntityType entityType = entity.getType();

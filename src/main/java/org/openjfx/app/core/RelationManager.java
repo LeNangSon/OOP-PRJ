@@ -19,7 +19,7 @@ public class RelationManager {
 
     moveAway.put(EntityType.RABBIT, Arrays.asList(EntityType.WOLF, EntityType.BEAR, EntityType.ELEPHANT));
     moveAway.put(EntityType.FISH, Arrays.asList(EntityType.BEAR, EntityType.WOLF, EntityType.ELEPHANT, EntityType.WOLF));
-    moveAway.put(EntityType.WOLF, Arrays.asList(EntityType.ELEPHANT));
+    moveAway.put(EntityType.WOLF, Arrays.asList(EntityType.ELEPHANT, EntityType.BEAR));
     moveAway.put(EntityType.BEAR, Arrays.asList(EntityType.ELEPHANT));
 
     threat.put(EntityType.GRASS, Arrays.asList(EntityType.ELEPHANT, EntityType.RABBIT));

@@ -23,7 +23,7 @@ public class Wolf extends Carnivore {
                 30.0       // wanderRadius
         );
 
-        this.setVisionRadius(150.0);
+        this.setVisionRadius(100.0);
         this.type = EntityType.WOLF;
         
         // THAY ĐỔI Ở ĐÂY: Gán trực tiếp vào biến để tránh lỗi không tìm thấy method
