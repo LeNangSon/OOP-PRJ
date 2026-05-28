@@ -328,7 +328,9 @@ public class WorldMap {
         TerrainType terrain = getTerrainAt(position);
         EntityType entityType = entity.getType();
         if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
-        if (terrain == TerrainType.BUSH) return entityType != EntityType.WOLF;
+        if (terrain == TerrainType.BUSH) {
+            return entityType == EntityType.RABBIT;
+        }
         if (terrain == TerrainType.PIT) return false;
         return terrain != TerrainType.ROCK;
     }

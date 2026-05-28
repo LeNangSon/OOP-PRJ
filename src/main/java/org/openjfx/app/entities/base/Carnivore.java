@@ -32,6 +32,7 @@ public abstract class Carnivore extends LivingEntity {
 
     @Override
     public void update(double dt, WorldMap world) {
+        boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
         // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
         this.neighbors = world.getNeighbors(this, this.visionRadius);
 
@@ -41,8 +42,8 @@ public abstract class Carnivore extends LivingEntity {
             if (!(this.moveStrategy instanceof FleeStrategy)) {
                 this.moveStrategy = new FleeStrategy();
             }
-        } else if (this.getThirst() > 70.0) {
-            if (!(this.moveStrategy instanceof SeekWaterStrategy)) {
+        } else if (this.getThirst() > 70.0 || (isSeekingWater && this.getThirst()>0.1)) {
+            if (!(isSeekingWater)) {
                 this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
             }
         } else if (this.getHunger() > 60.0) { // Thú ăn thịt thường đi săn sớm hơn

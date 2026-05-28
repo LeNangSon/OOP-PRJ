@@ -3,7 +3,9 @@ package org.openjfx.app;
 import org.openjfx.app.core.TerminalLogger;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.entities.movable.Bear;
 import org.openjfx.app.entities.movable.Elephant;
+import org.openjfx.app.entities.movable.Rabbit;
 import org.openjfx.app.entities.movable.Wolf;
 
 import javafx.animation.AnimationTimer;
@@ -53,13 +55,13 @@ public class MainApp extends Application {
                          "-fx-font-size: 13px;");
 
         worldMap.addObserver(new TerminalLogger(logData));
-        /*worldMap.addEntity(new Rabbit(new Vector2D(410, 350)));
+        worldMap.addEntity(new Rabbit(new Vector2D(410, 350)));
         worldMap.addEntity(new Rabbit(new Vector2D(450, 350)));
-        worldMap.addEntity(new Rabbit(new Vector2D(400, 350)));*/
+        worldMap.addEntity(new Rabbit(new Vector2D(400, 350)));
         worldMap.addEntity(new Elephant(new Vector2D(430, 350)));
-
+        
         worldMap.addEntity(new Wolf(new Vector2D(400, 300)));
-
+        worldMap.addEntity(new Bear(new Vector2D(400, 300)));
 
         Canvas canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
