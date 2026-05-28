@@ -1,6 +1,7 @@
 package org.openjfx.app.entities.base;
 
 import java.util.List;
+
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;

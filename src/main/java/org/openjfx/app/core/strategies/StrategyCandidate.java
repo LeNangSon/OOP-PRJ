@@ -3,6 +3,7 @@ package org.openjfx.app.core.strategies;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
 

@@ -1,6 +1,7 @@
 package org.openjfx.app.entities.base;
 
 import java.util.List;
+
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
@@ -27,7 +28,7 @@ public abstract class Carnivore extends LivingEntity {
             if (prey.isAlive()) {
                 prey.setHealth(0);
                 this.setHunger(0);
-                this.setHealth(200);
+                this.setHealth(Math.min(getHealth() + getMaxHealth() * 0.3, getMaxHealth()));
                 this.setVelocity(new Vector2D(0, 0));
             }
         }

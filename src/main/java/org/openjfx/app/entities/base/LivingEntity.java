@@ -34,6 +34,7 @@ public abstract class LivingEntity extends MovableEntity {
 
     private final double hungerRate;
     private final double thirstRate;
+    private final double maxHealth;
     private boolean isAlive;
     protected double visionRadius;
     private final double wanderSpeed;
@@ -53,6 +54,7 @@ public abstract class LivingEntity extends MovableEntity {
                         double wanderDistance, double wanderRadius){
         super(position, size, shape, maxSpeed, maxForce, mass);
         this.health = initialHealth;
+        this.maxHealth = initialHealth;
         this.hungerRate = hungerRate;
         this.thirstRate = thirstRate;
         this.hunger = 0.0;
@@ -74,6 +76,7 @@ public abstract class LivingEntity extends MovableEntity {
         return blockedLastStep;
     }
     public double getHealth() { return health; }
+    public double getMaxHealth() { return maxHealth; }
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
@@ -105,6 +108,10 @@ public abstract class LivingEntity extends MovableEntity {
 
     public void setMoveStrategy(MoveStrategy moveStrategy) {
         this.moveStrategy = moveStrategy;
+    }
+
+    public MoveStrategy getMoveStrategy() {
+        return moveStrategy;
     }
 
     public void setHunger(double hunger) {
@@ -212,8 +219,7 @@ public abstract class LivingEntity extends MovableEntity {
                 && age >= matureAge
                 && reproduceCooldown <= 0
                 && getHunger() < 50.0
-                && getThirst() < 50.0
-                && getHealth() >= reproduceMinHealth;
+                && getThirst() < 50.0;
     }
 
     public boolean hasMateNearby() {

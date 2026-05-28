@@ -1,5 +1,6 @@
 package org.openjfx.app.entities.movable;
 
+import org.openjfx.app.EntityConfig;
 import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
@@ -12,27 +13,24 @@ public class Wolf extends Carnivore {
     public Wolf(Vector2D position) {
         super(
                 position,
-                20.0,      // size (chiều cao hiển thị)
-                "circle",  // shape
-                200.0,     // initialHealth
-                3.0,       // hungerRate
-                5.0,       // thirstRate
-                40.0,      // maxSpeed
-                80.0,       // maxForce
-                3.0,       // mass
-                30.0,      // wanderDistance
-                30.0       // wanderRadius
+                EntityConfig.Wolf.SIZE,
+                "circle",
+                EntityConfig.Wolf.HEALTH,
+                EntityConfig.Wolf.HUNGER_RATE,
+                EntityConfig.Wolf.THIRST_RATE,
+                EntityConfig.Wolf.MAX_SPEED,
+                EntityConfig.Wolf.MAX_FORCE,
+                EntityConfig.Wolf.MASS,
+                EntityConfig.Wolf.WANDER_DISTANCE,
+                EntityConfig.Wolf.WANDER_RADIUS
         );
 
-        this.setVisionRadius(100.0);
+        this.setVisionRadius(EntityConfig.Wolf.VISION_RADIUS);
         this.type = EntityType.WOLF;
-        
-        // THAY ĐỔI Ở ĐÂY: Gán trực tiếp vào biến để tránh lỗi không tìm thấy method
-        // Đảm bảo HunterStrategy được thực thi để bắn Log ra Terminal cho Nam
-        this.moveStrategy = new HunterStrategy();
-        this.matureAge = 10.0;
-        this.reproduceCooldownMax = 30.0;
-        this.reproduceHungerCost = 35.0;
+        this.moveStrategy          = new HunterStrategy();
+        this.matureAge             = EntityConfig.Wolf.MATURE_AGE;
+        this.reproduceCooldownMax  = EntityConfig.Wolf.REPRODUCE_COOLDOWN;
+        this.reproduceHungerCost   = EntityConfig.Wolf.REPRODUCE_HUNGER_COST;
     }
 
     @Override
