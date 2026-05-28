@@ -16,7 +16,7 @@ public class Wolf extends Carnivore {
                 "circle",  // shape
                 200.0,     // initialHealth
                 3.0,       // hungerRate
-                0.0,       // thirstRate
+                5.0,       // thirstRate
                 40.0,      // maxSpeed
                 80.0,       // maxForce
                 3.0,       // mass

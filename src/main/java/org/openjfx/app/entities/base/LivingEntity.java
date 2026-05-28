@@ -17,7 +17,7 @@ public abstract class LivingEntity extends MovableEntity {
     private double thirst;
     private double health;
     private boolean blockedLastStep;
-    private static final double Cooldown = 0.5;
+    private static final double COOLDOWN = 0.5;
     private double blockedCooldown;
 
 
@@ -32,8 +32,8 @@ public abstract class LivingEntity extends MovableEntity {
     protected double wanderRadius;
     protected double wanderDistance;
 
-    private double hungerRate;
-    private double thirstRate;
+    private final double hungerRate;
+    private final double thirstRate;
     private boolean isAlive;
     protected double visionRadius;
     private final double wanderSpeed;
@@ -89,7 +89,7 @@ public abstract class LivingEntity extends MovableEntity {
     }
 
     public void setBlockedCooldown() {
-        this.blockedCooldown = Cooldown;
+        this.blockedCooldown = COOLDOWN;
     }
 
     //Setter
@@ -140,12 +140,12 @@ public abstract class LivingEntity extends MovableEntity {
         // --- ĐOẠN SỬA: Logic hiển thị Tên#ID khi tử vong ---
         if (hunger >= 100 || thirst >= 100) {
             setHealth(this.health - 5*dt);
-            
+
             if (this.health <= 0) {
                 String reason = (hunger >= 100) ? "vì quá đói" : "vì quá khát";
-                // Lấy tên Class (Wolf, Rabbit...) nối với dấu # và ID
                 String entityNameWithId = this.getClass().getSimpleName() + "#" + this.getId();
                 world.broadcastDeath(entityNameWithId + " đã chết " + reason);
+                return;
             }
         }
 
@@ -238,6 +238,9 @@ public abstract class LivingEntity extends MovableEntity {
         }
         Vector2D spawnPos = pickSafeSpawnPos(world);
         if (spawnPos == null) {
+            // Vẫn áp cooldown để tránh retry mỗi frame và gây freeze vĩnh cửu
+            applyReproductionCost();
+            mate.applyReproductionCost();
             return;
         }
         LivingEntity child = createOffspring(spawnPos);

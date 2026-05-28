@@ -62,7 +62,8 @@ public class MateStrategy implements MoveStrategy {
 
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
-        if (!owner.isAlive()) {
+        if (!owner.isAlive() || !owner.canReproduce()) {
+            runWanderFallback(owner, neighbors, dt, world);
             return;
         }
 

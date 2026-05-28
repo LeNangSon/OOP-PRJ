@@ -1,15 +1,19 @@
 package org.openjfx.app.entities.base;
 
+import java.util.List;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
+import org.openjfx.app.core.strategies.StrategyCandidate;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.entities.staticobjs.Plant;
 
 public abstract class Herbivore extends LivingEntity {
+
+    private List<StrategyCandidate> candidates;
 
     public Herbivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
                      double maxSpeed, double maxForce, double mass,
@@ -19,46 +23,47 @@ public abstract class Herbivore extends LivingEntity {
 
     @Override
     public void eat(Entity target, double dt) {
-        if (target instanceof Plant) {
-            setHunger(this.getHunger() - ((Plant) target).consume());
+        if (target instanceof Plant plant) {
+            setHunger(this.getHunger() - plant.consume());
         }
+    }
+
+    private List<StrategyCandidate> buildCandidates() {
+        return List.of(
+            new StrategyCandidate(
+                FleeStrategy::new,
+                (e, n) -> hasThreat(e, n) ? 100.0 : 0.0
+            ),
+            new StrategyCandidate(
+                () -> new SeekWaterStrategy(wanderDistance, wanderRadius),
+                (e, n) -> e.getThirst() / 100.0
+            ),
+            new StrategyCandidate(
+                HunterStrategy::new,
+                (e, n) -> e.getHunger() / 100.0
+            ),
+            new StrategyCandidate(
+                MateStrategy::new,
+                (e, n) -> (canReproduce() && hasMateNearby()) ? 0.45 : 0.0
+            ),
+            new StrategyCandidate(
+                () -> new WanderStrategy(wanderDistance, wanderRadius),
+                (e, n) -> 0.3
+            )
+        );
     }
 
     @Override
     public void update(double dt, WorldMap world) {
         this.neighbors = world.getNeighbors(this, this.visionRadius);
-        boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
-        boolean isSeekingFood = this.moveStrategy instanceof HunterStrategy;
-        boolean isMating = this.moveStrategy instanceof MateStrategy;
-        if (hasThreat(this, neighbors)) {
-            if (!(this.moveStrategy instanceof FleeStrategy)) {
-                this.moveStrategy = new FleeStrategy();
-            }
-        } else if (this.getThirst() > 70.0 || (isSeekingWater && this.getThirst()>0.1)) {
-            if (!(isSeekingWater)) {
-                this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
-            }
-        } else if (this.getHunger() > 70.0 || (isSeekingFood && this.getHunger()>0.1)) {
-            if (!(this.moveStrategy instanceof HunterStrategy)) {
-                this.moveStrategy = new HunterStrategy();
-            }
-        } else if ((canReproduce() && hasMateNearby()) || (isMating && canReproduce())) {
-            if (!isMating) {
-                this.moveStrategy = new MateStrategy();
-            }
-        } else {
-            // Quay lại trạng thái lang thang nếu không có nhu cầu cấp bách
-            if (!(this.moveStrategy instanceof WanderStrategy)) {
-                this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
-            }
-        }
+        if (candidates == null) candidates = buildCandidates();
 
-        // Cập nhật vận tốc từ Strategy
+        this.moveStrategy = StrategyCandidate.selectBest(candidates, this.moveStrategy, this, neighbors);
+
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
 
-        // Cập nhật vị trí và các chỉ số sinh tồn (Gọi lớp cha)
         super.update(dt, world);
     }
 }
