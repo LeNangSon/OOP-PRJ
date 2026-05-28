@@ -18,7 +18,7 @@ public class Elephant extends Herbivore {
                 "rect",    // shape (Hình chữ nhật)
                 200.0,     // initialHealth
                 5.0,       // hungerRate (Voi ăn nhiều nên tốc độ đói nhanh)
-                0.0,       // thirstRate (Voi uống nhiều nước)
+                5.0,       // thirstRate (Voi uống nhiều nước)
                 40.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
                 80.0,       // maxForce (Lực lái vừa phải)
                 3.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
@@ -27,7 +27,7 @@ public class Elephant extends Herbivore {
         );
 
         // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setVisionRadius(100.0);
+        this.setVisionRadius(70.0);
 
         // Bạn muốn voi bắt đầu trong trạng thái hơi khát để test SeekWater
         this.setThirst(0.0);

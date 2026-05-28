@@ -1,5 +1,10 @@
 package org.openjfx.app;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
 import org.openjfx.app.core.TerminalLogger;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
@@ -54,6 +59,38 @@ public class MainApp extends Application {
     private static final String TERRAIN_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain.csv";
     private static final int TERRAIN_TILE_SIZE = 24;
 
+    /** Mỗi loài có nhiều "ổ" (den): tâm cố định, thành viên spawn ngẫu nhiên quanh tâm. */
+    private static final double[][] WOLF_DEN_CENTERS = {
+            {372, 60}, {828, 60},
+    };
+    private static final int WOLF_PER_DEN = 9;
+    private static final double WOLF_DEN_RADIUS = 55.0;
+
+    private static final double[][] RABBIT_DEN_CENTERS = {
+            {84, 108}, {588, 108}, {972, 204}, {756, 252},
+            {324, 276}, {60, 324}, {540, 324}, {876, 420},
+    };
+    private static final int RABBIT_PER_DEN = 6;
+    private static final double RABBIT_DEN_RADIUS = 40.0;
+
+    private static final double[][] BEAR_DEN_CENTERS = {
+            {252, 60}, {948, 60}, {708, 84}, {468, 132},
+            {612, 228}, {876, 276}, {204, 324}, {972, 348},
+            {708, 372},
+    };
+    private static final int BEAR_PER_DEN = 2;
+    private static final double BEAR_DEN_RADIUS = 30.0;
+
+    private static final double[][] ELEPHANT_DEN_CENTERS = {
+            {396, 420},
+    };
+    private static final int ELEPHANT_PER_DEN = 12;
+    private static final double ELEPHANT_DEN_RADIUS = 70.0;
+
+    private static final int DEN_PLACEMENT_MAX_ATTEMPTS = 60;
+
+    private static final int INITIAL_GRASS_COUNT = 300;
+
     private static final String TOOLBAR_STYLE =
             "-fx-background-color: #2a2a2a; -fx-padding: 6 10;";
     private static final String SPAWN_BTN_STYLE =
@@ -69,12 +106,14 @@ public class MainApp extends Application {
     private ToggleGroup spawnGroup;
     private Slider zoomSlider;
     private boolean updatingZoomSlider;
+    private final Random spawnRandom = new Random();
 
     @Override
     public void start(Stage stage) {
         worldMap = new WorldMap(WIDTH, HEIGHT);
         worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
         worldMap.setTerrainGridFromCsvResource(TERRAIN_CSV_RESOURCE_PATH, TERRAIN_TILE_SIZE);
+        seedInitialAnimals();
 
         ObservableList<String> logData = FXCollections.observableArrayList();
         ListView<String> listView = new ListView<>(logData);
@@ -88,6 +127,9 @@ public class MainApp extends Application {
                 + "-fx-font-size: 13px;");
 
         worldMap.addObserver(new TerminalLogger(logData));
+        worldMap.notifyAction("Hệ thống", "đã khởi tạo",
+                "48 thỏ (8 ổ), 18 sói (2 ổ), 18 gấu (9 ổ), 12 voi (1 ổ), "
+                        + INITIAL_GRASS_COUNT + " cỏ");
 
         canvas = new Canvas(WIDTH, HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -287,6 +329,67 @@ public class MainApp extends Application {
         double wx = (screenX - worldMap.getOffsetX()) / scale;
         double wy = (screenY - worldMap.getOffsetY()) / scale;
         return new Vector2D(wx, wy);
+    }
+
+    private void seedInitialAnimals() {
+        spawnDens(SpawnKind.RABBIT, RABBIT_DEN_CENTERS, RABBIT_PER_DEN, RABBIT_DEN_RADIUS);
+        spawnDens(SpawnKind.WOLF, WOLF_DEN_CENTERS, WOLF_PER_DEN, WOLF_DEN_RADIUS);
+        spawnDens(SpawnKind.BEAR, BEAR_DEN_CENTERS, BEAR_PER_DEN, BEAR_DEN_RADIUS);
+        spawnDens(SpawnKind.ELEPHANT, ELEPHANT_DEN_CENTERS, ELEPHANT_PER_DEN, ELEPHANT_DEN_RADIUS);
+        spawnGrassRandomly(INITIAL_GRASS_COUNT);
+    }
+
+    private void spawnGrassRandomly(int count) {
+        List<Vector2D> landCenters = collectLandTileCenters();
+        Collections.shuffle(landCenters, spawnRandom);
+        int toPlace = Math.min(count, landCenters.size());
+        for (int i = 0; i < toPlace; i++) {
+            worldMap.addEntity(new Grass(landCenters.get(i)));
+        }
+    }
+
+    private List<Vector2D> collectLandTileCenters() {
+        List<Vector2D> result = new ArrayList<>();
+        int cols = (int) Math.ceil(WIDTH / TERRAIN_TILE_SIZE);
+        int rows = (int) Math.ceil(HEIGHT / TERRAIN_TILE_SIZE);
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                Vector2D center = new Vector2D(
+                        (c + 0.5) * TERRAIN_TILE_SIZE,
+                        (r + 0.5) * TERRAIN_TILE_SIZE);
+                if (worldMap.getTerrainAt(center) == TerrainType.LAND) {
+                    result.add(center);
+                }
+            }
+        }
+        return result;
+    }
+
+    private void spawnDens(SpawnKind kind, double[][] centers, int perDen, double radius) {
+        for (double[] center : centers) {
+            spawnDen(kind, new Vector2D(center[0], center[1]), perDen, radius);
+        }
+    }
+
+    private void spawnDen(SpawnKind kind, Vector2D center, int count, double radius) {
+        int placed = 0;
+        int attempts = 0;
+        int maxAttempts = count * DEN_PLACEMENT_MAX_ATTEMPTS;
+        while (placed < count && attempts < maxAttempts) {
+            attempts++;
+            // Phân phối uniform trong hình tròn quanh tâm ổ.
+            double angle = spawnRandom.nextDouble() * Math.PI * 2;
+            double r = Math.sqrt(spawnRandom.nextDouble()) * radius;
+            double x = center.x + r * Math.cos(angle);
+            double y = center.y + r * Math.sin(angle);
+            Vector2D position = new Vector2D(x, y);
+            LivingEntity entity = createLivingByKind(kind, position);
+            if (entity == null || !worldMap.canStandOn(entity, position)) {
+                continue;
+            }
+            worldMap.addEntity(entity);
+            placed++;
+        }
     }
 
     private void spawnAt(SpawnKind kind, Vector2D position) {

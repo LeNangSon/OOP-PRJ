@@ -1,27 +1,30 @@
 package org.openjfx.app.entities.base;
 
+import java.util.List;
+
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
+import org.openjfx.app.core.strategies.StrategyCandidate;
 import org.openjfx.app.core.strategies.WanderStrategy;
 
 public abstract class Carnivore extends LivingEntity {
 
+    private List<StrategyCandidate> candidates;
+
     public Carnivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
                      double maxSpeed, double maxForce, double mass,
                      double wanderDistance, double wanderRadius) {
-        // Truyền đầy đủ thông số lên LivingEntity
         super(position, size, shape, initialHealth, hungerRate, thirstRate,
                 maxSpeed, maxForce, mass, wanderDistance, wanderRadius);
     }
 
     @Override
     public void eat(Entity target, double dt) {
-        if (target instanceof LivingEntity) {
-            LivingEntity prey = (LivingEntity) target;
+        if (target instanceof LivingEntity prey) {
             if (prey.isAlive()) {
                 prey.setHealth(0);
                 this.setHunger(0);
@@ -31,44 +34,42 @@ public abstract class Carnivore extends LivingEntity {
         }
     }
 
+    private List<StrategyCandidate> buildCandidates() {
+        return List.of(
+            new StrategyCandidate(
+                FleeStrategy::new,
+                (e, n) -> hasThreat(e, n) ? 100.0 : 0.0
+            ),
+            new StrategyCandidate(
+                () -> new SeekWaterStrategy(wanderDistance, wanderRadius),
+                (e, n) -> e.getThirst() / 100.0
+            ),
+            new StrategyCandidate(
+                HunterStrategy::new,
+                (e, n) -> e.getHunger() / 100.0
+            ),
+            new StrategyCandidate(
+                MateStrategy::new,
+                (e, n) -> (canReproduce() && hasMateNearby()) ? 0.45 : 0.0
+            ),
+            new StrategyCandidate(
+                () -> new WanderStrategy(wanderDistance, wanderRadius),
+                (e, n) -> 0.3
+            )
+        );
+    }
+
     @Override
     public void update(double dt, WorldMap world) {
-        boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
-        boolean isMating = this.moveStrategy instanceof MateStrategy;
-        // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
         this.neighbors = world.getNeighbors(this, this.visionRadius);
+        if (candidates == null) candidates = buildCandidates();
 
-        // Quyết định chiến thuật di chuyển
-        if (hasThreat(this, neighbors)) {
-            // Thú ăn thịt vẫn có thể sợ kẻ thù lớn hơn hoặc con người
-            if (!(this.moveStrategy instanceof FleeStrategy)) {
-                this.moveStrategy = new FleeStrategy();
-            }
-        } else if (this.getThirst() > 70.0 || (isSeekingWater && this.getThirst()>0.1)) {
-            if (!(isSeekingWater)) {
-                this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
-            }
-        } else if (this.getHunger() > 60.0) { // Thú ăn thịt thường đi săn sớm hơn
-            if (!(this.moveStrategy instanceof HunterStrategy)) {
-                this.moveStrategy = new HunterStrategy();
-            }
-        } else if ((canReproduce() && hasMateNearby()) || (isMating && canReproduce())) {
-            if (!isMating) {
-                this.moveStrategy = new MateStrategy();
-            }
-        } else {
-            // Trạng thái bình thường: Wander
-            if (!(this.moveStrategy instanceof WanderStrategy)) {
-                this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
-            }
-        }
+        this.moveStrategy = StrategyCandidate.selectBest(candidates, this.moveStrategy, this, neighbors);
 
-        // Tính toán vận tốc
         if (this.moveStrategy != null) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
 
-        // Cập nhật vị trí và các chỉ số sinh tồn cơ bản
         super.update(dt, world);
     }
 }

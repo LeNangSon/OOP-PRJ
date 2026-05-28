@@ -27,7 +27,7 @@ public class Bear extends Carnivore {
         );
 
         // Thiết lập tầm nhìn (radius) để phát hiện con mồi hoặc mối đe dọa
-        this.setVisionRadius(150.0);
+        this.setVisionRadius(60.0);
         this.setHunger(50);
         this.type = EntityType.BEAR;
         this.matureAge = 15.0;
