@@ -2,7 +2,6 @@ package org.openjfx.app.core.strategies;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.openjfx.app.core.EntityType;
@@ -168,15 +167,7 @@ public class FleeStrategy implements MoveStrategy {
             clearDebugPathState(owner.getId());
             return null;
         }
-        Set<String> avoidedGridKeys;
-        if (owner.getBlockedLastStep()) {
-            DebugPathState lastPathState = DEBUG_PATH_STATES.get(owner.getId());
-            List<Vector2D> lastPath = lastPathState != null ? lastPathState.getPath() : null;
-            avoidedGridKeys = PathAvoidance.recordAndCollect(owner.getId(), lastPath, world);
-        } else {
-            avoidedGridKeys = PathAvoidance.getAvoidedKeys(owner.getId());
-        }
-        List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination, avoidedGridKeys);
+        List<Vector2D> path = world.findPathAStar(owner, ownerPos, destination);
         if (path == null || path.isEmpty()) {
             clearDebugPathState(owner.getId());
             return null;

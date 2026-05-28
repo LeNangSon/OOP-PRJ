@@ -5,22 +5,12 @@ import java.util.List;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.strategies.FleeStrategy;
-import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.MoveStrategy;
-import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 
 
 
 public abstract class LivingEntity extends MovableEntity {
-
-    protected ActionState currentState = ActionState.WANDER;
-    // --- THÊM MỚI: Trạng thái hành động ---
-    public enum ActionState {
-        FLEE, EAT, DRINK, MATE, WANDER
-    }
-
     //Atribute
     protected MoveStrategy moveStrategy;
     private double hunger;
@@ -130,80 +120,7 @@ public abstract class LivingEntity extends MovableEntity {
     public void setVisionRadius(double visionRadius){
         this.visionRadius = Math.max(0, visionRadius);
     }
-    // --- BẮT ĐẦU PHẦN UTILITY AI ---
-    protected void decideAction(WorldMap world) {
-        double bestScore = 0;
-        ActionState bestAction = ActionState.WANDER; 
 
-        // 1. Chạy trốn
-        double fleeScore = evaluateFleeScore();
-        if (fleeScore > bestScore) { bestScore = fleeScore; bestAction = ActionState.FLEE; }
-
-        // 2. Tìm thức ăn
-        double eatScore = evaluateEatScore();
-        if (eatScore > bestScore) { bestScore = eatScore; bestAction = ActionState.EAT; }
-
-        // 3. Tìm nước uống
-        double drinkScore = evaluateDrinkScore();
-        if (drinkScore > bestScore) { bestScore = drinkScore; bestAction = ActionState.DRINK; }
-
-        // 4. Sinh sản
-        double mateScore = evaluateMateScore();
-        if (mateScore > bestScore) { bestScore = mateScore; bestAction = ActionState.MATE; }
-
-        // 5. Đi dạo
-        double wanderScore = 30.0;
-        if (wanderScore > bestScore) { bestScore = wanderScore; bestAction = ActionState.WANDER; }
-
-        // Chuyển đổi trạng thái nếu có thay đổi
-        if (this.currentState != bestAction) {
-            this.currentState = bestAction;
-            applyStrategyForState(bestAction);
-        }
-    }
-
-    // Các hàm tính điểm mặc định (Subclass có thể ghi đè)
-    protected double evaluateFleeScore() {
-        return hasThreat(this, this.neighbors) ? 1000.0 : 0.0;
-    }
-
-    protected double evaluateEatScore() {
-        return this.hunger; 
-    }
-
-    protected double evaluateDrinkScore() {
-        // Thêm tính "bám dính" (hysteresis) để con vật uống xong mới làm việc khác
-        if (this.currentState == ActionState.DRINK && this.thirst > 0.1) {
-            return this.thirst + 50.0; // Ưu tiên uống cho xong
-        }
-        return this.thirst;
-    }
-
-    protected double evaluateMateScore() {
-        return (canReproduce() && hasMateNearby()) ? 75.0 : 0.0;
-    }
-
-    // Áp dụng strategy tương ứng với state
-    protected void applyStrategyForState(ActionState state) {
-        switch (state) {
-            case FLEE:
-                this.setMoveStrategy(new FleeStrategy());
-                break;
-            case DRINK:
-                this.setMoveStrategy(new SeekWaterStrategy(this.wanderDistance, this.wanderRadius));
-                break;
-            case MATE:
-                this.setMoveStrategy(new MateStrategy());
-                break;
-            case WANDER:
-                this.setMoveStrategy(new WanderStrategy(this.wanderDistance, this.wanderRadius));
-                break;
-            case EAT:
-                // Sẽ được định nghĩa cụ thể trong Carnivore/Herbivore
-                break;
-        }
-    }
-    // --- KẾT THÚC PHẦN UTILITY AI ---
     //Method
     @Override
     public void update(double dt, WorldMap world) {
@@ -219,12 +136,6 @@ public abstract class LivingEntity extends MovableEntity {
         if (reproduceCooldown > 0) {
             reproduceCooldown -= dt;
         }
-
-        // Cập nhật danh sách hàng xóm để các hàm đánh giá hành vi sử dụng
-        this.neighbors = world.getNeighbors(this, this.visionRadius);
-
-        // Quyết định hành động/chiến thuật dựa trên utility
-        decideAction(world);
 
         // --- ĐOẠN SỬA: Logic hiển thị Tên#ID khi tử vong ---
         if (hunger >= 100 || thirst >= 100) {
@@ -288,7 +199,6 @@ public abstract class LivingEntity extends MovableEntity {
     }
 
     public boolean hasThreat(Entity owner, List<Entity> neighbors) {
-        if (neighbors == null) return false;
         for (Entity neighbor : neighbors){
             if (RelationManager.isScaredOf(owner.getType(), neighbor.getType())){
                 return true;

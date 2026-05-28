@@ -11,7 +11,6 @@ import java.util.Set;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.MateStrategy;
-import org.openjfx.app.core.strategies.PathAvoidance;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainTile;
@@ -413,10 +412,6 @@ public class WorldMap {
 
             // Xóa thực thể sống đã chết
             if (e instanceof LivingEntity && !((LivingEntity) e).isAlive()) {
-                PathAvoidance.clearEntity(e.getId());
-                HunterStrategy.clearDebugPathState(e.getId());
-                FleeStrategy.clearDebugPathState(e.getId());
-                MateStrategy.clearDebugPathState(e.getId());
                 entities.remove(i);
             } else if (e instanceof org.openjfx.app.entities.staticobjs.Plant
                     && !((org.openjfx.app.entities.staticobjs.Plant) e).isAlive()) {

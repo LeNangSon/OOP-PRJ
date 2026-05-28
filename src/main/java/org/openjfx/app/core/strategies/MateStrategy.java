@@ -2,7 +2,6 @@ package org.openjfx.app.core.strategies;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.openjfx.app.core.Vector2D;
@@ -52,9 +51,6 @@ public class MateStrategy implements MoveStrategy {
             if (other.getClass() != owner.getClass() || !other.canReproduce()) {
                 continue;
             }
-            if (PathAvoidance.isGivenUp(owner.getId(), other.getId())) {
-                continue;
-            }
             double distance = owner.getPosition().distance(other.getPosition());
             if (distance < minDistance) {
                 minDistance = distance;
@@ -81,13 +77,12 @@ public class MateStrategy implements MoveStrategy {
         String ownerName = owner.getClass().getSimpleName() + "#" + owner.getId();
         String mateName = mate.getClass().getSimpleName() + "#" + mate.getId();
         double range = owner.getPosition().distance(mate.getPosition());
-        double matingRange = (owner.getSize() + mate.getSize()) * 0.2;
+        double matingRange = (owner.getSize() + mate.getSize()) * 0.6;
 
         if (range <= matingRange) {
             owner.setAcceleration(new Vector2D(0, 0));
             owner.setVelocity(new Vector2D(0, 0));
             clearDebugPathState(owner.getId());
-            PathAvoidance.noteSuccess(owner.getId(), mate.getId());
 
             if (owner.getId() < mate.getId()) {
                 owner.spawnOffspring(world, mate);
@@ -103,16 +98,7 @@ public class MateStrategy implements MoveStrategy {
 
         Vector2D ownerPos = owner.getPosition();
         Vector2D matePos = mate.getPosition();
-        Set<String> avoidedGridKeys;
-        if (owner.getBlockedLastStep()) {
-            DebugPathState lastPathState = DEBUG_PATH_STATES.get(owner.getId());
-            List<Vector2D> lastPath = lastPathState != null ? lastPathState.getPath() : null;
-            avoidedGridKeys = PathAvoidance.recordAndCollect(owner.getId(), lastPath, world);
-            PathAvoidance.noteFail(owner.getId(), mate.getId());
-        } else {
-            avoidedGridKeys = PathAvoidance.getAvoidedKeys(owner.getId());
-        }
-        List<Vector2D> path = world.findPathAStar(owner, ownerPos, matePos, avoidedGridKeys);
+        List<Vector2D> path = world.findPathAStar(owner, ownerPos, matePos);
 
         Vector2D desiredVelocity = null;
         if (path != null && !path.isEmpty()) {
@@ -125,7 +111,6 @@ public class MateStrategy implements MoveStrategy {
             }
         } else {
             clearDebugPathState(owner.getId());
-            PathAvoidance.noteFail(owner.getId(), mate.getId());
         }
 
         if (desiredVelocity == null) {

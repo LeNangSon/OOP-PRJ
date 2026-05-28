@@ -2,13 +2,18 @@ package org.openjfx.app.entities.base;
 
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.MateStrategy;
+import org.openjfx.app.core.strategies.SeekWaterStrategy;
+import org.openjfx.app.core.strategies.WanderStrategy;
 
 public abstract class Carnivore extends LivingEntity {
 
     public Carnivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
                      double maxSpeed, double maxForce, double mass,
                      double wanderDistance, double wanderRadius) {
+        // Truyền đầy đủ thông số lên LivingEntity
         super(position, size, shape, initialHealth, hungerRate, thirstRate,
                 maxSpeed, maxForce, mass, wanderDistance, wanderRadius);
     }
@@ -26,45 +31,44 @@ public abstract class Carnivore extends LivingEntity {
         }
     }
 
-    // --- CẤU HÌNH TÍNH ĐIỂM RIÊNG CHO ĐỘNG VẬT ĂN THỊT ---
-
-    @Override
-    protected double evaluateEatScore() {
-        // Thú ăn thịt chỉ bắt đầu đi săn khi độ đói vượt 60
-        if (this.getHunger() > 60.0) {
-            return this.getHunger() + 20.0; // Cộng thêm điểm bouns để ưu tiên săn mồi
-        }
-        return 0.0;
-    }
-
-    @Override
-    protected double evaluateDrinkScore() {
-        // Thú ăn thịt ưu tiên uống nước khi khát vượt 70
-        if (this.getThirst() > 70.0 || (this.currentState == ActionState.DRINK && this.getThirst() > 0.1)) {
-            return this.getThirst() + 20.0; 
-        }
-        return 0.0;
-    }
-
-    @Override
-    protected void applyStrategyForState(ActionState state) {
-        if (state == ActionState.EAT) {
-            // Khi trạng thái là EAT, Thú ăn thịt sẽ dùng chiến thuật Hunter
-            this.setMoveStrategy(new HunterStrategy());
-        } else {
-            // Các trạng thái khác trả về mặc định của LivingEntity
-            super.applyStrategyForState(state); 
-        }
-    }
-
     @Override
     public void update(double dt, WorldMap world) {
-        // Gọi lên lớp cha (LivingEntity) để cập nhật sinh tồn và cho AI quyết định hành động
-        super.update(dt, world);
+        boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
+        boolean isMating = this.moveStrategy instanceof MateStrategy;
+        // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
+        this.neighbors = world.getNeighbors(this, this.visionRadius);
 
-        // Chạy Strategy di chuyển đã được AI quyết định
-        if (this.moveStrategy != null) {
-            this.moveStrategy.updateVelocity(this, this.neighbors, dt, world);
+        // Quyết định chiến thuật di chuyển
+        if (hasThreat(this, neighbors)) {
+            // Thú ăn thịt vẫn có thể sợ kẻ thù lớn hơn hoặc con người
+            if (!(this.moveStrategy instanceof FleeStrategy)) {
+                this.moveStrategy = new FleeStrategy();
+            }
+        } else if (this.getThirst() > 70.0 || (isSeekingWater && this.getThirst()>0.1)) {
+            if (!(isSeekingWater)) {
+                this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
+            }
+        } else if (this.getHunger() > 60.0) { // Thú ăn thịt thường đi săn sớm hơn
+            if (!(this.moveStrategy instanceof HunterStrategy)) {
+                this.moveStrategy = new HunterStrategy();
+            }
+        } else if ((canReproduce() && hasMateNearby()) || (isMating && canReproduce())) {
+            if (!isMating) {
+                this.moveStrategy = new MateStrategy();
+            }
+        } else {
+            // Trạng thái bình thường: Wander
+            if (!(this.moveStrategy instanceof WanderStrategy)) {
+                this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
+            }
         }
+
+        // Tính toán vận tốc
+        if (this.moveStrategy != null) {
+            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
+        }
+
+        // Cập nhật vị trí và các chỉ số sinh tồn cơ bản
+        super.update(dt, world);
     }
 }
