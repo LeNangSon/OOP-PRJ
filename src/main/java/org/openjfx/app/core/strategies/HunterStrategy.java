@@ -22,13 +22,14 @@ public class HunterStrategy implements MoveStrategy {
     private static final int MAX_BLOCKED_WAYPOINTS = 20;
     private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
-    private static final double NO_TARGET_TIMEOUT      = 3.0;
-    private static final double FORCED_WANDER_DURATION = 2.0;
-
-    private double logCooldown      = 0;
-    private double noTargetTimer    = 0.0;
-    private double forcedWanderTimer = 0.0;
+    private double logCooldown = 0;
     private WanderStrategy wanderFallback;
+    private List<Vector2D> cachedPath = null;
+    private int waypointIdx = 0;
+    private int cachedTargetId = -1;
+    private Vector2D lastKnownPreyPos = null;
+    private static final double WAYPOINT_ADVANCE_RADIUS = 10.0;
+    private static final double REPLAN_PREY_MOVE = 48.0;
 
     public static final class DebugPathState {
         private final List<Vector2D> path;
@@ -71,17 +72,9 @@ public class HunterStrategy implements MoveStrategy {
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
         if (owner.isAlive()) {
-            // Forced wander: lang thang 2s rồi mới săn lại
-            if (forcedWanderTimer > 0) {
-                forcedWanderTimer -= dt;
-                runWanderFallback(owner, neighbors, dt, world);
-                return;
-            }
-
             int targetId = findClosestPrey(owner, neighbors, world);
 
             if (targetId != -1) {
-                noTargetTimer = 0.0;
                 Entity prey = world.getEntityById(targetId);
                 if (prey != null) {
                     // --- SỬA TÊN#ID Ở ĐÂY ---
@@ -114,28 +107,42 @@ public class HunterStrategy implements MoveStrategy {
                     } else {
                         Vector2D ownerPos = owner.getPosition();
                         Vector2D preyPos = prey.getPosition();
-                        Set<String> avoidedGridKeys = null;
-                        if (owner.getBlockedLastStep()) {
-                            avoidedGridKeys = collectBlockedWaypointKeys(owner.getId(), world);
+
+                        boolean needReplan = cachedPath == null
+                                || waypointIdx >= cachedPath.size()
+                                || cachedTargetId != targetId
+                                || owner.getBlockedLastStep()
+                                || (lastKnownPreyPos != null && preyPos.distance(lastKnownPreyPos) > REPLAN_PREY_MOVE);
+
+                        if (needReplan) {
+                            Set<String> avoidedGridKeys = owner.getBlockedLastStep()
+                                    ? collectBlockedWaypointKeys(owner.getId(), world) : null;
+                            List<Vector2D> rawPath = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
+                            if (rawPath != null && !rawPath.isEmpty()) {
+                                cachedPath = world.densifyPath(rawPath, world.getCellSize() / 3.0);
+                            } else {
+                                cachedPath = null;
+                            }
+                            waypointIdx = 0;
+                            cachedTargetId = targetId;
+                            lastKnownPreyPos = preyPos;
                         }
 
-                        List<Vector2D> path = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
-
-                        Vector2D desiredVelocity = null;
-                        if (path != null && !path.isEmpty()) {
-                            DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(path));
-                            Vector2D nextWaypoint = null;
-                            for (Vector2D waypoint : path) {
-                                if (waypoint != null && ownerPos.distance(waypoint) > 1) {
-                                    nextWaypoint = waypoint;
-                                    break;
-                                }
-                            }
-                            if (nextWaypoint != null) {
-                                desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
+                        if (cachedPath != null) {
+                            DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(cachedPath));
+                            while (waypointIdx < cachedPath.size() - 1
+                                    && ownerPos.distance(cachedPath.get(waypointIdx)) < WAYPOINT_ADVANCE_RADIUS) {
+                                waypointIdx++;
                             }
                         } else {
                             clearDebugPathState(owner.getId());
+                        }
+
+                        Vector2D desiredVelocity = null;
+                        Vector2D nextWaypoint = (cachedPath != null && waypointIdx < cachedPath.size())
+                                ? cachedPath.get(waypointIdx) : null;
+                        if (nextWaypoint != null) {
+                            desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
                         }
 
                         if (desiredVelocity == null) {
@@ -150,16 +157,14 @@ public class HunterStrategy implements MoveStrategy {
                     }
                 }
             } else {
-                // Không tìm thấy mồi
+                // Nếu không tìm thấy mồi: reset trạng thái path và tạm thời lang thang
                 logCooldown = 0;
+                cachedPath = null;
+                cachedTargetId = -1;
                 clearDebugPathState(owner.getId());
 
-                noTargetTimer += dt;
-                if (noTargetTimer >= NO_TARGET_TIMEOUT) {
-                    forcedWanderTimer = FORCED_WANDER_DURATION;
-                    noTargetTimer     = 0.0;
-                }
                 runWanderFallback(owner, neighbors, dt, world);
+                return;
             }
         }
     }

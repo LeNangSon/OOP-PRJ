@@ -12,9 +12,12 @@ public class Grass extends Plant {
     // Bán kính an toàn quanh cỏ — không được có đá/sông trong vùng này.
     private static final double HAZARD_BUFFER = 24.0;
 
+    private static final double REGROW_TIME = 30.0;
+
     public Grass(Vector2D position) {
-        super(position, 10, "Grass", 25);
+        super(position, 10, "Grass", 10);
         this.type = EntityType.GRASS;
+        this.regrowTime = REGROW_TIME;
     }
 
     @Override

@@ -229,6 +229,29 @@ public class WorldMap {
         return path;
     }
 
+    public int getCellSize() {
+        return terrainGrid != null ? terrainGrid.getTileSize() : 24;
+    }
+
+    // Thêm điểm trung gian giữa các waypoint để entity theo dõi path chi tiết hơn
+    public List<Vector2D> densifyPath(List<Vector2D> path, double maxStep) {
+        if (path == null || path.size() < 2 || maxStep <= 0) return path;
+        List<Vector2D> result = new ArrayList<>();
+        for (int i = 0; i < path.size() - 1; i++) {
+            Vector2D a = path.get(i);
+            Vector2D b = path.get(i + 1);
+            result.add(a);
+            double dist = a.distance(b);
+            int segments = (int) Math.ceil(dist / maxStep);
+            for (int s = 1; s < segments; s++) {
+                double t = (double) s / segments;
+                result.add(new Vector2D(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)));
+            }
+        }
+        result.add(path.get(path.size() - 1));
+        return result;
+    }
+
     private double calculateHeuristic(AstarNode start, AstarNode target){
         double s_row = start.row;
         double s_col = start.col;
@@ -287,61 +310,6 @@ public class WorldMap {
             }
         }
         return nearestCenter;
-    }
-
-    // Tìm ô terrain gần nhất, bỏ qua các vị trí trong excluded (theo exclusionRadius).
-    // radius <= 0 → tìm toàn bản đồ.
-    public Vector2D findNearestTerrainPositionExcluding(
-            Vector2D from, TerrainType targetType, double radius,
-            List<Vector2D> excluded, double exclusionRadius) {
-        if (terrainGrid == null || from == null || targetType == null) return null;
-        boolean useRadius = radius > 0;
-        int rows = terrainGrid.getRows();
-        int cols = terrainGrid.getCols();
-        int tileSize = terrainGrid.getTileSize();
-
-        int rowStart = 0, rowEnd = rows - 1, colStart = 0, colEnd = cols - 1;
-        if (useRadius) {
-            TerrainGrid.GridCoordinate center = worldToGrid(from);
-            if (center == null) return null;
-            int tileRadius = (int) Math.ceil(radius / tileSize);
-            rowStart = Math.max(0, center.getRow() - tileRadius);
-            rowEnd   = Math.min(rows - 1, center.getRow() + tileRadius);
-            colStart = Math.max(0, center.getCol() - tileRadius);
-            colEnd   = Math.min(cols - 1, center.getCol() + tileRadius);
-        }
-
-        double radiusSq = useRadius ? radius * radius : Double.MAX_VALUE;
-        double exclSq   = exclusionRadius * exclusionRadius;
-        Vector2D nearest = null;
-        double minDistSq = Double.MAX_VALUE;
-
-        for (int row = rowStart; row <= rowEnd; row++) {
-            for (int col = colStart; col <= colEnd; col++) {
-                TerrainTile tile = terrainGrid.getTile(row, col);
-                if (tile == null || tile.getType() != targetType) continue;
-                Vector2D center = terrainGrid.gridToWorldCenter(row, col);
-                double dx = center.x - from.x;
-                double dy = center.y - from.y;
-                double distSq = dx * dx + dy * dy;
-                if (distSq > radiusSq) continue;
-                if (excluded != null) {
-                    boolean skip = false;
-                    for (Vector2D ex : excluded) {
-                        if (ex == null) continue;
-                        double exDx = center.x - ex.x;
-                        double exDy = center.y - ex.y;
-                        if (exDx * exDx + exDy * exDy < exclSq) { skip = true; break; }
-                    }
-                    if (skip) continue;
-                }
-                if (distSq < minDistSq) {
-                    minDistSq = distSq;
-                    nearest = center;
-                }
-            }
-        }
-        return nearest;
     }
 
     public Vector2D findFarthestTerrainPositionFromThreat(
@@ -469,8 +437,7 @@ public class WorldMap {
             if (e instanceof LivingEntity && !((LivingEntity) e).isAlive()) {
                 entities.remove(i);
             } else if (e instanceof org.openjfx.app.entities.staticobjs.Plant
-                    && !((org.openjfx.app.entities.staticobjs.Plant) e).isAlive()) {
-                // Cây bị ăn (consume() đã đánh dấu chết) -> remove khỏi map
+                    && ((org.openjfx.app.entities.staticobjs.Plant) e).shouldBeRemoved()) {
                 entities.remove(i);
             }
         }
@@ -506,6 +473,10 @@ public class WorldMap {
         }
 
         for (Entity entity : entities) {
+            if (entity instanceof org.openjfx.app.entities.staticobjs.Plant
+                    && ((org.openjfx.app.entities.staticobjs.Plant) entity).isRegrowing()) {
+                continue;
+            }
             renderEntityWithImage(gc, entity);
         }
         // ----------------------------------

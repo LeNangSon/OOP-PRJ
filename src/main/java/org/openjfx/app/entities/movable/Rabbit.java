@@ -17,8 +17,8 @@ public class Rabbit extends Herbivore {
             28,
                 "circle",
                 100.0,
-                2.0,
-                2.0,
+                3.0,
+                1.0,
             20,
             20,
             0.5,
@@ -27,11 +27,11 @@ public class Rabbit extends Herbivore {
         );
 
         // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setVisionRadius(30.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
+        this.setVisionRadius(40.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
         this.type = EntityType.RABBIT;
         // Thỏ sinh sản rất nhanh: trưởng thành sớm, cooldown ngắn, ít tốn hunger.
         this.matureAge = 4.0;
-        this.reproduceCooldownMax = 6.0;
+        this.reproduceCooldownMax = 10.0;
         this.reproduceHungerCost = 10.0;
     }
 

@@ -86,14 +86,12 @@ public class MainApp extends Application {
             {660, 156}, {516, 228}, {780, 252}, {300, 300},
             {60, 324}, {636, 324}, {828, 396}, {204, 420},
     };
-    private static final int RABBIT_PER_DEN = 4;
+    private static final int RABBIT_PER_DEN = 0;
     private static final double RABBIT_DEN_RADIUS = 30.0;
 
     /** Đợt thỏ bổ sung — 5 ổ nhỏ × 3 con = 15 con. */
-    private static final double[][] RABBIT_EXTRA_DEN_CENTERS = {
-            {972, 204}, {420, 300}, {60, 444}, {924, 468}, {732, 492},
-    };
-    private static final int RABBIT_EXTRA_PER_DEN = 3;
+
+
     private static final double RABBIT_EXTRA_DEN_RADIUS = 25.0;
 
     private static final double[][] BEAR_DEN_CENTERS = {
@@ -107,7 +105,7 @@ public class MainApp extends Application {
     private static final double[][] ELEPHANT_DEN_CENTERS = {
             {180, 156}, {780, 156}, {324, 444},
     };
-    private static final int ELEPHANT_PER_DEN = 0;
+    private static final int ELEPHANT_PER_DEN = 5;
     private static final double ELEPHANT_DEN_RADIUS = 45.0;
 
     private static final int DEN_PLACEMENT_MAX_ATTEMPTS = 60;
@@ -115,11 +113,13 @@ public class MainApp extends Application {
     private static final int INITIAL_GRASS_COUNT = 300;
 
     private static final String TOOLBAR_STYLE =
-            "-fx-background-color: linear-gradient(to bottom, #2e2e2e, #232323); "
-            + "-fx-padding: 7 12; -fx-border-color: #1a1a1a; -fx-border-width: 0 0 1 0;";
+            "-fx-background-color: #2a2a2a; -fx-padding: 6 10;";
     private static final String SPAWN_BTN_STYLE =
-            "-fx-background-color: #363636; -fx-text-fill: #cccccc; -fx-font-size: 12px; "
-                    + "-fx-cursor: hand; -fx-padding: 4 10; -fx-background-radius: 5;";
+            "-fx-background-color: #3d3d3d; -fx-text-fill: white; -fx-font-size: 11px; "
+                    + "-fx-cursor: hand; -fx-padding: 4 8;";
+    private static final String SPAWN_BTN_SELECTED_STYLE =
+            "-fx-background-color: #5a8f5a; -fx-text-fill: white; -fx-font-size: 11px; "
+                    + "-fx-cursor: crosshair; -fx-padding: 4 8; -fx-font-weight: bold;";
 
     private WorldMap worldMap;
     private Canvas canvas;
@@ -233,33 +233,25 @@ public class MainApp extends Application {
     private HBox buildToolbar() {
         spawnGroup = new ToggleGroup();
 
-        ToggleButton btnRabbit   = createSpawnToggle("🐰 Thỏ",  SpawnKind.RABBIT,    "#5a9a5a");
-        ToggleButton btnWolf     = createSpawnToggle("🐺 Sói",  SpawnKind.WOLF,      "#b04040");
-        ToggleButton btnBear     = createSpawnToggle("🐻 Gấu",  SpawnKind.BEAR,      "#996633");
-        ToggleButton btnElephant = createSpawnToggle("🐘 Voi",  SpawnKind.ELEPHANT,  "#4a7a9a");
-        ToggleButton btnFish     = createSpawnToggle("🐟 Cá",   SpawnKind.FISH,      "#3a6ab0");
+        ToggleButton btnRabbit = createSpawnToggle("Thỏ", SpawnKind.RABBIT);
+        ToggleButton btnWolf = createSpawnToggle("Sói", SpawnKind.WOLF);
+        ToggleButton btnBear = createSpawnToggle("Gấu", SpawnKind.BEAR);
+        ToggleButton btnElephant = createSpawnToggle("Voi", SpawnKind.ELEPHANT);
+        ToggleButton btnFish = createSpawnToggle("Cá", SpawnKind.FISH);
 
-        Label animalLabel = new Label("ĐỘNG VẬT");
-        animalLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 9px; -fx-font-weight: bold;");
         HBox animalBox = new HBox(4, btnRabbit, btnWolf, btnBear, btnElephant, btnFish);
         animalBox.setAlignment(Pos.CENTER_LEFT);
-        VBox animalSection = new VBox(2, animalLabel, animalBox);
-        animalSection.setAlignment(Pos.CENTER_LEFT);
 
-        ToggleButton btnGrass = createSpawnToggle("🌿 Cỏ",  SpawnKind.GRASS, "#3a8a3a");
-        ToggleButton btnAlgae = createSpawnToggle("🌊 Tảo", SpawnKind.ALGAE, "#2a8080");
-        ToggleButton btnBush  = createSpawnToggle("🌳 Bụi", SpawnKind.BUSH,  "#2a5a2a");
-        ToggleButton btnRock  = createSpawnToggle("🪨 Đá",  SpawnKind.ROCK,  "#787878");
+        ToggleButton btnGrass = createSpawnToggle("Cỏ", SpawnKind.GRASS);
+        ToggleButton btnAlgae = createSpawnToggle("Tảo", SpawnKind.ALGAE);
+        ToggleButton btnBush = createSpawnToggle("Bụi", SpawnKind.BUSH);
+        ToggleButton btnRock = createSpawnToggle("Đá", SpawnKind.ROCK);
 
-        Label plantLabel = new Label("THỰC VẬT");
-        plantLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 9px; -fx-font-weight: bold;");
         HBox staticBox = new HBox(4, btnGrass, btnAlgae, btnBush, btnRock);
         staticBox.setAlignment(Pos.CENTER_LEFT);
-        VBox staticSection = new VBox(2, plantLabel, staticBox);
-        staticSection.setAlignment(Pos.CENTER_LEFT);
 
         zoomSlider = new Slider(MIN_ZOOM, MAX_ZOOM, MIN_ZOOM);
-        zoomSlider.setPrefWidth(110);
+        zoomSlider.setPrefWidth(120);
         zoomSlider.setTooltip(new Tooltip("Phóng to / thu nhỏ"));
         zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (updatingZoomSlider) {
@@ -274,8 +266,8 @@ public class MainApp extends Application {
         styleZoomButton(btnPlus);
         styleZoomButton(btnMinus);
         btnReset.setStyle(
-                "-fx-background-color: #3a3a3a; -fx-text-fill: #ffaaaa; -fx-background-radius: 4; "
-                        + "-fx-padding: 3 8; -fx-cursor: hand; -fx-font-size: 11px;");
+                "-fx-background-color: #444444; -fx-text-fill: #ffaaaa; -fx-background-radius: 4; "
+                        + "-fx-padding: 2 8; -fx-cursor: hand; -fx-font-size: 11px;");
 
         btnPlus.setOnAction(e -> applyZoom(worldMap.getScale() + 0.1));
         btnMinus.setOnAction(e -> applyZoom(worldMap.getScale() - 0.1));
@@ -285,14 +277,8 @@ public class MainApp extends Application {
             syncZoomSlider(MIN_ZOOM);
         });
 
-        Label zoomLabel = new Label("THU PHÓNG");
-        zoomLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 9px; -fx-font-weight: bold;");
-        HBox zoomControls = new HBox(5, btnMinus, zoomSlider, btnPlus, btnReset);
-        zoomControls.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(zoomControls, Priority.ALWAYS);
-        zoomControls.setMaxWidth(Double.MAX_VALUE);
-        VBox zoomSection = new VBox(2, zoomLabel, zoomControls);
-        zoomSection.setAlignment(Pos.CENTER_LEFT);
+        HBox zoomBox = new HBox(6, btnMinus, zoomSlider, btnPlus, btnReset);
+        zoomBox.setAlignment(Pos.CENTER_RIGHT);
 
         Label clockIcon = new Label("⏱");
         clockIcon.setStyle("-fx-text-fill: #ffe066; -fx-font-size: 14px;");
@@ -301,26 +287,22 @@ public class MainApp extends Application {
                 "-fx-text-fill: #ffe066; -fx-font-size: 14px; -fx-font-weight: bold; "
                         + "-fx-font-family: 'Consolas', 'Monospaced';");
         survivalLabel.setTooltip(new Tooltip("Thời gian hệ sinh thái sinh tồn"));
-        Label timeLabel = new Label("THỜI GIAN");
-        timeLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 9px; -fx-font-weight: bold;");
-        HBox timeRow = new HBox(4, clockIcon, survivalLabel);
-        timeRow.setAlignment(Pos.CENTER_LEFT);
-        VBox timeSection = new VBox(2, timeLabel, timeRow);
-        timeSection.setAlignment(Pos.CENTER_LEFT);
+        HBox timeBox = new HBox(4, clockIcon, survivalLabel);
+        timeBox.setAlignment(Pos.CENTER_LEFT);
 
         HBox toolbar = new HBox(
-                12,
-                animalSection,
+                8,
+                animalBox,
                 new Separator(Orientation.VERTICAL),
-                staticSection,
+                staticBox,
                 new Separator(Orientation.VERTICAL),
-                timeSection,
+                timeBox,
                 new Separator(Orientation.VERTICAL),
-                zoomSection);
+                zoomBox);
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.setStyle(TOOLBAR_STYLE);
-        HBox.setHgrow(zoomSection, Priority.ALWAYS);
-        zoomSection.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(zoomBox, Priority.ALWAYS);
+        zoomBox.setMaxWidth(Double.MAX_VALUE);
 
         return toolbar;
     }
@@ -372,14 +354,11 @@ public class MainApp extends Application {
         return String.format("%02d:%02d", mm, ss);
     }
 
-    private ToggleButton createSpawnToggle(String label, SpawnKind kind, String activeColor) {
+    private ToggleButton createSpawnToggle(String label, SpawnKind kind) {
         ToggleButton btn = new ToggleButton(label);
         btn.setToggleGroup(spawnGroup);
         btn.setStyle(SPAWN_BTN_STYLE);
         btn.setTooltip(new Tooltip("Chọn rồi click trên bản đồ để đặt " + label));
-        String activeStyle = "-fx-background-color: " + activeColor + "; -fx-text-fill: white; "
-                + "-fx-font-size: 12px; -fx-cursor: crosshair; -fx-padding: 4 10; "
-                + "-fx-background-radius: 5; -fx-font-weight: bold;";
         btn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
             if (isSelected) {
                 pendingSpawnKind = kind;
@@ -390,14 +369,13 @@ public class MainApp extends Application {
             }
         });
         btn.selectedProperty().addListener((obs, was, now) ->
-                btn.setStyle(now ? activeStyle : SPAWN_BTN_STYLE));
+                btn.setStyle(now ? SPAWN_BTN_SELECTED_STYLE : SPAWN_BTN_STYLE));
         return btn;
     }
 
     private void styleZoomButton(Button btn) {
-        btn.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: #e0e0e0; -fx-font-size: 13px; "
-                + "-fx-cursor: hand; -fx-font-weight: bold; -fx-min-width: 28; -fx-padding: 3 8; "
-                + "-fx-background-radius: 4;");
+        btn.setStyle("-fx-background-color: #3d3d3d; -fx-text-fill: white; -fx-font-size: 13px; "
+                + "-fx-cursor: hand; -fx-font-weight: bold; -fx-min-width: 28; -fx-padding: 2 6;");
     }
 
     private void setupCanvasInput() {
@@ -465,8 +443,7 @@ public class MainApp extends Application {
 
     private void seedInitialAnimals() {
         spawnDens(SpawnKind.RABBIT, RABBIT_DEN_CENTERS, RABBIT_PER_DEN, RABBIT_DEN_RADIUS);
-        spawnDens(SpawnKind.RABBIT, RABBIT_EXTRA_DEN_CENTERS,
-                RABBIT_EXTRA_PER_DEN, RABBIT_EXTRA_DEN_RADIUS);
+
         spawnDens(SpawnKind.WOLF, WOLF_DEN_CENTERS, WOLF_PER_DEN, WOLF_DEN_RADIUS);
         spawnDens(SpawnKind.BEAR, BEAR_DEN_CENTERS, BEAR_PER_DEN, BEAR_DEN_RADIUS);
         spawnDens(SpawnKind.ELEPHANT, ELEPHANT_DEN_CENTERS, ELEPHANT_PER_DEN, ELEPHANT_DEN_RADIUS);

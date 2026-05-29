@@ -5,13 +5,17 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.StaticEntity;
 
 public abstract class Plant extends StaticEntity {
-    private static final double DEFAULT_NUTRITION = 40.0;
+    private static final double DEFAULT_NUTRITION = 30.0;
 
     protected boolean alive;
     protected double nutrition;
 
     protected double reproduceTime;
     protected double reproduceTimer;
+
+    // 0 = không mọc lại (bị xóa vĩnh viễn); > 0 = giây chờ để hồi sinh
+    protected double regrowTime = 0;
+    private double regrowTimer = 0;
 
     public Plant(Vector2D position, double size, String shape, double reproduceTime) {
         this(position, size, shape, reproduceTime, DEFAULT_NUTRITION);
@@ -30,18 +34,37 @@ public abstract class Plant extends StaticEntity {
         return alive;
     }
 
-    // Ăn 1 nhát: cây chết và biến mất khỏi map (WorldMap.update sẽ remove).
+    public boolean isRegrowing() {
+        return !alive && regrowTimer > 0;
+    }
+
+    // True khi cần xóa khỏi map (chết hẳn, không hồi sinh).
+    public boolean shouldBeRemoved() {
+        return !alive && regrowTimer <= 0;
+    }
+
+    // Ăn 1 nhát: nếu có regrowTime thì bắt đầu đếm ngược hồi sinh, ngược lại chết hẳn.
     public double consume() {
         if (!alive) {
             return 0;
         }
         alive = false;
+        if (regrowTime > 0) {
+            regrowTimer = regrowTime;
+        }
+        reproduceTimer = 0;
         return nutrition;
     }
 
     @Override
     public void update(double dt, WorldMap world) {
         if (!alive) {
+            if (regrowTimer > 0) {
+                regrowTimer -= dt;
+                if (regrowTimer <= 0) {
+                    alive = true;
+                }
+            }
             return;
         }
         reproduceTimer += dt;

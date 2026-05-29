@@ -38,17 +38,11 @@ public abstract class Carnivore extends LivingEntity {
         return List.of(
             new StrategyCandidate(
                 FleeStrategy::new,
-                (e, n) -> {
-                    if (!hasThreat(e, n)) return 0.0;
-                    double urgency = Math.max(e.getThirst(), e.getHunger()) / 100.0;
-                    if (urgency < 0.8) return 100.0;
-                    if (e.getHealth() < 60 && urgency >= 0.9) return 0.0;
-                    return Math.max(0.0, 100.0 * (1.0 - (urgency - 0.8) / 0.2));
-                }
+                (e, n) -> hasThreat(e, n) ? 100.0 : 0.0
             ),
             new StrategyCandidate(
                 () -> new SeekWaterStrategy(wanderDistance, wanderRadius),
-                (e, n) -> e.getThirst() / 50.0
+                (e, n) -> e.getThirst() / 100.0
             ),
             new StrategyCandidate(
                 HunterStrategy::new,
