@@ -55,24 +55,7 @@ public class TerrainGrid {
 
     public static TerrainGrid fromCsvResource(String resourcePath, int tileSize) {
         try (InputStream in = TerrainGrid.class.getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                throw new IllegalArgumentException("Cannot find terrain csv: " + resourcePath);
-            }
-
-            List<String[]> lines = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    if (!trimmed.isEmpty()) {
-                        lines.add(trimmed.split("\\s*,\\s*"));
-                    }
-                }
-            }
-
-            if (lines.isEmpty()) {
-                throw new IllegalArgumentException("Terrain csv is empty: " + resourcePath);
-            }
+            List<String[]> lines = readCsv(in, resourcePath);
 
             int rows = lines.size();
             int cols = lines.get(0).length;
@@ -94,6 +77,109 @@ public class TerrainGrid {
         }
     }
 
+    public static TerrainGrid fromLayeredCsvResources(
+            String grassResourcePath,
+            String waterResourcePath,
+            String roadResourcePath,
+            int tileSize) {
+        try {
+            List<String[]> grass = readCsvResource(grassResourcePath);
+            List<String[]> water = readCsvResource(waterResourcePath);
+            List<String[]> road = readCsvResource(roadResourcePath);
+            validateSameSize(grass, water, waterResourcePath);
+            validateSameSize(grass, road, roadResourcePath);
+
+            int rows = grass.size();
+            int cols = grass.get(0).length;
+            TerrainGrid grid = new TerrainGrid(tileSize, rows, cols);
+
+            for (int r = 0; r < rows; r++) {
+                for (int c = 0; c < cols; c++) {
+                    TerrainType type = TerrainType.LAND;
+                    if (hasTile(water.get(r)[c])) {
+                        type = isMiddleOfCsvRun(water, r, c, 3)
+                                ? TerrainType.WATER
+                                : TerrainType.ROCK;
+                    }
+                    if (hasTile(road.get(r)[c])) {
+                        type = TerrainType.BRIDGE;
+                    }
+                    grid.tiles[r][c] = new TerrainTile(r, c, type);
+                }
+            }
+            return grid;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load layered terrain grid", e);
+        }
+    }
+
+    private static List<String[]> readCsvResource(String resourcePath) throws Exception {
+        try (InputStream in = TerrainGrid.class.getResourceAsStream(resourcePath)) {
+            return readCsv(in, resourcePath);
+        }
+    }
+
+    private static List<String[]> readCsv(InputStream in, String resourcePath) throws Exception {
+        if (in == null) {
+            throw new IllegalArgumentException("Cannot find terrain csv: " + resourcePath);
+        }
+
+        List<String[]> lines = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty()) {
+                    lines.add(trimmed.split("\\s*,\\s*"));
+                }
+            }
+        }
+
+        if (lines.isEmpty()) {
+            throw new IllegalArgumentException("Terrain csv is empty: " + resourcePath);
+        }
+        return lines;
+    }
+
+    private static void validateSameSize(List<String[]> base, List<String[]> candidate, String resourcePath) {
+        if (candidate.size() != base.size()) {
+            throw new IllegalArgumentException("Terrain csv row count mismatch: " + resourcePath);
+        }
+
+        int cols = base.get(0).length;
+        for (int r = 0; r < candidate.size(); r++) {
+            if (candidate.get(r).length != cols) {
+                throw new IllegalArgumentException("Terrain csv column count mismatch at row " + r + ": " + resourcePath);
+            }
+        }
+    }
+
+    private static boolean hasTile(String code) {
+        return !"-1".equals(code.trim());
+    }
+
+    private static boolean isMiddleOfCsvRun(List<String[]> layer, int row, int col, int allowedWidth) {
+        if (!hasTile(layer.get(row)[col]) || allowedWidth <= 0) {
+            return false;
+        }
+
+        int start = col;
+        while (start - 1 >= 0 && hasTile(layer.get(row)[start - 1])) {
+            start--;
+        }
+
+        int end = col;
+        while (end + 1 < layer.get(row).length && hasTile(layer.get(row)[end + 1])) {
+            end++;
+        }
+
+        int runWidth = end - start + 1;
+        int laneWidth = Math.min(allowedWidth, runWidth);
+        int laneStart = start + (int) Math.ceil((runWidth - laneWidth) / 2.0);
+        int laneEnd = laneStart + laneWidth - 1;
+        return col >= laneStart && col <= laneEnd;
+    }
+
     private static TerrainType decode(String code) {
         String normalized = code.trim().toUpperCase();
 
@@ -108,6 +194,9 @@ public class TerrainGrid {
         switch (normalized) {
             case "W":
                 return TerrainType.WATER;
+            case "G":
+            case "D":
+                return TerrainType.BRIDGE;
             case "R":
                 return TerrainType.ROCK;
             case "B":
@@ -142,6 +231,35 @@ public class TerrainGrid {
         }
         tiles[row][col].setType(type);
         return true;
+    }
+
+    public boolean isMiddleOfWaterRun(Vector2D worldPosition, int allowedWidth) {
+        if (worldPosition == null || allowedWidth <= 0) {
+            return false;
+        }
+
+        GridCoordinate coordinate = worldToGrid(worldPosition);
+        int row = coordinate.getRow();
+        int col = coordinate.getCol();
+        if (!isInside(row, col) || tiles[row][col].getType() != TerrainType.WATER) {
+            return false;
+        }
+
+        int start = col;
+        while (start - 1 >= 0 && tiles[row][start - 1].getType() == TerrainType.WATER) {
+            start--;
+        }
+
+        int end = col;
+        while (end + 1 < cols && tiles[row][end + 1].getType() == TerrainType.WATER) {
+            end++;
+        }
+
+        int runWidth = end - start + 1;
+        int laneWidth = Math.min(allowedWidth, runWidth);
+        int laneStart = start + (runWidth - laneWidth) / 2;
+        int laneEnd = laneStart + laneWidth - 1;
+        return col >= laneStart && col <= laneEnd;
     }
 
     public GridCoordinate worldToGrid(Vector2D worldPosition) {

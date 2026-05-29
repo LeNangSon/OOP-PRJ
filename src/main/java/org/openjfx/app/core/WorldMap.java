@@ -20,8 +20,13 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
 public class WorldMap {
+    private static final double BRIDGE_CLEARANCE = 5.0;
+    private static final double WATER_CLEARANCE = 7.0;
+
     private final double width;
     private final double height;
+    private double viewportWidth;
+    private double viewportHeight;
     private final List<Entity> entities;
     private final List<Entity> pendingSpawns = new ArrayList<>();
     private TerrainGrid terrainGrid;
@@ -37,6 +42,8 @@ public class WorldMap {
     public WorldMap(double width, double height) {
         this.width = width;
         this.height = height;
+        this.viewportWidth = width;
+        this.viewportHeight = height;
         this.entities = new ArrayList<>();
     }
 
@@ -58,8 +65,23 @@ public class WorldMap {
         this.terrainGrid = TerrainGrid.fromCsvResource(resourcePath, tileSize);
     }
 
+    public void setTerrainGridFromLayeredCsvResources(
+            String grassResourcePath,
+            String waterResourcePath,
+            String roadResourcePath,
+            int tileSize) {
+        this.terrainGrid = TerrainGrid.fromLayeredCsvResources(
+                grassResourcePath, waterResourcePath, roadResourcePath, tileSize);
+    }
+
     public double getWidth() { return width; }
     public double getHeight() { return height; }
+
+    public void setViewportSize(double viewportWidth, double viewportHeight) {
+        this.viewportWidth = Math.max(1.0, viewportWidth);
+        this.viewportHeight = Math.max(1.0, viewportHeight);
+        setOffset(offsetX, offsetY);
+    }
 
     public TerrainType getTerrainAt(Vector2D position) {
         if (terrainGrid == null) return TerrainType.LAND;
@@ -418,14 +440,44 @@ public class WorldMap {
     public boolean canStandOn(LivingEntity entity, Vector2D position) {
         TerrainType terrain = getTerrainAt(position);
         EntityType entityType = entity.getType();
-        if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
+        if (terrain == TerrainType.WATER) {
+            return entityType == EntityType.FISH
+                    && hasTerrainClearance(position, TerrainType.WATER, WATER_CLEARANCE);
+        }
         if (terrain == TerrainType.LAND) return entityType != EntityType.FISH;
+        if (terrain == TerrainType.BRIDGE) {
+            return entityType != EntityType.FISH
+                    && hasTerrainClearance(position, TerrainType.BRIDGE, BRIDGE_CLEARANCE);
+        }
         if (terrain == TerrainType.BUSH) {
             return entityType == EntityType.RABBIT;
         }
         if (terrain == TerrainType.PIT) return false;
         return terrain != TerrainType.ROCK;
     }
+
+    private boolean hasTerrainClearance(Vector2D position, TerrainType requiredType, double clearance) {
+        if (position == null || requiredType == null || clearance <= 0) {
+            return false;
+        }
+
+        double[][] probes = {
+                {0, 0},
+                {-clearance, 0}, {clearance, 0},
+                {0, -clearance}, {0, clearance},
+                {-clearance, -clearance}, {clearance, -clearance},
+                {-clearance, clearance}, {clearance, clearance},
+        };
+
+        for (double[] probe : probes) {
+            Vector2D probePosition = new Vector2D(position.x + probe[0], position.y + probe[1]);
+            if (getTerrainAt(probePosition) != requiredType) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 
     // --- CẬP NHẬT: Duyệt và xóa thực thể đã chết để giải phóng Log ---
     public void update(double dt) {
@@ -594,7 +646,7 @@ public class WorldMap {
     private double scale = 1.0;
     // Thêm getter/setter để MainApp có thể gọi
     public void setScale(double scale) {
-    this.scale = Math.max(1.0, Math.min(3.0, scale));
+    this.scale = Math.max(0.75, Math.min(3.0, scale));
     }
     public double getScale() { return scale; }
     private double offsetX = 0;
@@ -606,19 +658,19 @@ public class WorldMap {
     double scaledHeight = this.height * this.scale;
 
     // Chặn biên X: Nếu bản đồ to hơn khung hình thì mới cho lia
-    if (scaledWidth > this.width) {
-        this.offsetX = Math.min(0, Math.max(x, this.width - scaledWidth));
+    if (scaledWidth > this.viewportWidth) {
+        this.offsetX = Math.min(0, Math.max(x, this.viewportWidth - scaledWidth));
     } else {
         // Nếu không muốn đứng yên tại 0, bạn có thể gán this.offsetX = x;
         // Nhưng theo ý bạn là "bản đồ cố định" nên để là 0 hoặc căn giữa:
-        this.offsetX = (this.width - scaledWidth) / 2; 
+        this.offsetX = (this.viewportWidth - scaledWidth) / 2; 
     }
 
     // Chặn biên Y
-    if (scaledHeight > this.height) {
-        this.offsetY = Math.min(0, Math.max(y, this.height - scaledHeight));
+    if (scaledHeight > this.viewportHeight) {
+        this.offsetY = Math.min(0, Math.max(y, this.viewportHeight - scaledHeight));
     } else {
-        this.offsetY = (this.height - scaledHeight) / 2;
+        this.offsetY = (this.viewportHeight - scaledHeight) / 2;
     }
     }
     public double getOffsetX() { return offsetX; }

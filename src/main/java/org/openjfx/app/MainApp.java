@@ -59,20 +59,24 @@ public class MainApp extends Application {
         GRASS, ALGAE, BUSH, ROCK
     }
 
-    private static final double WIDTH = 1032;
-    private static final double HEIGHT = 576;
-    private static final double MIN_ZOOM = 1.0;
+    private static final double WIDTH = 1280;
+    private static final double HEIGHT = 1280;
+    private static final double CANVAS_WIDTH = 960;
+    private static final double CANVAS_HEIGHT = 640;
+    private static final double MIN_ZOOM = 0.75;
     private static final double MAX_ZOOM = 3.0;
     private static final double SOUND_ZOOM_THRESHOLD = 1.8;
-    private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/map-final.png";
-    private static final String TERRAIN_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain.csv";
+    private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/myp.png";
+    private static final String TERRAIN_GRASS_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain_Co.csv";
+    private static final String TERRAIN_WATER_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain_Song.csv";
+    private static final String TERRAIN_ROAD_CSV_RESOURCE_PATH = "/org/openjfx/app/terrain_Cauvaduongdi.csv";
     private static final String WOLF_MATING_SOUND_RESOURCE_PATH =
             "/sounds/soitimbantinh.wav";
     private static final String BEAR_MATING_SOUND_RESOURCE_PATH = "/sounds/gautimbantinh.mp3";
     private static final String WOLF_EATING_SOUND_RESOURCE_PATH = "/sounds/anthit.mp3";
     private static final String ELEPHANT_SOUND_RESOURCE_PATH = "/sounds/voi.mp3";
     private static final String FISH_SWIMMING_SOUND_RESOURCE_PATH = "/sounds/ca.wav";
-    private static final int TERRAIN_TILE_SIZE = 24;
+    private static final int TERRAIN_TILE_SIZE = 16;
 
     /** Mỗi loài có nhiều "ổ" (den): tâm cố định, thành viên spawn ngẫu nhiên quanh tâm. */
     private static final double[][] WOLF_DEN_CENTERS = {
@@ -142,8 +146,15 @@ public class MainApp extends Application {
     @Override
     public void start(Stage stage) {
         worldMap = new WorldMap(WIDTH, HEIGHT);
+        worldMap.setViewportSize(CANVAS_WIDTH, CANVAS_HEIGHT);
+        worldMap.setScale(MIN_ZOOM);
+        worldMap.setOffset(0, 0);
         worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
-        worldMap.setTerrainGridFromCsvResource(TERRAIN_CSV_RESOURCE_PATH, TERRAIN_TILE_SIZE);
+        worldMap.setTerrainGridFromLayeredCsvResources(
+                TERRAIN_GRASS_CSV_RESOURCE_PATH,
+                TERRAIN_WATER_CSV_RESOURCE_PATH,
+                TERRAIN_ROAD_CSV_RESOURCE_PATH,
+                TERRAIN_TILE_SIZE);
         seedInitialAnimals();
 
         ObservableList<String> logData = FXCollections.observableArrayList();
@@ -177,7 +188,7 @@ public class MainApp extends Application {
                 "63 thỏ (12 ổ × 4 + 5 ổ × 3), 16 sói (4 ổ × 4), 18 gấu (9 ổ × 2), "
                         + "12 voi (3 ổ × 4), " + INITIAL_GRASS_COUNT + " cỏ");
 
-        canvas = new Canvas(WIDTH, HEIGHT);
+        canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
         canvas.setFocusTraversable(true);
         setupCanvasInput();
@@ -185,7 +196,7 @@ public class MainApp extends Application {
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                gc.clearRect(0, 0, WIDTH, HEIGHT);
+                gc.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
                 worldMap.update(0.016);
                 updateWolfMatingSound();
                 updateBearMatingSound();
@@ -205,7 +216,7 @@ public class MainApp extends Application {
         VBox.setVgrow(canvas, Priority.ALWAYS);
 
         HBox root = new HBox(mapColumn, listView, entityStatusPanel);
-        Scene scene = new Scene(root, WIDTH + 400, HEIGHT + 40);
+        Scene scene = new Scene(root, CANVAS_WIDTH + 400, CANVAS_HEIGHT + 40);
 
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.TAB) {
@@ -257,7 +268,7 @@ public class MainApp extends Application {
             if (updatingZoomSlider) {
                 return;
             }
-            zoomAtPoint(newVal.doubleValue(), worldMap.getScale(), WIDTH / 2, HEIGHT / 2);
+            zoomAtPoint(newVal.doubleValue(), worldMap.getScale(), CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
         });
 
         Button btnPlus = new Button("+");
@@ -406,18 +417,6 @@ public class MainApp extends Application {
                 } else if (e.getButton() == MouseButton.SECONDARY) {
                     clearPlacementMode();
                 }
-                return;
-            }
-
-            double oldScale = worldMap.getScale();
-            double newScale = oldScale;
-            if (e.getButton() == MouseButton.PRIMARY) {
-                newScale = Math.min(MAX_ZOOM, oldScale + 0.2);
-            } else if (e.getButton() == MouseButton.SECONDARY) {
-                newScale = Math.max(MIN_ZOOM, oldScale - 0.2);
-            }
-            if (newScale != oldScale) {
-                zoomAtPoint(newScale, oldScale, e.getX(), e.getY());
             }
         });
     }
@@ -624,7 +623,7 @@ public class MainApp extends Application {
 
     private void applyZoom(double targetScale) {
         double clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetScale));
-        zoomAtPoint(clamped, worldMap.getScale(), WIDTH / 2, HEIGHT / 2);
+        zoomAtPoint(clamped, worldMap.getScale(), CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
 
     private void zoomAtPoint(double newScale, double oldScale, double cx, double cy) {
