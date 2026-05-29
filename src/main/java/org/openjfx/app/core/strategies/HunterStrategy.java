@@ -22,7 +22,12 @@ public class HunterStrategy implements MoveStrategy {
     private static final int MAX_BLOCKED_WAYPOINTS = 20;
     private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
-    private double logCooldown = 0;
+    private static final double NO_TARGET_TIMEOUT      = 3.0;
+    private static final double FORCED_WANDER_DURATION = 2.0;
+
+    private double logCooldown      = 0;
+    private double noTargetTimer    = 0.0;
+    private double forcedWanderTimer = 0.0;
     private WanderStrategy wanderFallback;
 
     public static final class DebugPathState {
@@ -66,9 +71,17 @@ public class HunterStrategy implements MoveStrategy {
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
         if (owner.isAlive()) {
+            // Forced wander: lang thang 2s rồi mới săn lại
+            if (forcedWanderTimer > 0) {
+                forcedWanderTimer -= dt;
+                runWanderFallback(owner, neighbors, dt, world);
+                return;
+            }
+
             int targetId = findClosestPrey(owner, neighbors, world);
 
             if (targetId != -1) {
+                noTargetTimer = 0.0;
                 Entity prey = world.getEntityById(targetId);
                 if (prey != null) {
                     // --- SỬA TÊN#ID Ở ĐÂY ---
@@ -137,12 +150,16 @@ public class HunterStrategy implements MoveStrategy {
                     }
                 }
             } else {
-                // Nếu không tìm thấy mồi: reset trạng thái path và tạm thời lang thang
+                // Không tìm thấy mồi
                 logCooldown = 0;
                 clearDebugPathState(owner.getId());
 
+                noTargetTimer += dt;
+                if (noTargetTimer >= NO_TARGET_TIMEOUT) {
+                    forcedWanderTimer = FORCED_WANDER_DURATION;
+                    noTargetTimer     = 0.0;
+                }
                 runWanderFallback(owner, neighbors, dt, world);
-                return;
             }
         }
     }

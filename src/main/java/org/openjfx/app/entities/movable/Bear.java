@@ -21,13 +21,13 @@ public class Bear extends Carnivore {
                 3.0,       // thirstRate
                 45.0,      // maxSpeed (Chậm hơn sói nhưng nhanh hơn voi)
                 30.0,       // maxForce (Lực lái tốt để vồ mồi)
-                10.0,      // mass (Khối lượng lớn tạo độ đà)
+                5.0,      // mass (Khối lượng lớn tạo độ đà)
                 35.0,      // wanderDistance
                 35.0       // wanderRadius
         );
 
         // Thiết lập tầm nhìn (radius) để phát hiện con mồi hoặc mối đe dọa
-        this.setVisionRadius(60.0);
+        this.setVisionRadius(40.0);
         this.setHunger(50);
         this.type = EntityType.BEAR;
         this.matureAge = 15.0;

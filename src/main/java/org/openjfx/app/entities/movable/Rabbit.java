@@ -17,11 +17,11 @@ public class Rabbit extends Herbivore {
             28,
                 "circle",
                 100.0,
-                3.0,
+                2.0,
                 2.0,
             20,
             20,
-            3.0,
+            0.5,
             10.0,
             10.0
         );

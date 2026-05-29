@@ -19,9 +19,9 @@ public class Elephant extends Herbivore {
                 200.0,     // initialHealth
                 5.0,       // hungerRate (Voi ăn nhiều nên tốc độ đói nhanh)
                 5.0,       // thirstRate (Voi uống nhiều nước)
-                40.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
+                20.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
                 80.0,       // maxForce (Lực lái vừa phải)
-                3.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
+                4.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
                 30.0,     // wanderDistance (Khoảng cách điểm ảo xa để đi thẳng ổn định)
                 30.0       // wanderRadius (Bán kính nhiễu lớn hơn để quẹo vòng cung rộng)
         );

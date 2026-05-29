@@ -5,7 +5,7 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.StaticEntity;
 
 public abstract class Plant extends StaticEntity {
-    private static final double DEFAULT_NUTRITION = 30.0;
+    private static final double DEFAULT_NUTRITION = 40.0;
 
     protected boolean alive;
     protected double nutrition;

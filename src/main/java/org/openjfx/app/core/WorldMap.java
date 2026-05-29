@@ -289,6 +289,61 @@ public class WorldMap {
         return nearestCenter;
     }
 
+    // Tìm ô terrain gần nhất, bỏ qua các vị trí trong excluded (theo exclusionRadius).
+    // radius <= 0 → tìm toàn bản đồ.
+    public Vector2D findNearestTerrainPositionExcluding(
+            Vector2D from, TerrainType targetType, double radius,
+            List<Vector2D> excluded, double exclusionRadius) {
+        if (terrainGrid == null || from == null || targetType == null) return null;
+        boolean useRadius = radius > 0;
+        int rows = terrainGrid.getRows();
+        int cols = terrainGrid.getCols();
+        int tileSize = terrainGrid.getTileSize();
+
+        int rowStart = 0, rowEnd = rows - 1, colStart = 0, colEnd = cols - 1;
+        if (useRadius) {
+            TerrainGrid.GridCoordinate center = worldToGrid(from);
+            if (center == null) return null;
+            int tileRadius = (int) Math.ceil(radius / tileSize);
+            rowStart = Math.max(0, center.getRow() - tileRadius);
+            rowEnd   = Math.min(rows - 1, center.getRow() + tileRadius);
+            colStart = Math.max(0, center.getCol() - tileRadius);
+            colEnd   = Math.min(cols - 1, center.getCol() + tileRadius);
+        }
+
+        double radiusSq = useRadius ? radius * radius : Double.MAX_VALUE;
+        double exclSq   = exclusionRadius * exclusionRadius;
+        Vector2D nearest = null;
+        double minDistSq = Double.MAX_VALUE;
+
+        for (int row = rowStart; row <= rowEnd; row++) {
+            for (int col = colStart; col <= colEnd; col++) {
+                TerrainTile tile = terrainGrid.getTile(row, col);
+                if (tile == null || tile.getType() != targetType) continue;
+                Vector2D center = terrainGrid.gridToWorldCenter(row, col);
+                double dx = center.x - from.x;
+                double dy = center.y - from.y;
+                double distSq = dx * dx + dy * dy;
+                if (distSq > radiusSq) continue;
+                if (excluded != null) {
+                    boolean skip = false;
+                    for (Vector2D ex : excluded) {
+                        if (ex == null) continue;
+                        double exDx = center.x - ex.x;
+                        double exDy = center.y - ex.y;
+                        if (exDx * exDx + exDy * exDy < exclSq) { skip = true; break; }
+                    }
+                    if (skip) continue;
+                }
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    nearest = center;
+                }
+            }
+        }
+        return nearest;
+    }
+
     public Vector2D findFarthestTerrainPositionFromThreat(
             Vector2D from,
             Vector2D threatPos,
