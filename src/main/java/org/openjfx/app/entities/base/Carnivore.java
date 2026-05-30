@@ -1,5 +1,6 @@
 package org.openjfx.app.entities.base;
 
+import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
@@ -34,6 +35,7 @@ public abstract class Carnivore extends LivingEntity {
     public void update(double dt, WorldMap world) {
         // Cập nhật danh sách hàng xóm dựa trên tầm nhìn (radius)
         this.neighbors = world.getNeighbors(this, this.visionRadius);
+        boolean hasPreyNearby = hasPreyNearby();
 
         // Quyết định chiến thuật di chuyển
         if (hasThreat(this, neighbors)) {
@@ -45,7 +47,7 @@ public abstract class Carnivore extends LivingEntity {
             if (!(this.moveStrategy instanceof SeekWaterStrategy)) {
                 this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
             }
-        } else if (this.getHunger() > 60.0) { // Thú ăn thịt thường đi săn sớm hơn
+        } else if (hasPreyNearby || this.getHunger() > 60.0) { // Thú ăn thịt sẽ săn khi thấy mồi
             if (!(this.moveStrategy instanceof HunterStrategy)) {
                 this.moveStrategy = new HunterStrategy();
             }
@@ -57,11 +59,21 @@ public abstract class Carnivore extends LivingEntity {
         }
 
         // Tính toán vận tốc
-        if (this.moveStrategy != null) {
+        if (this.moveStrategy != null && !this.isAvoidingBlockedPath()) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
 
         // Cập nhật vị trí và các chỉ số sinh tồn cơ bản
         super.update(dt, world);
+    }
+
+    private boolean hasPreyNearby() {
+        if (neighbors == null) return false;
+        for (Entity neighbor : neighbors) {
+            if (neighbor != null && RelationManager.isPrey(neighbor.getType(), this.getType())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

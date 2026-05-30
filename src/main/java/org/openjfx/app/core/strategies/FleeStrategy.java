@@ -150,7 +150,10 @@ public class FleeStrategy implements MoveStrategy {
 
         Vector2D steering = desiredVelocity.sub(owner.getVelocity());
         Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
-        Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
+        Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt));
+        if (newVelocity.magnitude() > 1e-6) {
+            newVelocity = newVelocity.normalize().multiply(owner.getMaxSpeed());
+        }
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
 

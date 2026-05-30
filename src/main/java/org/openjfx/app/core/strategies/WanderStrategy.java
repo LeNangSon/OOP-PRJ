@@ -90,7 +90,7 @@ public class WanderStrategy implements MoveStrategy {
         owner.setAcceleration(acceleration);
 
         Vector2D nextVelocity = currentVel.add(acceleration.multiply(dt));
-        if (nextVelocity.magnitude() > maxSpeed && maxSpeed > 0) {
+        if (maxSpeed > 0 && nextVelocity.magnitude() > 1e-6) {
             nextVelocity = nextVelocity.normalize().multiply(maxSpeed);
         }
         owner.setVelocity(nextVelocity);

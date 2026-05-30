@@ -47,7 +47,7 @@ public abstract class Herbivore extends LivingEntity {
         }
 
         // Cập nhật vận tốc từ Strategy
-        if (this.moveStrategy != null) {
+        if (this.moveStrategy != null && !this.isAvoidingBlockedPath()) {
             this.moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
 

@@ -66,6 +66,10 @@ public abstract class LivingEntity extends MovableEntity {
     public boolean getBlockedLastStep() {
         return blockedLastStep;
     }
+
+    public boolean isAvoidingBlockedPath() {
+        return blockedCooldown > 0;
+    }
     public double getHealth() { return health; }
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }

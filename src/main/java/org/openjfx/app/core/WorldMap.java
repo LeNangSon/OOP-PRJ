@@ -197,7 +197,12 @@ public class WorldMap {
                 // Check đi vào được không
                 Vector2D titleCenter = gridToWorldCenter(newRow, newCol);
                 if (titleCenter == null) continue;
-                if(!canStandOn(entity, titleCenter)) continue;
+                boolean isTargetCell = newRow == t_row && newCol == t_col;
+                if (isTargetCell) {
+                    if (!canStandAtPoint(entity, titleCenter)) continue;
+                } else if(!canStandOn(entity, titleCenter)) {
+                    continue;
+                }
                 if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(newRow, newCol))) continue;
 
                 AstarNode nextNode = allNodes[newRow][newCol];
@@ -321,6 +326,7 @@ public class WorldMap {
     public boolean canStandOn(LivingEntity entity, Vector2D position) {
         if (entity == null || position == null) return false;
         if (position.x < 0 || position.y < 0 || position.x > width || position.y > height) return false;
+        if (collidesWithAnotherLivingEntity(entity, position)) return false;
 
         double radius = Math.max(2.0, entity.getSize() * 0.35);
         double diagonal = radius * 0.7;
@@ -345,6 +351,43 @@ public class WorldMap {
             }
         }
         return true;
+    }
+
+    private boolean collidesWithAnotherLivingEntity(LivingEntity movingEntity, Vector2D nextPosition) {
+        double movingRadius = Math.max(4.0, movingEntity.getSize() * 0.35);
+        for (Entity other : entities) {
+            if (other == movingEntity || !(other instanceof LivingEntity)) {
+                continue;
+            }
+
+            LivingEntity otherLiving = (LivingEntity) other;
+            if (!otherLiving.isAlive()) {
+                continue;
+            }
+
+            double otherRadius = Math.max(4.0, other.getSize() * 0.35);
+            double minDistance = movingRadius + otherRadius;
+
+            if (RelationManager.isPrey(other.getType(), movingEntity.getType())) {
+                minDistance *= 0.35;
+            }
+
+            double currentDistance = movingEntity.getPosition().distance(other.getPosition());
+            double nextDistance = nextPosition.distance(other.getPosition());
+            if (currentDistance < minDistance && nextDistance >= currentDistance) {
+                continue;
+            }
+
+            if (nextDistance < minDistance) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public double getInteractionDistance(LivingEntity actor, Entity target) {
+        if (actor == null || target == null) return 5.0;
+        return Math.max(8.0, (actor.getSize() + target.getSize()) * 0.28);
     }
 
     private boolean canEntityStandOnTerrain(EntityType entityType, TerrainType terrain) {
