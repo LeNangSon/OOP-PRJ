@@ -144,7 +144,7 @@ public abstract class LivingEntity extends MovableEntity {
             this.position = nextPosition;
             
         } else {
-            this.velocity = this.velocity.multiply(-0.5);
+            avoidBlockedDirection(world, dt);
             this.setBlockedLastStep(true);
             this.setBlockedCooldown();
         }
@@ -157,6 +157,41 @@ public abstract class LivingEntity extends MovableEntity {
 
         handleOutOfMap(world);
 
+    }
+
+    private void avoidBlockedDirection(WorldMap world, double dt) {
+        Vector2D currentVelocity = this.velocity;
+        Vector2D forward = currentVelocity.magnitude() < 0.01
+                ? new Vector2D(Math.cos(this.id), Math.sin(this.id))
+                : currentVelocity.normalize();
+
+        Vector2D[] candidates = {
+                new Vector2D(-forward.y, forward.x),
+                new Vector2D(forward.y, -forward.x),
+                forward.multiply(-1),
+                new Vector2D(-forward.y, forward.x).add(forward.multiply(-0.35)),
+                new Vector2D(forward.y, -forward.x).add(forward.multiply(-0.35)),
+                new Vector2D(Math.cos(System.nanoTime() + this.id), Math.sin(System.nanoTime() + this.id))
+        };
+
+        double escapeSpeed = Math.max(this.getMaxSpeed() * 0.85, this.getWanderSpeed());
+        double probeDistance = Math.max(this.size * 0.45, escapeSpeed * Math.max(dt, 0.08));
+
+        for (Vector2D candidate : candidates) {
+            if (candidate.magnitude() < 0.01) {
+                continue;
+            }
+
+            Vector2D direction = candidate.normalize();
+            Vector2D escapePosition = this.position.add(direction.multiply(probeDistance));
+            if (world.canStandOn(this, escapePosition)) {
+                this.velocity = direction.multiply(escapeSpeed);
+                this.position = this.position.add(direction.multiply(Math.min(probeDistance, this.size * 0.12)));
+                return;
+            }
+        }
+
+        this.velocity = forward.multiply(-escapeSpeed * 0.5);
     }
 
     protected void handleOutOfMap(WorldMap world) {
