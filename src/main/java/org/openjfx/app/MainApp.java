@@ -22,12 +22,14 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.paint.Color;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 public class MainApp extends Application {
@@ -39,12 +41,23 @@ public class MainApp extends Application {
     private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/spring.jpg";
     private static final String SPRING_TMX_RESOURCE_PATH = "/org/openjfx/app/spring.tmx";
     private static final int SPRING_TILE_SIZE = 32;
+    private static final String SUMMER_MAP_RESOURCE_PATH = "/org/openjfx/app/summer.png";
+    private static final String SUMMER_TMX_RESOURCE_PATH = "/org/openjfx/app/summer.tmx";
+    private static final int SUMMER_TILE_SIZE = 32;
+
+    private static final String BTN_BASE   = "-fx-background-color: rgba(20,20,20,0.55); -fx-text-fill: white; -fx-padding: 4 12; -fx-cursor: hand; -fx-font-size: 12px;";
+    private static final String BTN_ACCENT = "-fx-background-color: rgba(20,20,20,0.55); -fx-text-fill: #ffdddd; -fx-padding: 4 12; -fx-cursor: hand; -fx-font-size: 12px;";
 
     private WorldMap worldMap;
     private AnimalToAdd selectedAnimal = AnimalToAdd.RABBIT;
+    private Season currentSeason = Season.SPRING;
 
     private enum AnimalToAdd {
         RABBIT, WOLF, BEAR, ELEPHANT, FISH
+    }
+
+    private enum Season {
+        SPRING, SUMMER, AUTUMN, WINTER
     }
 
     @Override
@@ -118,9 +131,13 @@ public class MainApp extends Application {
         timer.start();
 
         HBox toolbar = createToolbar();
-        VBox mapPane = new VBox(toolbar, canvas);
+        StackPane mapPane = new StackPane(canvas, toolbar);
+        StackPane.setAlignment(toolbar, Pos.TOP_LEFT);
+        mapPane.setStyle("-fx-background-color: transparent;");
+
         HBox root = new HBox(mapPane, listView, entityStatusPanel);
-        Scene scene = new Scene(root, WIDTH + TERMINAL_WIDTH, HEIGHT + TOOLBAR_HEIGHT);
+        root.setStyle("-fx-background-color: #1a1a1a;");
+        Scene scene = new Scene(root, WIDTH + TERMINAL_WIDTH, HEIGHT, Color.rgb(26, 26, 26));
 
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.TAB) {
@@ -129,11 +146,7 @@ public class MainApp extends Application {
                 entityStatusPanel.setManaged(showStats);
                 listView.setVisible(!showStats);
                 listView.setManaged(!showStats);
-
-                if (showStats) {
-                    entityStatusPanel.refreshData();
-                }
-
+                if (showStats) entityStatusPanel.refreshData();
                 event.consume();
             }
         });
@@ -144,18 +157,21 @@ public class MainApp extends Application {
     }
 
     private HBox createToolbar() {
+        // --- Dropdown chon dong vat ---
+        MenuButton animalMenu = new MenuButton("Thêm: Thỏ");
+        animalMenu.setStyle(BTN_BASE);
         ToggleGroup animalGroup = new ToggleGroup();
-        ToggleButton btnRabbit = createAnimalButton("Thỏ", AnimalToAdd.RABBIT, animalGroup);
-        ToggleButton btnWolf = createAnimalButton("Sói", AnimalToAdd.WOLF, animalGroup);
-        ToggleButton btnBear = createAnimalButton("Gấu", AnimalToAdd.BEAR, animalGroup);
-        ToggleButton btnElephant = createAnimalButton("Voi", AnimalToAdd.ELEPHANT, animalGroup);
-        ToggleButton btnFish = createAnimalButton("Cá", AnimalToAdd.FISH, animalGroup);
-        btnRabbit.setSelected(true);
+        addAnimalItem(animalMenu, animalGroup, "Thỏ", AnimalToAdd.RABBIT, true);
+        addAnimalItem(animalMenu, animalGroup, "Sói", AnimalToAdd.WOLF, false);
+        addAnimalItem(animalMenu, animalGroup, "Gấu", AnimalToAdd.BEAR, false);
+        addAnimalItem(animalMenu, animalGroup, "Voi", AnimalToAdd.ELEPHANT, false);
+        addAnimalItem(animalMenu, animalGroup, "Cá", AnimalToAdd.FISH, false);
 
+        // --- Nut zoom ---
         Button btnPlus = createToolbarButton("+");
         Button btnMinus = createToolbarButton("-");
         Button btnReset = createToolbarButton("Đặt lại");
-        btnReset.setStyle("-fx-background-color: #4a4a4a; -fx-text-fill: #ffdddd; -fx-padding: 4 10; -fx-cursor: hand;");
+        btnReset.setStyle(BTN_ACCENT);
 
         btnPlus.setOnAction(e -> zoomAtPoint(Math.min(3.0, worldMap.getScale() + 0.1), worldMap.getScale(), WIDTH / 2, HEIGHT / 2));
         btnMinus.setOnAction(e -> zoomAtPoint(Math.max(1.0, worldMap.getScale() - 0.1), worldMap.getScale(), WIDTH / 2, HEIGHT / 2));
@@ -164,34 +180,77 @@ public class MainApp extends Application {
             worldMap.setOffset(0, 0);
         });
 
-        HBox toolbar = new HBox(8, btnRabbit, btnWolf, btnBear, btnElephant, btnFish, btnPlus, btnMinus, btnReset);
+        // --- Dropdown chon mua ---
+        MenuButton seasonMenu = new MenuButton("Mùa: Xuân");
+        seasonMenu.setStyle(BTN_BASE);
+        ToggleGroup seasonGroup = new ToggleGroup();
+        addSeasonItem(seasonMenu, seasonGroup, "Xuân", Season.SPRING, true, false);
+        addSeasonItem(seasonMenu, seasonGroup, "Hạ",   Season.SUMMER, false, false);
+        addSeasonItem(seasonMenu, seasonGroup, "Thu",  Season.AUTUMN, false, true);
+        addSeasonItem(seasonMenu, seasonGroup, "Đông", Season.WINTER, false, true);
+
+        HBox toolbar = new HBox(6, animalMenu, btnPlus, btnMinus, btnReset, seasonMenu);
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.setPadding(new Insets(6));
         toolbar.setMinHeight(TOOLBAR_HEIGHT);
-        toolbar.setStyle("-fx-background-color: #242424;");
+        toolbar.setMaxHeight(TOOLBAR_HEIGHT);
+        toolbar.setPrefHeight(TOOLBAR_HEIGHT);
+        toolbar.setStyle("-fx-background-color: transparent;");
         return toolbar;
     }
 
-    private ToggleButton createAnimalButton(String text, AnimalToAdd animal, ToggleGroup group) {
-        ToggleButton button = new ToggleButton(text);
-        button.setToggleGroup(group);
-        button.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-padding: 4 10; -fx-cursor: hand;");
-        button.setOnAction(e -> selectedAnimal = animal);
-        return button;
+    private void addAnimalItem(MenuButton menu, ToggleGroup group, String label, AnimalToAdd animal, boolean selected) {
+        RadioMenuItem item = new RadioMenuItem(label);
+        item.setToggleGroup(group);
+        item.setSelected(selected);
+        item.setOnAction(e -> {
+            selectedAnimal = animal;
+            menu.setText("Thêm: " + label);
+        });
+        menu.getItems().add(item);
+    }
+
+    private void addSeasonItem(MenuButton menu, ToggleGroup group, String label, Season season, boolean selected, boolean disabled) {
+        RadioMenuItem item = new RadioMenuItem(label);
+        item.setToggleGroup(group);
+        item.setSelected(selected);
+        item.setDisable(disabled);
+        item.setOnAction(e -> {
+            menu.setText("Mùa: " + label);
+            switchToSeason(season);
+        });
+        menu.getItems().add(item);
+    }
+
+    private void switchToSeason(Season season) {
+        if (currentSeason == season) return;
+        currentSeason = season;
+        double mapScaleX = WIDTH / SOURCE_MAP_SIZE;
+        double mapScaleY = HEIGHT / SOURCE_MAP_SIZE;
+        switch (season) {
+            case SPRING:
+                worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
+                worldMap.setObjectZonesFromTmxResource(SPRING_TMX_RESOURCE_PATH, SPRING_TILE_SIZE, mapScaleX, mapScaleY);
+                break;
+            case SUMMER:
+                worldMap.setFixedBackgroundImageFromResource(SUMMER_MAP_RESOURCE_PATH);
+                worldMap.setObjectZonesFromTmxResource(SUMMER_TMX_RESOURCE_PATH, SUMMER_TILE_SIZE, mapScaleX, mapScaleY);
+                break;
+            default:
+                break;
+        }
     }
 
     private Button createToolbarButton(String text) {
         Button button = new Button(text);
-        button.setStyle("-fx-background-color: #3b3b3b; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 10; -fx-cursor: hand;");
+        button.setStyle(BTN_BASE);
         return button;
     }
 
     private void addSelectedAnimalAt(double screenX, double screenY) {
         Vector2D worldPosition = screenToWorld(screenX, screenY);
         Entity entity = createSelectedAnimal(worldPosition);
-        if (!(entity instanceof LivingEntity)) {
-            return;
-        }
+        if (!(entity instanceof LivingEntity)) return;
 
         LivingEntity livingEntity = (LivingEntity) entity;
         if (worldMap.canStandOn(livingEntity, worldPosition)) {
@@ -207,18 +266,12 @@ public class MainApp extends Application {
 
     private Entity createSelectedAnimal(Vector2D position) {
         switch (selectedAnimal) {
-            case RABBIT:
-                return new Rabbit(position);
-            case WOLF:
-                return new Wolf(position);
-            case BEAR:
-                return new Bear(position);
-            case ELEPHANT:
-                return new Elephant(position);
-            case FISH:
-                return new Fish(position);
-            default:
-                return null;
+            case RABBIT:   return new Rabbit(position);
+            case WOLF:     return new Wolf(position);
+            case BEAR:     return new Bear(position);
+            case ELEPHANT: return new Elephant(position);
+            case FISH:     return new Fish(position);
+            default:       return null;
         }
     }
 
