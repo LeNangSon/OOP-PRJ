@@ -419,7 +419,12 @@ public class WorldMap {
 
     private void renderElephantWithAnimation(GraphicsContext gc, Elephant e) {
         String dir = getDirection(e.getId(), e.getVelocity(), elephantDirectionCache, "right");
-        renderImageAtEntity(gc, e, "org/openjfx/app/elephant_walk/elephant_" + dir + "_" + getWalkFrame(e.getId(), e.getVelocity()) + ".png");
+        if (e.isDrinking()) {
+            String drinkDir = getDrinkingDirection(e, dir);
+            renderImageAtEntity(gc, e, "org/openjfx/app/elephant_anim/elephant_drink_" + drinkDir + "_" + getLoopFrame(e.getId()) + ".png");
+            return;
+        }
+        renderImageAtEntity(gc, e, "org/openjfx/app/elephant_anim/elephant_walk_" + dir + "_" + getWalkFrame(e.getId(), e.getVelocity()) + ".png");
     }
 
     private void renderBearWithAnimation(GraphicsContext gc, Bear b) {
@@ -439,6 +444,25 @@ public class WorldMap {
     private int getWalkFrame(int id, Vector2D vel) {
         if (vel == null || vel.magnitude() < 0.5) return 0;
         return (int) ((System.nanoTime() / 120_000_000L + id) % 4);
+    }
+
+    private int getLoopFrame(int id) {
+        return (int) ((System.nanoTime() / 160_000_000L + id) % 4);
+    }
+
+    private String getDrinkingDirection(Elephant elephant, String fallbackDirection) {
+        Vector2D water = findNearestTerrainPositionInRadius(
+                elephant.getPosition(),
+                TerrainType.WATER,
+                elephant.getVisionRadius()
+        );
+        if (water == null) return fallbackDirection;
+
+        Vector2D delta = water.sub(elephant.getPosition());
+        if (Math.abs(delta.x) >= Math.abs(delta.y)) {
+            return delta.x >= 0 ? "right" : "left";
+        }
+        return delta.y >= 0 ? "down" : "up";
     }
 
     private void renderImageAtEntity(GraphicsContext gc, Entity entity, String imagePath) {

@@ -16,6 +16,7 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
+    private boolean drinking;
     private boolean blockedLastStep;
     private static final double Cooldown = 0.5;
     private double blockedCooldown;
@@ -74,6 +75,7 @@ public abstract class LivingEntity extends MovableEntity {
     public double getHunger() { return hunger; }
     public double getThirst() { return thirst; }
     public boolean isAlive() { return isAlive; }
+    public boolean isDrinking() { return drinking; }
     public double getVisionRadius() { return visionRadius; }
     public double getThirstRate(){ return thirstRate; }
     public double getHungerRate(){ return hungerRate; }
@@ -101,6 +103,10 @@ public abstract class LivingEntity extends MovableEntity {
 
     public void setMoveStrategy(MoveStrategy moveStrategy) {
         this.moveStrategy = moveStrategy;
+    }
+
+    protected void setDrinking(boolean drinking) {
+        this.drinking = drinking;
     }
 
     public void setHunger(double hunger) {
@@ -237,6 +243,7 @@ public abstract class LivingEntity extends MovableEntity {
 
     public abstract void eat(Entity target, double dt);
     public void drink(double dt){
+        this.drinking = true;
         setThirst(this.thirst - 20.0*dt);
     };
 }

@@ -20,22 +20,32 @@ public class SeekWaterStrategy implements MoveStrategy {
 
 
 
-        // Tìm nguồn nước từ vị trí hiện tại
-        Vector2D nearestWater = world.findNearestTerrainPositionInRadius(currentPos, TerrainType.WATER,owner.getVisionRadius());
+        // Tìm mép nước gần nhất
+        Vector2D nearestWater = world.findNearestTerrainPositionInRadius(currentPos, TerrainType.WATER, owner.getVisionRadius());
 
-        // Nếu không tìm thấy thì đi lang thang
         if (nearestWater == null) {
             this.searchWander.updateVelocity(owner, neighbors, dt, world);
             return;
         }
 
-        // Nếu vị trí đang đứng là nước --> Uống
-        if (currentPos.distance(nearestWater) < 20) {
+        double drinkDistance = Math.max(10.0, owner.getSize() * 0.4);
+
+        // Chỉ uống khi đã đứng sát mép nước.
+        if (currentPos.distance(nearestWater) < drinkDistance) {
             owner.setVelocity(new Vector2D(0, 0));
             owner.drink(dt);
             return;
         }
-        List<Vector2D> path = world.findPathAStar(owner, currentPos, nearestWater);
+
+        // Pathfind đến điểm sát mép nước nhưng vẫn đứng được trên đất.
+        // (tránh A* bị reject vì target cell nằm trong vùng nước)
+        Vector2D dir = currentPos.sub(nearestWater);
+        double shoreOffset = Math.max(8.0, owner.getSize() * 0.35);
+        Vector2D pathTarget = dir.magnitude() > 0.1
+                ? nearestWater.add(dir.normalize().multiply(shoreOffset))
+                : nearestWater;
+
+        List<Vector2D> path = world.findPathAStar(owner, currentPos, pathTarget);
         Vector2D desiredVelocity = null;
         if (path != null && !path.isEmpty()) {
             Vector2D nextWaypoint = null;
