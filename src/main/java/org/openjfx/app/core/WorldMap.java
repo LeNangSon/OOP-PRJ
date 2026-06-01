@@ -12,6 +12,7 @@ import java.util.Set;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
+import org.openjfx.app.core.terrain.TerrainProvider;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
@@ -47,8 +48,6 @@ public class WorldMap {
     private final List<Entity> pendingSpawns = new ArrayList<>();
     private final List<GameObserver> observers = new ArrayList<>();
     private final Map<EntityType, EnumMap<DeathCause, Integer>> deathCounts = new EnumMap<>(EntityType.class);
-    private final Map<String, TerrainType> terrainOverrides = new HashMap<>();
-
     private TmxObjectZones tmxObjectZones;
     private double objectGridTileSize = 32.0;
     private Image fixedBackgroundImage;
@@ -131,17 +130,16 @@ public class WorldMap {
         return row + ":" + col;
     }
 
-    private String gridKey(Vector2D position) {
-        GridCoordinate grid = worldToGrid(position);
-        return grid == null ? null : gridKey(grid.getRow(), grid.getCol());
+    public boolean isInside(Vector2D position) {
+        return position != null
+                && position.x >= 0 && position.y >= 0
+                && position.x <= width && position.y <= height;
     }
 
     public TerrainType getTerrainAt(Vector2D position) {
         if (position == null) return TerrainType.ROCK;
-        String key = gridKey(position);
-        if (key != null && terrainOverrides.containsKey(key)) {
-            return terrainOverrides.get(key);
-        }
+        TerrainType fromPlaced = terrainFromPlacedObstacles(position);
+        if (fromPlaced != null) return fromPlaced;
         if (tmxObjectZones != null) {
             if (tmxObjectZones.isObstacle(position)) return TerrainType.ROCK;
             if (tmxObjectZones.isWater(position)) return TerrainType.WATER;
@@ -150,12 +148,13 @@ public class WorldMap {
         return TerrainType.LAND;
     }
 
-    public boolean setTerrainAt(Vector2D position, TerrainType type) {
-        String key = gridKey(position);
-        if (key == null || type == null) return false;
-        if (type == TerrainType.LAND) terrainOverrides.remove(key);
-        else terrainOverrides.put(key, type);
-        return true;
+    private TerrainType terrainFromPlacedObstacles(Vector2D position) {
+        for (Entity entity : entities) {
+            if (entity instanceof TerrainProvider provider && provider.covers(position)) {
+                return provider.getTerrainType();
+            }
+        }
+        return null;
     }
 
     public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
@@ -165,10 +164,10 @@ public class WorldMap {
     public Vector2D findNearestTerrainPositionInRadius(Vector2D from, TerrainType targetType, double radius) {
         if (from == null || targetType == null || radius <= 0) return null;
         Vector2D fromZones = nearestFromTmxZones(from, targetType, radius);
-        Vector2D fromOverrides = nearestFromOverrides(from, targetType, radius);
-        if (fromZones == null) return fromOverrides;
-        if (fromOverrides == null) return fromZones;
-        return from.distance(fromOverrides) < from.distance(fromZones) ? fromOverrides : fromZones;
+        Vector2D fromPlaced = nearestFromPlacedObstacles(from, targetType, radius);
+        if (fromZones == null) return fromPlaced;
+        if (fromPlaced == null) return fromZones;
+        return from.distance(fromPlaced) < from.distance(fromZones) ? fromPlaced : fromZones;
     }
 
     private Vector2D nearestFromTmxZones(Vector2D from, TerrainType targetType, double radius) {
@@ -178,16 +177,14 @@ public class WorldMap {
         return null;
     }
 
-    private Vector2D nearestFromOverrides(Vector2D from, TerrainType targetType, double radius) {
+    private Vector2D nearestFromPlacedObstacles(Vector2D from, TerrainType targetType, double radius) {
         Vector2D nearest = null;
         double radiusSq = radius * radius;
         double bestSq = Double.MAX_VALUE;
-        for (Map.Entry<String, TerrainType> entry : terrainOverrides.entrySet()) {
-            if (entry.getValue() != targetType) continue;
-            String[] parts = entry.getKey().split(":");
-            if (parts.length != 2) continue;
-            Vector2D center = gridToWorldCenter(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
-            if (center == null) continue;
+        for (Entity entity : entities) {
+            if (!(entity instanceof TerrainProvider provider)) continue;
+            if (provider.getTerrainType() != targetType) continue;
+            Vector2D center = provider.getPosition();
             double dx = center.x - from.x;
             double dy = center.y - from.y;
             double distSq = dx * dx + dy * dy;

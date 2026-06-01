@@ -9,9 +9,9 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class Bear extends Carnivore {
 
     public Bear(Vector2D position) {
-        super(position, 50.0, "circle", 200.0, 1.5, 2.0,
+        super(position, 30, "circle", 200.0, 1.5, 2.0,
                 28.0, 40.0, 12.0, 70.0, 35.0);
-        setVisionRadius(160.0);
+        setVisionRadius(50.0);
         type = EntityType.BEAR;
         matureAge = 15.0;
         reproduceCooldownMax = 40.0;

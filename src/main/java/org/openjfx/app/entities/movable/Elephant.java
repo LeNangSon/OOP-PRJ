@@ -9,9 +9,9 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class Elephant extends Herbivore {
 
     public Elephant(Vector2D position) {
-        super(position, 50.0, "rect", 100.0, 5.0, 6.0,
+        super(position, 30.0, "rect", 100.0, 5.0, 6.0,
                 26.0, 36.0, 10.0, 100.0, 40.0);
-        setVisionRadius(150.0);
+        setVisionRadius(50.0);
         setThirst(80.0);
         type = EntityType.ELEPHANT;
         setVelocity(new Vector2D(8.0, 0.0));

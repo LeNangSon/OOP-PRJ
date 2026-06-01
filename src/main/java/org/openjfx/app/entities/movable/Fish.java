@@ -13,11 +13,11 @@ public class Fish extends Herbivore {
     private double reproduceTimer;
 
     public Fish(Vector2D position) {
-        super(position, 20.0, "ellipse", 100.0, 0.5, 0.0,
+        super(position, 15.0, "ellipse", 100.0, 0.5, 0.0,
                 30.0, 20.0, 3.0, 35.0, 20.0);
-        setVisionRadius(100.0);
+        setVisionRadius(50.0);
         type = EntityType.FISH;
-        matureAge = 3.0;
+        matureAge = 10.0;
         reproduceCooldownMax = 8.0;
         reproduceHungerCost = 15.0;
     }

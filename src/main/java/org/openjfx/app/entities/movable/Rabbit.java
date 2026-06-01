@@ -11,7 +11,7 @@ public class Rabbit extends Herbivore {
     public Rabbit(Vector2D position) {
         super(position, 10.0, "circle", 100.0, 0.0, 5.0,
                 32.0, 38.0, 0.5, 15.0, 12.0);
-        setVisionRadius(190.0);
+        setVisionRadius(50.0);
         type = EntityType.RABBIT;
         matureAge = 4.0;
         reproduceCooldownMax = 10.0;

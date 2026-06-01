@@ -308,8 +308,8 @@ public class MainApp extends Application {
             case RABBIT, WOLF, BEAR, ELEPHANT, FISH -> spawnLiving(pendingSpawnKind, position);
             case GRASS -> spawnGrass(position);
             case ALGAE -> spawnAlgae(position);
-            case BUSH -> spawnTerrainObject(position, TerrainType.BUSH, new Bush(position));
-            case ROCK -> spawnTerrainObject(position, TerrainType.ROCK, new Rock(position));
+            case BUSH -> spawnTerrainObject(position, new Bush(position));
+            case ROCK -> spawnTerrainObject(position, new Rock(position));
         }
     }
 
@@ -339,13 +339,18 @@ public class MainApp extends Application {
         addEntityAndLog(new Algae(position));
     }
 
-    private void spawnTerrainObject(Vector2D position, TerrainType terrainType, Entity entity) {
-        if (worldMap.getTerrainAt(position) == TerrainType.WATER) {
+    private void spawnTerrainObject(Vector2D position, Entity entity) {
+        if (!worldMap.isInside(position)) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt", entity.getClass().getSimpleName() + " ngoài bản đồ");
+            return;
+        }
+        TerrainType at = worldMap.getTerrainAt(position);
+        if (at == TerrainType.WATER) {
             worldMap.notifyAction("Hệ thống", "không thể đặt", entity.getClass().getSimpleName() + " trên nước");
             return;
         }
-        if (!worldMap.setTerrainAt(position, terrainType)) {
-            worldMap.notifyAction("Hệ thống", "không thể đặt", entity.getClass().getSimpleName() + " ngoài bản đồ");
+        if (at == TerrainType.ROCK || at == TerrainType.BUSH) {
+            worldMap.notifyAction("Hệ thống", "không thể đặt", entity.getClass().getSimpleName() + " chồng lên vật cản");
             return;
         }
         addEntityAndLog(entity);
