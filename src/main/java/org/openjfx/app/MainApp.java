@@ -38,12 +38,15 @@ public class MainApp extends Application {
     private static final double HEIGHT = 576;
     private static final double TERMINAL_WIDTH = 400;
     private static final double TOOLBAR_HEIGHT = 40;
-    private static final String FIXED_MAP_RESOURCE_PATH = "/org/openjfx/app/spring.jpg";
-    private static final String SPRING_TMX_RESOURCE_PATH = "/org/openjfx/app/spring.tmx";
-    private static final int SPRING_TILE_SIZE = 32;
-    private static final String SUMMER_MAP_RESOURCE_PATH = "/org/openjfx/app/summer.png";
-    private static final String SUMMER_TMX_RESOURCE_PATH = "/org/openjfx/app/summer.tmx";
-    private static final int SUMMER_TILE_SIZE = 32;
+    // Dùng chung 1 TMX cho mọi mùa (object zones Ho/VatCan không đổi)
+    private static final String SHARED_TMX_PATH = "/org/openjfx/app/all.tmx";
+    private static final int    SHARED_TILE_SIZE = 32;
+
+    // Ảnh nền riêng cho từng mùa
+    private static final String IMG_SPRING = "/org/openjfx/app/spring.jpg";
+    private static final String IMG_SUMMER = "/org/openjfx/app/summer.png";
+    private static final String IMG_AUTUMN = "/org/openjfx/app/autumn.png";
+    private static final String IMG_WINTER = "/org/openjfx/app/winter.png";
 
     private static final String BTN_BASE   = "-fx-background-color: rgba(20,20,20,0.55); -fx-text-fill: white; -fx-padding: 4 12; -fx-cursor: hand; -fx-font-size: 12px;";
     private static final String BTN_ACCENT = "-fx-background-color: rgba(20,20,20,0.55); -fx-text-fill: #ffdddd; -fx-padding: 4 12; -fx-cursor: hand; -fx-font-size: 12px;";
@@ -65,8 +68,8 @@ public class MainApp extends Application {
         double mapScaleX = WIDTH / SOURCE_MAP_SIZE;
         double mapScaleY = HEIGHT / SOURCE_MAP_SIZE;
         worldMap = new WorldMap(WIDTH, HEIGHT);
-        worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
-        worldMap.setObjectZonesFromTmxResource(SPRING_TMX_RESOURCE_PATH, SPRING_TILE_SIZE, mapScaleX, mapScaleY);
+        worldMap.setFixedBackgroundImageFromResource(IMG_SPRING);
+        worldMap.setObjectZonesFromTmxResource(SHARED_TMX_PATH, SHARED_TILE_SIZE, mapScaleX, mapScaleY);
 
         ObservableList<String> logData = FXCollections.observableArrayList();
         ListView<String> listView = new ListView<>(logData);
@@ -186,8 +189,8 @@ public class MainApp extends Application {
         ToggleGroup seasonGroup = new ToggleGroup();
         addSeasonItem(seasonMenu, seasonGroup, "Xuân", Season.SPRING, true, false);
         addSeasonItem(seasonMenu, seasonGroup, "Hạ",   Season.SUMMER, false, false);
-        addSeasonItem(seasonMenu, seasonGroup, "Thu",  Season.AUTUMN, false, true);
-        addSeasonItem(seasonMenu, seasonGroup, "Đông", Season.WINTER, false, true);
+        addSeasonItem(seasonMenu, seasonGroup, "Thu",  Season.AUTUMN, false, false);
+        addSeasonItem(seasonMenu, seasonGroup, "Đông", Season.WINTER, false, false);
 
         HBox toolbar = new HBox(6, animalMenu, btnPlus, btnMinus, btnReset, seasonMenu);
         toolbar.setAlignment(Pos.CENTER_LEFT);
@@ -225,19 +228,11 @@ public class MainApp extends Application {
     private void switchToSeason(Season season) {
         if (currentSeason == season) return;
         currentSeason = season;
-        double mapScaleX = WIDTH / SOURCE_MAP_SIZE;
-        double mapScaleY = HEIGHT / SOURCE_MAP_SIZE;
         switch (season) {
-            case SPRING:
-                worldMap.setFixedBackgroundImageFromResource(FIXED_MAP_RESOURCE_PATH);
-                worldMap.setObjectZonesFromTmxResource(SPRING_TMX_RESOURCE_PATH, SPRING_TILE_SIZE, mapScaleX, mapScaleY);
-                break;
-            case SUMMER:
-                worldMap.setFixedBackgroundImageFromResource(SUMMER_MAP_RESOURCE_PATH);
-                worldMap.setObjectZonesFromTmxResource(SUMMER_TMX_RESOURCE_PATH, SUMMER_TILE_SIZE, mapScaleX, mapScaleY);
-                break;
-            default:
-                break;
+            case SPRING: worldMap.setFixedBackgroundImageFromResource(IMG_SPRING); break;
+            case SUMMER: worldMap.setFixedBackgroundImageFromResource(IMG_SUMMER); break;
+            case AUTUMN: worldMap.setFixedBackgroundImageFromResource(IMG_AUTUMN); break;
+            case WINTER: worldMap.setFixedBackgroundImageFromResource(IMG_WINTER); break;
         }
     }
 
