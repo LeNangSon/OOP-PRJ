@@ -25,46 +25,30 @@ public abstract class Herbivore extends LivingEntity {
     @Override
     public void eat(Entity target, double dt) {
         if (target instanceof Plant plant) {
-            setHunger(this.getHunger() - plant.consume());
+            setHunger(getHunger() - plant.consume());
         }
     }
 
     private List<StrategyCandidate> buildCandidates() {
         return List.of(
-            new StrategyCandidate(
-                FleeStrategy::new,
-                (e, n) -> hasThreat(e, n) ? 100.0 : 0.0
-            ),
-            new StrategyCandidate(
-                () -> new SeekWaterStrategy(wanderDistance, wanderRadius),
-                (e, n) -> e.getThirst() / 100.0
-            ),
-            new StrategyCandidate(
-                HunterStrategy::new,
-                (e, n) -> e.getHunger() / 100.0
-            ),
-            new StrategyCandidate(
-                MateStrategy::new,
-                (e, n) -> (canReproduce() && hasMateNearby()) ? 0.45 : 0.0
-            ),
-            new StrategyCandidate(
-                () -> new WanderStrategy(wanderDistance, wanderRadius),
-                (e, n) -> 0.3
-            )
+                new StrategyCandidate(FleeStrategy::new, (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
+                new StrategyCandidate(() -> new SeekWaterStrategy(wanderDistance, wanderRadius),
+                        (e, n) -> e.getThirst() > 70.0 || e.getMoveStrategy() instanceof SeekWaterStrategy ? e.getThirst() / 100.0 + 0.2 : 0.0),
+                new StrategyCandidate(HunterStrategy::new, (e, n) -> e.getHunger() > 70.0 ? e.getHunger() / 100.0 : 0.0),
+                new StrategyCandidate(MateStrategy::new, (e, n) -> canReproduce() && hasMateNearby() ? 0.45 : 0.0),
+                new StrategyCandidate(() -> new WanderStrategy(wanderDistance, wanderRadius), (e, n) -> 0.3)
         );
     }
 
     @Override
     public void update(double dt, WorldMap world) {
-        this.neighbors = world.getNeighbors(this, this.visionRadius);
+        setDrinking(false);
+        neighbors = world.getNeighbors(this, visionRadius);
         if (candidates == null) candidates = buildCandidates();
-
-        this.moveStrategy = StrategyCandidate.selectBest(candidates, this.moveStrategy, this, neighbors);
-
-        if (this.moveStrategy != null) {
-            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
+        moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, this, neighbors);
+        if (moveStrategy != null && !isAvoidingBlockedPath()) {
+            moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
-
         super.update(dt, world);
     }
 }

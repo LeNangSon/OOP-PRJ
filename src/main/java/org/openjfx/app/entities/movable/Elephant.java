@@ -9,33 +9,15 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class Elephant extends Herbivore {
 
     public Elephant(Vector2D position) {
-        // Gọi super của Herbivore với các thông số đặc trưng cho Voi:
-        // position, size, shape, health, hungerRate, thirstRate,
-        // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
-        super(
-                position,
-                35.0,     // size (Kích thước lớn)
-                "rect",    // shape (Hình chữ nhật)
-                200.0,     // initialHealth
-                5.0,       // hungerRate (Voi ăn nhiều nên tốc độ đói nhanh)
-                5.0,       // thirstRate (Voi uống nhiều nước)
-                40.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
-                80.0,       // maxForce (Lực lái vừa phải)
-                3.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
-                30.0,     // wanderDistance (Khoảng cách điểm ảo xa để đi thẳng ổn định)
-                30.0       // wanderRadius (Bán kính nhiễu lớn hơn để quẹo vòng cung rộng)
-        );
-
-        // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setVisionRadius(70.0);
-
-        // Bạn muốn voi bắt đầu trong trạng thái hơi khát để test SeekWater
-        this.setThirst(0.0);
-
-        this.type = EntityType.ELEPHANT;
-        this.matureAge = 20.0;
-        this.reproduceCooldownMax = 60.0;
-        this.reproduceHungerCost = 40.0;
+        super(position, 50.0, "rect", 100.0, 5.0, 6.0,
+                26.0, 36.0, 10.0, 100.0, 40.0);
+        setVisionRadius(150.0);
+        setThirst(80.0);
+        type = EntityType.ELEPHANT;
+        setVelocity(new Vector2D(8.0, 0.0));
+        matureAge = 20.0;
+        reproduceCooldownMax = 60.0;
+        reproduceHungerCost = 40.0;
     }
 
     @Override
@@ -45,13 +27,11 @@ public class Elephant extends Herbivore {
 
     @Override
     public void update(double dt, WorldMap world) {
-        // Herbivore.update sẽ xử lý logic chuyển đổi giữa Wander, SeekWater, Flee...
         super.update(dt, world);
     }
 
     @Override
     public String toString() {
-        // Đảm bảo file này tồn tại trong resources
-        return "org/openjfx/app/elephant.png";
+        return "Elephant#" + getId();
     }
 }

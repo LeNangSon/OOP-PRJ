@@ -14,116 +14,93 @@ import org.openjfx.app.entities.base.LivingEntity;
 
 public class FleeStrategy implements MoveStrategy {
     private static final double STEERING_GAIN = 4.0;
+    private static final double HIDE_DURATION = 1.0;
     private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
 
-    // --- PHẦN THÊM: Biến kiểm soát tần suất log ---
-    private double logCooldown = 0;
+    private double logCooldown;
+    private double hidingTimer;
     private WanderStrategy wanderFallback;
 
     public static final class DebugPathState {
         private final List<Vector2D> path;
-
-        public DebugPathState(List<Vector2D> path) {
-            this.path = path;
-        }
-
-        public List<Vector2D> getPath() {
-            return path;
-        }
+        public DebugPathState(List<Vector2D> path) { this.path = path; }
+        public List<Vector2D> getPath() { return path; }
     }
 
     private static final Map<Integer, DebugPathState> DEBUG_PATH_STATES = new ConcurrentHashMap<>();
 
-    public FleeStrategy() {
-    }
+    public static DebugPathState getDebugPathState(int entityId) { return DEBUG_PATH_STATES.get(entityId); }
+    public static void clearDebugPathState(int entityId) { DEBUG_PATH_STATES.remove(entityId); }
 
-    public static DebugPathState getDebugPathState(int entityId) {
-        return DEBUG_PATH_STATES.get(entityId);
-    }
-
-    public static void clearDebugPathState(int entityId) {
-        DEBUG_PATH_STATES.remove(entityId);
-    }
-
-    public int findClosetThreat(LivingEntity owner, List<Entity> neighbors) {
-        double minDistance = Double.MAX_VALUE;
-        int closiestID = -1;
-        for (Entity neighbor : neighbors) {
-            EntityType curNeighborType = neighbor.getType();
-            if (RelationManager.isScaredOf(owner.getType(), curNeighborType)) {
-                Vector2D ownerPosition = owner.getPosition();
-                double distance = ownerPosition.distance(neighbor.getPosition());
-                if (distance <= minDistance) {
-                    minDistance = distance;
-                    closiestID = neighbor.getId();
-                }
-            }
-        }
-        return closiestID;
+    public boolean isHiding() {
+        return hidingTimer > 0;
     }
 
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
-        if (!owner.isAlive()) {
-            return;
+        if (!owner.isAlive()) return;
+
+        Entity threat = findClosestThreat(owner, neighbors, world);
+        Vector2D ownerPos = owner.getPosition();
+
+        if (world.getTerrainAt(ownerPos) == TerrainType.BUSH) {
+            if (threat != null) {
+                hidingTimer = HIDE_DURATION;
+                owner.setVelocity(new Vector2D(0, 0));
+                owner.setAcceleration(new Vector2D(0, 0));
+                clearDebugPathState(owner.getId());
+                return;
+            }
+            hidingTimer = 0;
         }
 
-        int mostDangerous = findClosetThreat(owner, neighbors);
-        if (mostDangerous == -1) {
-            // Reset log khi an toàn
-            logCooldown = 0;
-            clearDebugPathState(owner.getId());
-
-            runWanderFallback(owner, neighbors, dt, world);
-            return;
-        }
-
-        Entity threat = world.getEntityById(mostDangerous);
         if (threat == null) {
+            hidingTimer = 0;
             logCooldown = 0;
             clearDebugPathState(owner.getId());
             runWanderFallback(owner, neighbors, dt, world);
             return;
         }
 
-        // --- SỬA TÊN#ID Ở ĐÂY ---
         logCooldown -= dt;
         if (logCooldown <= 0) {
-            // Lấy tên lớp (ví dụ Rabbit, Wolf) và nối với ID
-            String ownerName = owner.getClass().getSimpleName() + "#" + owner.getId();
-            String threatName = threat.getClass().getSimpleName() + "#" + threat.getId();
-            
             world.notifyAction(
-                ownerName, 
-                "đang chạy trốn khỏi", 
-                threatName
-            );
-            logCooldown = 2.5; // 2.5 giây sau mới hiện lại
+                    owner.getClass().getSimpleName() + "#" + owner.getId(),
+                    "đang chạy trốn khỏi",
+                    threat.getClass().getSimpleName() + "#" + threat.getId());
+            logCooldown = 2.5;
         }
-        // ----------------------------------------
 
-        Vector2D ownerPos = owner.getPosition();
         Vector2D destination = pickFleeDestination(owner, world, ownerPos, threat.getPosition());
-        if (owner.getType() == EntityType.RABBIT
-                && destination == null
-                && world.getTerrainAt(ownerPos) == TerrainType.BUSH) {
-            owner.setVelocity(new Vector2D(0, 0));
-            owner.setAcceleration(new Vector2D(0, 0));
-            return;
-        }
         Vector2D desiredVelocity = desiredVelocityAlongPath(owner, world, ownerPos, destination);
-
         if (desiredVelocity == null) {
             desiredVelocity = threat.getPosition().directionTo(ownerPos).multiply(owner.getMaxSpeed());
         }
 
         Vector2D steering = desiredVelocity.sub(owner.getVelocity());
         Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
-        Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt)).limit(owner.getMaxSpeed());
+        Vector2D newVelocity = owner.getVelocity().add(acceleration.multiply(dt));
+        if (newVelocity.magnitude() > 1e-6) {
+            newVelocity = newVelocity.normalize().multiply(owner.getMaxSpeed());
+        }
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
+    }
 
+    private Entity findClosestThreat(LivingEntity owner, List<Entity> neighbors, WorldMap world) {
+        double minDistance = Double.MAX_VALUE;
+        Entity closest = null;
+        for (Entity neighbor : neighbors) {
+            if (RelationManager.isScaredOf(owner.getType(), neighbor.getType())) {
+                double distance = owner.getPosition().distance(neighbor.getPosition());
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closest = neighbor;
+                }
+            }
+        }
+        return closest;
     }
 
     private void runWanderFallback(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
@@ -136,33 +113,20 @@ public class FleeStrategy implements MoveStrategy {
         wanderFallback.updateVelocity(owner, neighbors, dt, world);
     }
 
-    private Vector2D pickFleeDestination(
-            LivingEntity owner,
-            WorldMap world,
-            Vector2D ownerPos,
-            Vector2D threatPos) {
+    private Vector2D pickFleeDestination(LivingEntity owner, WorldMap world, Vector2D ownerPos, Vector2D threatPos) {
         double searchRadius = owner.getVisionRadius();
         EntityType type = owner.getType();
-
         if (type == EntityType.RABBIT) {
-            if (world.getTerrainAt(ownerPos) == TerrainType.BUSH) {
-                return null;
-            }
+            if (world.getTerrainAt(ownerPos) == TerrainType.BUSH) return null;
             return world.findNearestTerrainPositionInRadius(ownerPos, TerrainType.BUSH, searchRadius);
         }
         if (type == EntityType.FISH) {
-            return world.findFarthestTerrainPositionFromThreat(
-                    ownerPos, threatPos, TerrainType.WATER, searchRadius, owner);
+            return world.findFarthestTerrainPositionFromThreat(ownerPos, threatPos, TerrainType.WATER, searchRadius, owner);
         }
-        return world.findFarthestTerrainPositionFromThreat(
-                ownerPos, threatPos, TerrainType.LAND, searchRadius, owner);
+        return world.findFarthestTerrainPositionFromThreat(ownerPos, threatPos, TerrainType.LAND, searchRadius, owner);
     }
 
-    private Vector2D desiredVelocityAlongPath(
-            LivingEntity owner,
-            WorldMap world,
-            Vector2D ownerPos,
-            Vector2D destination) {
+    private Vector2D desiredVelocityAlongPath(LivingEntity owner, WorldMap world, Vector2D ownerPos, Vector2D destination) {
         if (destination == null) {
             clearDebugPathState(owner.getId());
             return null;

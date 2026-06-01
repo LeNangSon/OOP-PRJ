@@ -47,7 +47,6 @@ public class EntityStatusPanel extends VBox {
             case FISH     -> "#3a6ab0";
             case GRASS    -> "#3a7a3a";
             case ALGAE    -> "#2a8080";
-            case FRUIT    -> "#cc7722";
             default       -> "#5a5a5a";
         };
     }
@@ -62,7 +61,6 @@ public class EntityStatusPanel extends VBox {
             case FISH     -> "🐟";
             case GRASS    -> "🌿";
             case ALGAE    -> "🌊";
-            case FRUIT    -> "🍎";
             default       -> "●";
         };
     }

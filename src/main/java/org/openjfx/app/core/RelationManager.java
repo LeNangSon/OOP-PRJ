@@ -13,7 +13,6 @@ public class RelationManager {
    static{
     threat.put(EntityType.RABBIT, Arrays.asList(EntityType.WOLF, EntityType.BEAR));
     threat.put(EntityType.FISH, Arrays.asList(EntityType.BEAR));
-    threat.put(EntityType.FRUIT, Arrays.asList(EntityType.BEAR, EntityType.RABBIT));
     threat.put(EntityType.GRASS, Arrays.asList(EntityType.RABBIT, EntityType.ELEPHANT));
     threat.put(EntityType.ALGAE, Arrays.asList(EntityType.FISH));
 
