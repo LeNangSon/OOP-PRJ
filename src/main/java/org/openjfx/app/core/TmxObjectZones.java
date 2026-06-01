@@ -1,5 +1,6 @@
 package org.openjfx.app.core;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -15,8 +16,17 @@ import org.w3c.dom.NodeList;
 public class TmxObjectZones {
     private static final double DEFAULT_OBJECT_SIZE = 18.0;
 
-    private final List<Zone> waterZones = new ArrayList<>();
+    private final List<Zone> waterZones    = new ArrayList<>();
     private final List<Zone> obstacleZones = new ArrayList<>();
+    private final List<Zone> bushZones     = new ArrayList<>();
+
+    public static TmxObjectZones fromFile(String absolutePath, double scaleX, double scaleY) {
+        try (InputStream in = new FileInputStream(absolutePath)) {
+            return parse(in, scaleX, scaleY);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load tmx from file: " + absolutePath, e);
+        }
+    }
 
     public static TmxObjectZones fromResource(String resourcePath) {
         return fromResource(resourcePath, 1.0, 1.0);
@@ -24,42 +34,44 @@ public class TmxObjectZones {
 
     public static TmxObjectZones fromResource(String resourcePath, double scaleX, double scaleY) {
         try (InputStream in = TmxObjectZones.class.getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                throw new IllegalArgumentException("Cannot find tmx resource: " + resourcePath);
-            }
-
-            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
-            document.getDocumentElement().normalize();
-
-            TmxObjectZones zones = new TmxObjectZones();
-            NodeList objectGroups = document.getElementsByTagName("objectgroup");
-            for (int i = 0; i < objectGroups.getLength(); i++) {
-                Node node = objectGroups.item(i);
-                if (!(node instanceof Element)) continue;
-
-                Element group = (Element) node;
-                String groupName = normalizeName(group.getAttribute("name"));
-                List<Zone> targetZones = null;
-                if ("ho".equals(groupName)) {
-                    targetZones = zones.waterZones;
-                } else if ("vatcan".equals(groupName)) {
-                    targetZones = zones.obstacleZones;
-                }
-                if (targetZones == null) continue;
-
-                NodeList objects = group.getElementsByTagName("object");
-                for (int j = 0; j < objects.getLength(); j++) {
-                    Node objectNode = objects.item(j);
-                    if (objectNode instanceof Element) {
-                        targetZones.add(Zone.fromElement((Element) objectNode, scaleX, scaleY));
-                    }
-                }
-            }
-
-            return zones;
+            if (in == null) throw new IllegalArgumentException("Cannot find tmx resource: " + resourcePath);
+            return parse(in, scaleX, scaleY);
         } catch (Exception e) {
             throw new RuntimeException("Failed to load tmx object zones from " + resourcePath, e);
         }
+    }
+
+    private static TmxObjectZones parse(InputStream in, double scaleX, double scaleY) throws Exception {
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+        document.getDocumentElement().normalize();
+
+        TmxObjectZones zones = new TmxObjectZones();
+        NodeList objectGroups = document.getElementsByTagName("objectgroup");
+        for (int i = 0; i < objectGroups.getLength(); i++) {
+            Node node = objectGroups.item(i);
+            if (!(node instanceof Element)) continue;
+
+            Element group = (Element) node;
+            String groupName = normalizeName(group.getAttribute("name"));
+            List<Zone> targetZones = null;
+            if ("ho".equals(groupName)) {
+                targetZones = zones.waterZones;
+            } else if ("vatcan".equals(groupName)) {
+                targetZones = zones.obstacleZones;
+            } else if ("chotron".equals(groupName)) {
+                targetZones = zones.bushZones;
+            }
+            if (targetZones == null) continue;
+
+            NodeList objects = group.getElementsByTagName("object");
+            for (int j = 0; j < objects.getLength(); j++) {
+                Node objectNode = objects.item(j);
+                if (objectNode instanceof Element) {
+                    targetZones.add(Zone.fromElement((Element) objectNode, scaleX, scaleY));
+                }
+            }
+        }
+        return zones;
     }
 
     public boolean isWater(Vector2D position) {
@@ -68,6 +80,40 @@ public class TmxObjectZones {
 
     public boolean isObstacle(Vector2D position) {
         return contains(obstacleZones, position);
+    }
+
+    public boolean isBush(Vector2D position) {
+        if (position == null) return false;
+        for (Zone zone : bushZones) {
+            Vector2D nearest = zone.nearestPointTo(position);
+            double dx = nearest.x - position.x;
+            double dy = nearest.y - position.y;
+            if (dx * dx + dy * dy <= 10.0 * 10.0) return true;
+        }
+        return false;
+    }
+
+    public Vector2D findNearestBush(Vector2D from) {
+        return findNearestBushInRadius(from, Double.MAX_VALUE);
+    }
+
+    public Vector2D findNearestBushInRadius(Vector2D from, double radius) {
+        if (from == null || radius <= 0) return null;
+        Vector2D nearest = null;
+        double radiusSquared = radius * radius;
+        double minDistanceSquared = Double.MAX_VALUE;
+        for (Zone zone : bushZones) {
+            // Dùng TÂM zone để thỏ pathfind vào giữa, không phải mép
+            Vector2D center = zone.center();
+            double dx = center.x - from.x;
+            double dy = center.y - from.y;
+            double distanceSquared = dx * dx + dy * dy;
+            if (distanceSquared <= radiusSquared && distanceSquared < minDistanceSquared) {
+                minDistanceSquared = distanceSquared;
+                nearest = center;
+            }
+        }
+        return nearest;
     }
 
     public Vector2D findNearestWater(Vector2D from) {
@@ -142,6 +188,10 @@ public class TmxObjectZones {
         private static double parseDouble(Element element, String attribute, double defaultValue) {
             if (!element.hasAttribute(attribute)) return defaultValue;
             return Double.parseDouble(element.getAttribute(attribute));
+        }
+
+        private Vector2D center() {
+            return new Vector2D(x + width / 2, y + height / 2);
         }
 
         private boolean contains(Vector2D position) {

@@ -11,8 +11,6 @@ import java.util.Set;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
-import org.openjfx.app.core.terrain.TerrainGrid;
-import org.openjfx.app.core.terrain.TerrainTile;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
@@ -27,16 +25,23 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
 public class WorldMap {
+
+    public static class GridCoordinate {
+        private final int row;
+        private final int col;
+        public GridCoordinate(int row, int col) { this.row = row; this.col = col; }
+        public int getRow() { return row; }
+        public int getCol() { return col; }
+    }
+
     private final double width;
     private final double height;
     private final List<Entity> entities;
-    private TerrainGrid terrainGrid;
     private TmxObjectZones tmxObjectZones;
     private double objectGridTileSize = 32.0;
     private Image fixedBackgroundImage;
     private final List<GameObserver> observers = new ArrayList<>();
 
-    // --- PHẦN THÊM MỚI: Kho chứa ảnh để tránh lag máy ---
     private final Map<String, Image> imageCache = new HashMap<>();
     private final Map<Integer, String> rabbitDirectionCache = new HashMap<>();
     private final Map<Integer, String> wolfDirectionCache = new HashMap<>();
@@ -50,17 +55,7 @@ public class WorldMap {
         this.entities = new ArrayList<>();
     }
 
-    public void addEntity(Entity entity) {
-        entities.add(entity);
-    }
-
-    public void setTerrainGrid(TerrainGrid terrainGrid) {
-        this.terrainGrid = terrainGrid;
-    }
-
-    public void setTerrainGridFromCsvResource(String resourcePath, int tileSize) {
-        this.terrainGrid = TerrainGrid.fromCsvResource(resourcePath, tileSize);
-    }
+    public void addEntity(Entity entity) { entities.add(entity); }
 
     public void setObjectZonesFromTmxResource(String resourcePath, int tileSize) {
         this.tmxObjectZones = TmxObjectZones.fromResource(resourcePath);
@@ -72,255 +67,155 @@ public class WorldMap {
         this.objectGridTileSize = tileSize * Math.max(scaleX, scaleY);
     }
 
+    public void setObjectZonesFromTmxFile(String absolutePath, int tileSize, double scaleX, double scaleY) {
+        this.tmxObjectZones = TmxObjectZones.fromFile(absolutePath, scaleX, scaleY);
+        this.objectGridTileSize = tileSize * Math.max(scaleX, scaleY);
+    }
+
     public double getWidth() { return width; }
     public double getHeight() { return height; }
 
     public TerrainType getTerrainAt(Vector2D position) {
         if (tmxObjectZones != null) {
             if (tmxObjectZones.isObstacle(position)) return TerrainType.ROCK;
-            if (tmxObjectZones.isWater(position)) return TerrainType.WATER;
-            return TerrainType.LAND;
+            if (tmxObjectZones.isWater(position))    return TerrainType.WATER;
+            if (tmxObjectZones.isBush(position))     return TerrainType.BUSH;
         }
-        if (terrainGrid == null) return TerrainType.LAND;
-        return terrainGrid.getTerrainAt(position);
+        return TerrainType.LAND;
     }
-    
-    // Khởi tạo các node
-    private class AstarNode implements Comparable<AstarNode>{
+
+    public GridCoordinate worldToGrid(Vector2D position) {
+        if (position == null) return null;
+        int col = (int) (position.x / objectGridTileSize);
+        int row = (int) (position.y / objectGridTileSize);
+        return new GridCoordinate(row, col);
+    }
+
+    public Vector2D gridToWorldCenter(int row, int col) {
+        if (!isGridInside(row, col)) return null;
+        return new Vector2D((col + 0.5) * objectGridTileSize, (row + 0.5) * objectGridTileSize);
+    }
+
+    private boolean isGridInside(int row, int col) {
+        return row >= 0 && row < getGridRows() && col >= 0 && col < getGridCols();
+    }
+
+    private int getGridRows() { return (int) Math.ceil(height / objectGridTileSize); }
+    private int getGridCols() { return (int) Math.ceil(width / objectGridTileSize); }
+
+    public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
+        if (tmxObjectZones == null || from == null || targetType == null) return null;
+        if (targetType == TerrainType.WATER) return tmxObjectZones.findNearestWater(from);
+        if (targetType == TerrainType.BUSH)  return tmxObjectZones.findNearestBush(from);
+        return null;
+    }
+
+    public Vector2D findNearestTerrainPositionInRadius(Vector2D from, TerrainType targetType, double radius) {
+        if (tmxObjectZones == null || from == null || targetType == null || radius <= 0) return null;
+        if (targetType == TerrainType.WATER) return tmxObjectZones.findNearestWaterInRadius(from, radius);
+        if (targetType == TerrainType.BUSH)  return tmxObjectZones.findNearestBushInRadius(from, radius);
+        return null;
+    }
+
+    // A* pathfinding
+    private class AstarNode implements Comparable<AstarNode> {
         int row, col;
         double g;
-        double h;                  // heuristic
+        double h;
         AstarNode parent;
 
-        // constructor
-        public AstarNode(int row, int col){
+        public AstarNode(int row, int col) {
             this.row = row;
             this.col = col;
             this.g = Double.MAX_VALUE;
         }
 
-        public double getF(){
-            return g+h;
-        }
+        public double getF() { return g + h; }
 
-
-        // Chỉ dẫn cho priority queue hoạt động
         @Override
         public int compareTo(AstarNode other) {
             return Double.compare(this.getF(), other.getF());
         }
     }
 
-    public TerrainGrid.GridCoordinate worldToGrid(Vector2D position) {
-        if (terrainGrid == null && tmxObjectZones != null && position != null) {
-            int col = (int) (position.x / objectGridTileSize);
-            int row = (int) (position.y / objectGridTileSize);
-            return new TerrainGrid.GridCoordinate(row, col);
-        }
-        if (terrainGrid == null || position == null) return null;
-        return terrainGrid.worldToGrid(position);
-    }
-
-    public Vector2D gridToWorldCenter(int row, int col) {
-        if (terrainGrid == null && tmxObjectZones != null) {
-            if (!isGridInside(row, col)) return null;
-            return new Vector2D((col + 0.5) * objectGridTileSize, (row + 0.5) * objectGridTileSize);
-        }
-        if (terrainGrid == null || !terrainGrid.isInside(row, col)) return null;
-        return terrainGrid.gridToWorldCenter(row, col);
-    }
-
-    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target){
+    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target) {
         return findPathAStar(entity, start, target, null);
     }
 
-    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target, Set<String> avoidedGridKeys){
-        if ((terrainGrid == null && tmxObjectZones == null) || entity == null || start == null || target == null) {
-            return null;
-        }
+    public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target, Set<String> avoidedGridKeys) {
+        if (tmxObjectZones == null || entity == null || start == null || target == null) return null;
 
-        TerrainGrid.GridCoordinate start_grid = worldToGrid(start);
-        TerrainGrid.GridCoordinate target_grid = worldToGrid(target);
-        if (start_grid == null || target_grid == null) {
-            return null;
-        }
+        GridCoordinate startGrid  = worldToGrid(start);
+        GridCoordinate targetGrid = worldToGrid(target);
+        if (startGrid == null || targetGrid == null) return null;
 
-        // rows, cols của map
         int rows = getGridRows();
         int cols = getGridCols();
-
-        int s_row = start_grid.getRow();
-        int s_col = start_grid.getCol();
-        int t_row = target_grid.getRow();
-        int t_col = target_grid.getCol();
+        int sRow = startGrid.getRow(),  sCol = startGrid.getCol();
+        int tRow = targetGrid.getRow(), tCol = targetGrid.getCol();
 
         PriorityQueue<AstarNode> openSet = new PriorityQueue<>();
-        boolean[][] visited = new boolean[rows][cols];
+        boolean[][] visited  = new boolean[rows][cols];
         AstarNode[][] allNodes = new AstarNode[rows][cols];
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                allNodes[r][c] = new AstarNode(r, c);
 
-        for(int r = 0; r < rows; r++){
-            for(int c = 0; c < cols;c++){
-                allNodes[r][c] = new AstarNode(r,c);
-            }
-        }
-
-        AstarNode startNode = allNodes[s_row][s_col];
-        AstarNode targetNode = allNodes[t_row][t_col];
-
+        AstarNode startNode  = allNodes[sRow][sCol];
+        AstarNode targetNode = allNodes[tRow][tCol];
         startNode.g = 0;
         startNode.h = calculateHeuristic(startNode, targetNode);
         openSet.add(startNode);
 
-        int[][] directions = {
-                {-1,0},{1,0},{0,-1},{0,1},
-                {-1,-1},{-1,1},{1,-1},{1,1}
-        };
+        int[][] directions = {{-1,0},{1,0},{0,-1},{0,1},{-1,-1},{-1,1},{1,-1},{1,1}};
 
-        while(!openSet.isEmpty()){
+        while (!openSet.isEmpty()) {
             AstarNode current = openSet.poll();
-
-            // Nếu tìm thấy node target
-            if(current.row == t_row && current.col == t_col){
-                return Path(current);
-            }
+            if (current.row == tRow && current.col == tCol) return buildPath(current);
 
             visited[current.row][current.col] = true;
-            for(int[] dir: directions){
-                int newRow = current.row + dir[0];
-                int newCol = current.col + dir[1];
+            for (int[] dir : directions) {
+                int nr = current.row + dir[0];
+                int nc = current.col + dir[1];
+                if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                if (visited[nr][nc]) continue;
 
-                // Valiation
-                // Ngoài map
-                if(newRow < 0 || newCol < 0 || newRow >= rows || newCol >= cols) continue;
-                if(visited[newRow][newCol]) continue;
+                Vector2D center = gridToWorldCenter(nr, nc);
+                if (center == null) continue;
+                boolean isTarget = nr == tRow && nc == tCol;
+                if (isTarget ? !canStandAtPoint(entity, center) : !canStandOn(entity, center)) continue;
+                if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(nr, nc))) continue;
 
-                // Check đi vào được không
-                Vector2D titleCenter = gridToWorldCenter(newRow, newCol);
-                if (titleCenter == null) continue;
-                boolean isTargetCell = newRow == t_row && newCol == t_col;
-                if (isTargetCell) {
-                    if (!canStandAtPoint(entity, titleCenter)) continue;
-                } else if(!canStandOn(entity, titleCenter)) {
-                    continue;
-                }
-                if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(newRow, newCol))) continue;
-
-                AstarNode nextNode = allNodes[newRow][newCol];
-
-                double moveCost =  (dir[0] != 0 && dir[1] != 0) ? Math.sqrt(2) : 1.0;
-                double tmpMoveCost = current.g + moveCost;
-
-                if(tmpMoveCost < nextNode.g){
-                    nextNode.parent = current;
-                    nextNode.g = tmpMoveCost;
-                    nextNode.h = calculateHeuristic(nextNode, targetNode);
-
-                    // nếu nextNode chưa có trong p_queue --> thêm vào
-                    if(!openSet.contains(nextNode)) {
-                        openSet.add(nextNode);
-                    // nếu nextNode đã có trong p_queue --> xoá cái cũ thêm vào cái mới tìm được
-                    } else {
-                        openSet.remove(nextNode);
-                        openSet.add(nextNode);
-                    }
+                AstarNode next = allNodes[nr][nc];
+                double cost = (dir[0] != 0 && dir[1] != 0) ? Math.sqrt(2) : 1.0;
+                double newG = current.g + cost;
+                if (newG < next.g) {
+                    next.parent = current;
+                    next.g = newG;
+                    next.h = calculateHeuristic(next, targetNode);
+                    openSet.remove(next);
+                    openSet.add(next);
                 }
             }
         }
         return null;
     }
 
-    private String gridKey(int row, int col) {
-        return row + ":" + col;
-    }
+    private String gridKey(int row, int col) { return row + ":" + col; }
 
-    private List<Vector2D> Path(AstarNode node){
+    private List<Vector2D> buildPath(AstarNode node) {
         List<Vector2D> path = new ArrayList<>();
-        AstarNode current = node;
-
-        while(current != null){
-            Vector2D currentPos = gridToWorldCenter(current.row, current.col);
-            double X = currentPos.x;
-            double Y = currentPos.y;
-
-            path.add(new Vector2D(X,Y));
-            current = current.parent;
-        }
-        // Đảo ngược đường để tìm start -> target
+        for (AstarNode cur = node; cur != null; cur = cur.parent)
+            path.add(gridToWorldCenter(cur.row, cur.col));
         Collections.reverse(path);
-
-        // Bỏ vị trí hiện tại của entity
-        if(!path.isEmpty()){
-            path.remove(0);
-        }
+        if (!path.isEmpty()) path.remove(0);
         return path;
     }
 
-    private double calculateHeuristic(AstarNode start, AstarNode target){
-        double s_row = start.row;
-        double s_col = start.col;
-        double t_row = target.row;
-        double t_col = target.col;
-        double dx = s_col - t_col;
-        double dy = s_row - t_row;
-
-        return Math.sqrt(dx*dx + dy*dy);
-    }
-    public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
-        if (terrainGrid == null && tmxObjectZones != null) {
-            if (targetType == TerrainType.WATER) return tmxObjectZones.findNearestWater(from);
-            return null;
-        }
-        if (terrainGrid == null || from == null || targetType == null) return null;
-        Vector2D nearestCenter = null;
-        double minDistance = Double.MAX_VALUE;
-        int tileSize = terrainGrid.getTileSize();
-        for (int row = 0; row < terrainGrid.getRows(); row++) {
-            for (int col = 0; col < terrainGrid.getCols(); col++) {
-                TerrainTile tile = terrainGrid.getTile(row, col);
-                if (tile == null || tile.getType() != targetType) continue;
-                Vector2D center = new Vector2D((col + 0.5) * tileSize, (row + 0.5) * tileSize);
-                double distance = from.distance(center);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestCenter = center;
-                }
-            }
-        }
-        return nearestCenter;
-    }
-
-    public Vector2D findNearestTerrainPositionInRadius(Vector2D from, TerrainType targetType, double radius) {
-        if (terrainGrid == null && tmxObjectZones != null) {
-            if (targetType == TerrainType.WATER) return tmxObjectZones.findNearestWaterInRadius(from, radius);
-            return null;
-        }
-        if (terrainGrid == null || from == null || targetType == null || radius <= 0) return null;
-        TerrainGrid.GridCoordinate centerCoordinate = worldToGrid(from);
-        if (centerCoordinate == null) return null;
-        int tileSize = terrainGrid.getTileSize();
-        int tileRadius = (int) Math.ceil(radius / tileSize);
-        int centerRow = centerCoordinate.getRow();
-        int centerCol = centerCoordinate.getCol();
-        Vector2D nearestCenter = null;
-        double minDistanceSquared = Double.MAX_VALUE;
-        double radiusSquared = radius * radius;
-        for (int row = centerRow - tileRadius; row <= centerRow + tileRadius; row++) {
-            for (int col = centerCol - tileRadius; col <= centerCol + tileRadius; col++) {
-                if (!terrainGrid.isInside(row, col)) continue;
-                TerrainTile tile = terrainGrid.getTile(row, col);
-                if (tile == null || tile.getType() != targetType) continue;
-                Vector2D center = terrainGrid.gridToWorldCenter(row, col);
-                double dx = center.x - from.x;
-                double dy = center.y - from.y;
-                double distanceSquared = dx * dx + dy * dy;
-                if (distanceSquared > radiusSquared) continue;
-                if (distanceSquared < minDistanceSquared) {
-                    minDistanceSquared = distanceSquared;
-                    nearestCenter = center;
-                }
-            }
-        }
-        return nearestCenter;
+    private double calculateHeuristic(AstarNode a, AstarNode b) {
+        double dx = a.col - b.col;
+        double dy = a.row - b.row;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     public boolean canStandOn(LivingEntity entity, Vector2D position) {
@@ -328,59 +223,51 @@ public class WorldMap {
         if (position.x < 0 || position.y < 0 || position.x > width || position.y > height) return false;
         if (collidesWithAnotherLivingEntity(entity, position)) return false;
 
-        double radius = Math.max(2.0, entity.getSize() * 0.35);
+        double radius   = Math.max(2.0, entity.getSize() * 0.35);
         double diagonal = radius * 0.7;
-        Vector2D[] checkPoints = {
-                position,
-                new Vector2D(position.x + radius, position.y),
-                new Vector2D(position.x - radius, position.y),
-                new Vector2D(position.x, position.y + radius),
-                new Vector2D(position.x, position.y - radius),
-                new Vector2D(position.x + diagonal, position.y + diagonal),
-                new Vector2D(position.x + diagonal, position.y - diagonal),
-                new Vector2D(position.x - diagonal, position.y + diagonal),
-                new Vector2D(position.x - diagonal, position.y - diagonal)
+        Vector2D[] pts = {
+            position,
+            new Vector2D(position.x + radius,   position.y),
+            new Vector2D(position.x - radius,   position.y),
+            new Vector2D(position.x,             position.y + radius),
+            new Vector2D(position.x,             position.y - radius),
+            new Vector2D(position.x + diagonal,  position.y + diagonal),
+            new Vector2D(position.x + diagonal,  position.y - diagonal),
+            new Vector2D(position.x - diagonal,  position.y + diagonal),
+            new Vector2D(position.x - diagonal,  position.y - diagonal)
         };
-
-        for (Vector2D checkPoint : checkPoints) {
-            if (checkPoint.x < 0 || checkPoint.y < 0 || checkPoint.x > width || checkPoint.y > height) {
-                return false;
-            }
-            if (!canEntityStandOnTerrain(entity.getType(), getTerrainAt(checkPoint))) {
-                return false;
-            }
+        for (Vector2D p : pts) {
+            if (p.x < 0 || p.y < 0 || p.x > width || p.y > height) return false;
+            if (!canEntityStandOnTerrain(entity.getType(), getTerrainAt(p))) return false;
         }
         return true;
+    }
+
+    public boolean canStandAtPoint(LivingEntity entity, Vector2D position) {
+        return canEntityStandOnTerrain(entity.getType(), getTerrainAt(position));
+    }
+
+    private boolean canEntityStandOnTerrain(EntityType entityType, TerrainType terrain) {
+        if (terrain == TerrainType.ROCK)  return false;
+        if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
+        if (terrain == TerrainType.BUSH)  return entityType == EntityType.RABBIT;
+        // LAND: tất cả trừ cá
+        return entityType != EntityType.FISH;
     }
 
     private boolean collidesWithAnotherLivingEntity(LivingEntity movingEntity, Vector2D nextPosition) {
         double movingRadius = Math.max(4.0, movingEntity.getSize() * 0.35);
         for (Entity other : entities) {
-            if (other == movingEntity || !(other instanceof LivingEntity)) {
-                continue;
-            }
-
+            if (other == movingEntity || !(other instanceof LivingEntity)) continue;
             LivingEntity otherLiving = (LivingEntity) other;
-            if (!otherLiving.isAlive()) {
-                continue;
-            }
-
-            double otherRadius = Math.max(4.0, other.getSize() * 0.35);
-            double minDistance = movingRadius + otherRadius;
-
-            if (RelationManager.isPrey(other.getType(), movingEntity.getType())) {
-                minDistance *= 0.35;
-            }
-
-            double currentDistance = movingEntity.getPosition().distance(other.getPosition());
-            double nextDistance = nextPosition.distance(other.getPosition());
-            if (currentDistance < minDistance && nextDistance >= currentDistance) {
-                continue;
-            }
-
-            if (nextDistance < minDistance) {
-                return true;
-            }
+            if (!otherLiving.isAlive()) continue;
+            double otherRadius  = Math.max(4.0, other.getSize() * 0.35);
+            double minDistance  = movingRadius + otherRadius;
+            if (RelationManager.isPrey(other.getType(), movingEntity.getType())) minDistance *= 0.35;
+            double currentDist = movingEntity.getPosition().distance(other.getPosition());
+            double nextDist    = nextPosition.distance(other.getPosition());
+            if (currentDist < minDistance && nextDist >= currentDist) continue;
+            if (nextDist < minDistance) return true;
         }
         return false;
     }
@@ -390,72 +277,74 @@ public class WorldMap {
         return Math.max(8.0, (actor.getSize() + target.getSize()) * 0.28);
     }
 
-    private boolean canEntityStandOnTerrain(EntityType entityType, TerrainType terrain) {
-        if (entityType == EntityType.FISH) return terrain == TerrainType.WATER;
-        if (terrain == TerrainType.WATER) return false;
-        if (terrain == TerrainType.BUSH) return entityType != EntityType.WOLF;
-        if (terrain == TerrainType.PIT) return false;
-        return terrain != TerrainType.ROCK;
-    }
-
-    public boolean canStandAtPoint(LivingEntity entity, Vector2D position) {
-        TerrainType terrain = getTerrainAt(position);
-        return canEntityStandOnTerrain(entity.getType(), terrain);
-    }
-
-    private boolean isGridInside(int row, int col) {
-        if (terrainGrid != null) {
-            return terrainGrid.isInside(row, col);
-        }
-        return row >= 0 && row < getGridRows() && col >= 0 && col < getGridCols();
-    }
-
-    private int getGridRows() {
-        if (terrainGrid != null) {
-            return terrainGrid.getRows();
-        }
-        return (int) Math.ceil(height / objectGridTileSize);
-    }
-
-    private int getGridCols() {
-        if (terrainGrid != null) {
-            return terrainGrid.getCols();
-        }
-        return (int) Math.ceil(width / objectGridTileSize);
-    }
-
-    // --- CẬP NHẬT: Duyệt và xóa thực thể đã chết để giải phóng Log ---
     public void update(double dt) {
         for (int i = entities.size() - 1; i >= 0; i--) {
             Entity e = entities.get(i);
             e.update(dt, this);
-
-            // Nếu thực thể sống đã chết, xóa khỏi danh sách để Terminal không bị rác
-            if (e instanceof LivingEntity && !((LivingEntity) e).isAlive()) {
-                entities.remove(i);
-            }
+            if (e instanceof LivingEntity && !((LivingEntity) e).isAlive()) entities.remove(i);
         }
     }
 
     public Entity getEntityById(int id) {
-        for (Entity e : entities) {
-            if (e.getId() == id) return e;
-        }
+        for (Entity e : entities) if (e.getId() == id) return e;
         return null;
     }
-    
-    public List<Entity> getEntities() {
-    return Collections.unmodifiableList(entities);
-}
+
+    public List<Entity> getEntities() { return Collections.unmodifiableList(entities); }
+
+    public List<Entity> getNeighbors(Entity owner, double radius) {
+        List<Entity> result = new ArrayList<>();
+        for (Entity e : entities)
+            if (e != owner && owner.getPosition().distance(e.getPosition()) <= radius) result.add(e);
+        return result;
+    }
+
+    public void addObserver(GameObserver observer) { observers.add(observer); }
+
+    public void notifyAction(String actor, String action, String target) {
+        for (GameObserver obs : observers) obs.onActionOccurred(actor, action, target);
+    }
+
+    public void broadcastDeath(String message) {
+        for (GameObserver obs : observers) obs.onEntityDeath(message);
+    }
+
+    // --- Rendering ---
+
+    private double scale   = 1.0;
+    private double offsetX = 0;
+    private double offsetY = 0;
+
+    public void setScale(double scale) { this.scale = Math.max(1.0, Math.min(3.0, scale)); }
+    public double getScale() { return scale; }
+
+    public void setOffset(double x, double y) {
+        double sw = width * scale, sh = height * scale;
+        offsetX = sw > width  ? Math.min(0, Math.max(x, width  - sw)) : (width  - sw) / 2;
+        offsetY = sh > height ? Math.min(0, Math.max(y, height - sh)) : (height - sh) / 2;
+    }
+    public double getOffsetX() { return offsetX; }
+    public double getOffsetY() { return offsetY; }
+
+    public void setFixedBackgroundImageFromResource(String resourcePath) {
+        try {
+            Image image = new Image(getClass().getResourceAsStream(resourcePath));
+            fixedBackgroundImage = image.isError() ? null : image;
+        } catch (Exception e) { fixedBackgroundImage = null; }
+    }
+
+    public void setFixedBackgroundImageFromFile(String absoluteFilePath) {
+        try {
+            Image image = new Image("file:" + absoluteFilePath);
+            fixedBackgroundImage = image.isError() ? null : image;
+        } catch (Exception e) { fixedBackgroundImage = null; }
+    }
 
     public void render(GraphicsContext gc) {
-        // 1. Lưu trạng thái ban đầu của GraphicsContext
-        gc.save(); 
+        gc.save();
         gc.translate(offsetX, offsetY);
-        // 2. Thực hiện phóng to/thu nhỏ dựa trên biến scale
         gc.scale(scale, scale);
 
-        // --- GIỮ NGUYÊN LOGIC VẼ CỦA BẠN ---
         if (fixedBackgroundImage != null) {
             gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
         } else {
@@ -468,305 +357,140 @@ public class WorldMap {
             renderWanderDebug(gc, entity);
             renderAStarPathDebug(gc, entity);
         }
-        // ----------------------------------
-
-        // 3. Khôi phục lại trạng thái ban đầu (để tránh làm hỏng các phần vẽ khác bên ngoài WorldMap)
-        gc.restore(); 
-    }
-
-    private void renderVisionRadius(GraphicsContext gc, Entity entity) {
-        if (!(entity instanceof LivingEntity)) {
-            return;
-        }
-
-        LivingEntity livingEntity = (LivingEntity) entity;
-        double visionRadius = livingEntity.getVisionRadius();
-        if (visionRadius <= 0) {
-            return;
-        }
-
-        gc.save();
-        gc.setLineWidth(1.2);
-        gc.setStroke(Color.web("#66E0FF", 0.55));
-        gc.setFill(Color.web("#66E0FF", 0.08));
-
-        double diameter = visionRadius * 2;
-        double topLeftX = livingEntity.getPosition().x - visionRadius;
-        double topLeftY = livingEntity.getPosition().y - visionRadius;
-
-        gc.fillOval(topLeftX, topLeftY, diameter, diameter);
-        gc.strokeOval(topLeftX, topLeftY, diameter, diameter);
-        gc.restore();
-    }
-
-    public void setFixedBackgroundImageFromResource(String resourcePath) {
-        try {
-            Image image = new Image(getClass().getResourceAsStream(resourcePath));
-            fixedBackgroundImage = image.isError() ? null : image;
-        } catch (Exception e) {
-            fixedBackgroundImage = null;
-        }
-    }
-
-    public void setFixedBackgroundImageFromFile(String absoluteFilePath) {
-        try {
-            Image image = new Image("file:" + absoluteFilePath);
-            fixedBackgroundImage = image.isError() ? null : image;
-        } catch (Exception e) {
-            fixedBackgroundImage = null;
-        }
-    }
-
-    public List<Entity> getNeighbors(Entity owner, double radius) {
-        List<Entity> result = new ArrayList<>();
-        for (Entity e : entities) {
-            if (e != owner) {
-                double dist = owner.getPosition().distance(e.getPosition());
-                if (dist <= radius) result.add(e);
-            }
-        }
-        return result;
-    }
-
-
-    // --- CẬP NHẬT: Render dùng ImageCache để mượt hơn ---
-    private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
-        if (entity instanceof Rabbit) {
-            renderRabbitWithAnimation(gc, (Rabbit) entity);
-            return;
-        }
-        if (entity instanceof Wolf) {
-            renderWolfWithAnimation(gc, (Wolf) entity);
-            return;
-        }
-        if (entity instanceof Fish) {
-            renderFishWithAnimation(gc, (Fish) entity);
-            return;
-        }
-        if (entity instanceof Elephant) {
-            renderElephantWithAnimation(gc, (Elephant) entity);
-            return;
-        }
-        if (entity instanceof Bear) {
-            renderBearWithAnimation(gc, (Bear) entity);
-            return;
-        }
-
-        String[] parts = entity.toString().split("\\{");
-        String imagePath = parts[0]; 
-
-        try {
-            // Lấy ảnh từ cache, nếu chưa có thì mới load từ resource
-            Image img = imageCache.get(imagePath);
-            if (img == null) {
-                img = new Image(getClass().getResourceAsStream("/" + imagePath));
-                imageCache.put(imagePath, img);
-            }
-
-            double renderX = entity.getPosition().x - (entity.getSize() / 2);
-            double renderY = entity.getPosition().y - (entity.getSize() / 2);
-            gc.drawImage(img, renderX, renderY, entity.getSize(), entity.getSize());
-            
-        } catch (Exception e) {
-            gc.setFill(Color.RED);
-            gc.fillOval(entity.getPosition().x - 5, entity.getPosition().y - 5, 10, 10);
-        }
-    }
-
-    private void renderRabbitWithAnimation(GraphicsContext gc, Rabbit rabbit) {
-        Vector2D velocity = rabbit.getVelocity();
-        String direction = getDirection(rabbit.getId(), velocity, rabbitDirectionCache, "right");
-        int frame = getWalkFrame(rabbit.getId(), velocity);
-        String imagePath = "org/openjfx/app/rabbit_walk/rabbit_" + direction + "_" + frame + ".png";
-        renderImageAtEntity(gc, rabbit, imagePath);
-    }
-
-    private void renderWolfWithAnimation(GraphicsContext gc, Wolf wolf) {
-        Vector2D velocity = wolf.getVelocity();
-        String direction = getDirection(wolf.getId(), velocity, wolfDirectionCache, "right");
-        int frame = getWalkFrame(wolf.getId(), velocity);
-        String imagePath = "org/openjfx/app/wolf_walk/wolf_" + direction + "_" + frame + ".png";
-        renderImageAtEntity(gc, wolf, imagePath);
-    }
-
-    private void renderFishWithAnimation(GraphicsContext gc, Fish fish) {
-        Vector2D velocity = fish.getVelocity();
-        String direction = getDirection(fish.getId(), velocity, fishDirectionCache, "right");
-        int frame = getWalkFrame(fish.getId(), velocity);
-        String imagePath = "org/openjfx/app/fish_swim/fish_" + direction + "_" + frame + ".png";
-        renderImageAtEntity(gc, fish, imagePath);
-    }
-
-    private void renderElephantWithAnimation(GraphicsContext gc, Elephant elephant) {
-        Vector2D velocity = elephant.getVelocity();
-        String direction = getDirection(elephant.getId(), velocity, elephantDirectionCache, "right");
-        int frame = getWalkFrame(elephant.getId(), velocity);
-        String imagePath = "org/openjfx/app/elephant_walk/elephant_" + direction + "_" + frame + ".png";
-        renderImageAtEntity(gc, elephant, imagePath);
-    }
-
-    private void renderBearWithAnimation(GraphicsContext gc, Bear bear) {
-        Vector2D velocity = bear.getVelocity();
-        String direction = getDirection(bear.getId(), velocity, bearDirectionCache, "right");
-        int frame = getWalkFrame(bear.getId(), velocity);
-        String imagePath = "org/openjfx/app/bear_walk/bear_" + direction + "_" + frame + ".png";
-        renderImageAtEntity(gc, bear, imagePath);
-    }
-
-    private String getDirection(int entityId, Vector2D velocity, Map<Integer, String> directionCache, String defaultDirection) {
-        if (velocity == null || velocity.magnitude() < 0.5) {
-            return directionCache.getOrDefault(entityId, defaultDirection);
-        }
-
-        String direction;
-        if (Math.abs(velocity.x) >= Math.abs(velocity.y)) {
-            direction = velocity.x >= 0 ? "right" : "left";
-        } else {
-            direction = velocity.y >= 0 ? "down" : "up";
-        }
-        directionCache.put(entityId, direction);
-        return direction;
-    }
-
-    private int getWalkFrame(int entityId, Vector2D velocity) {
-        if (velocity == null || velocity.magnitude() < 0.5) {
-            return 0;
-        }
-        long frameTick = System.nanoTime() / 120_000_000L;
-        return (int) ((frameTick + entityId) % 4);
-    }
-
-    private void renderImageAtEntity(GraphicsContext gc, Entity entity, String imagePath) {
-        try {
-            Image img = imageCache.get(imagePath);
-            if (img == null) {
-                img = new Image(getClass().getResourceAsStream("/" + imagePath));
-                imageCache.put(imagePath, img);
-            }
-
-            double renderX = entity.getPosition().x - (entity.getSize() / 2);
-            double renderY = entity.getPosition().y - (entity.getSize() / 2);
-            gc.drawImage(img, renderX, renderY, entity.getSize(), entity.getSize());
-        } catch (Exception e) {
-            gc.setFill(Color.RED);
-            gc.fillOval(entity.getPosition().x - 5, entity.getPosition().y - 5, 10, 10);
-        }
-    }
-
-    public void addObserver(GameObserver observer) {
-        observers.add(observer);
-    }
-
-    public void notifyAction(String actor, String action, String target) {
-        for (GameObserver obs : observers) {
-            obs.onActionOccurred(actor, action, target);
-        }
-    }
-
-    public void broadcastDeath(String message) {
-        for (GameObserver obs : observers) {
-            obs.onEntityDeath(message);
-        }
-    }
-
-    private void renderWanderDebug(GraphicsContext gc, Entity entity) {
-        WanderStrategy.DebugWanderState debugState = WanderStrategy.getDebugState(entity.getId());
-        if (debugState == null) return;
-        Vector2D center = debugState.getCircleCenter();
-        Vector2D randomPoint = debugState.getRandomPoint();
-        double radius = debugState.getWanderRadius();
-        gc.save();
-        gc.setLineWidth(1.5);
-        gc.setStroke(Color.ORANGE);
-        gc.strokeOval(center.x - radius, center.y - radius, radius * 2, radius * 2);
-        gc.setStroke(Color.YELLOW);
-        gc.strokeOval(randomPoint.x - 5, randomPoint.y - 5, 10, 10);
-        gc.setFill(Color.YELLOW);
-        gc.fillOval(randomPoint.x - 2, randomPoint.y - 2, 4, 4);
-        gc.restore();
-    }
-
-    private void renderAStarPathDebug(GraphicsContext gc, Entity entity) {
-        List<Vector2D> path = null;
-        HunterStrategy.DebugPathState hunterPath = HunterStrategy.getDebugPathState(entity.getId());
-        if (hunterPath != null) {
-            path = hunterPath.getPath();
-        } else {
-            FleeStrategy.DebugPathState fleePath = FleeStrategy.getDebugPathState(entity.getId());
-            if (fleePath != null) {
-                path = fleePath.getPath();
-            }
-        }
-
-        if (path == null || path.size() < 2) {
-            return;
-        }
-
-        gc.save();
-        gc.setLineWidth(2.0);
-        gc.setStroke(Color.web("#00D4FF", 0.85));
-        gc.setFill(Color.web("#00D4FF", 0.85));
-
-        Vector2D previous = null;
-        for (Vector2D point : path) {
-            if (point == null) {
-                continue;
-            }
-            if (previous != null) {
-                gc.strokeLine(previous.x, previous.y, point.x, point.y);
-            }
-            gc.fillOval(point.x - 2.5, point.y - 2.5, 5, 5);
-            previous = point;
-        }
-
         gc.restore();
     }
 
     private void drawGrassBackground(GraphicsContext gc) {
-        int tileSize = 40; 
+        int tileSize = 40;
         for (int x = 0; x < width; x += tileSize) {
             for (int y = 0; y < height; y += tileSize) {
-                if ((x / tileSize + y / tileSize) % 2 == 0) {
-                    gc.setFill(Color.web("#90EE90"));
-                } else {
-                    gc.setFill(Color.web("#85e085"));
-                }
+                gc.setFill(Color.web((x / tileSize + y / tileSize) % 2 == 0 ? "#90EE90" : "#85e085"));
                 gc.fillRect(x, y, tileSize, tileSize);
                 gc.setFill(Color.web("#77cc77"));
                 gc.fillOval(x + 10, y + 10, 2, 2);
             }
         }
     }
-    private double scale = 1.0;
-    // Thêm getter/setter để MainApp có thể gọi
-    public void setScale(double scale) {
-    this.scale = Math.max(1.0, Math.min(3.0, scale));
-    }
-    public double getScale() { return scale; }
-    private double offsetX = 0;
-    private double offsetY = 0;
 
-    // Getter và Setter cho Offset
-    public void setOffset(double x, double y) {
-    double scaledWidth = this.width * this.scale;
-    double scaledHeight = this.height * this.scale;
-
-    // Chặn biên X: Nếu bản đồ to hơn khung hình thì mới cho lia
-    if (scaledWidth > this.width) {
-        this.offsetX = Math.min(0, Math.max(x, this.width - scaledWidth));
-    } else {
-        // Nếu không muốn đứng yên tại 0, bạn có thể gán this.offsetX = x;
-        // Nhưng theo ý bạn là "bản đồ cố định" nên để là 0 hoặc căn giữa:
-        this.offsetX = (this.width - scaledWidth) / 2; 
+    private void renderVisionRadius(GraphicsContext gc, Entity entity) {
+        if (!(entity instanceof LivingEntity)) return;
+        LivingEntity le = (LivingEntity) entity;
+        if (le.getVisionRadius() <= 0) return;
+        double r = le.getVisionRadius();
+        gc.save();
+        gc.setLineWidth(1.2);
+        gc.setStroke(Color.web("#66E0FF", 0.55));
+        gc.setFill(Color.web("#66E0FF", 0.08));
+        gc.fillOval(le.getPosition().x - r, le.getPosition().y - r, r * 2, r * 2);
+        gc.strokeOval(le.getPosition().x - r, le.getPosition().y - r, r * 2, r * 2);
+        gc.restore();
     }
 
-    // Chặn biên Y
-    if (scaledHeight > this.height) {
-        this.offsetY = Math.min(0, Math.max(y, this.height - scaledHeight));
-    } else {
-        this.offsetY = (this.height - scaledHeight) / 2;
+    private void renderEntityWithImage(GraphicsContext gc, Entity entity) {
+        if (entity instanceof Rabbit)   { renderRabbitWithAnimation(gc, (Rabbit) entity);     return; }
+        if (entity instanceof Wolf)     { renderWolfWithAnimation(gc, (Wolf) entity);           return; }
+        if (entity instanceof Fish)     { renderFishWithAnimation(gc, (Fish) entity);           return; }
+        if (entity instanceof Elephant) { renderElephantWithAnimation(gc, (Elephant) entity);  return; }
+        if (entity instanceof Bear)     { renderBearWithAnimation(gc, (Bear) entity);           return; }
+
+        String imagePath = entity.toString().split("\\{")[0];
+        try {
+            renderImageAtEntity(gc, entity, imagePath);
+        } catch (Exception e) {
+            gc.setFill(Color.RED);
+            gc.fillOval(entity.getPosition().x - 5, entity.getPosition().y - 5, 10, 10);
+        }
     }
+
+    private void renderRabbitWithAnimation(GraphicsContext gc, Rabbit r) {
+        String dir = getDirection(r.getId(), r.getVelocity(), rabbitDirectionCache, "right");
+        renderImageAtEntity(gc, r, "org/openjfx/app/rabbit_walk/rabbit_" + dir + "_" + getWalkFrame(r.getId(), r.getVelocity()) + ".png");
     }
-    public double getOffsetX() { return offsetX; }
-    public double getOffsetY() { return offsetY; }
+
+    private void renderWolfWithAnimation(GraphicsContext gc, Wolf w) {
+        String dir = getDirection(w.getId(), w.getVelocity(), wolfDirectionCache, "right");
+        renderImageAtEntity(gc, w, "org/openjfx/app/wolf_walk/wolf_" + dir + "_" + getWalkFrame(w.getId(), w.getVelocity()) + ".png");
+    }
+
+    private void renderFishWithAnimation(GraphicsContext gc, Fish f) {
+        String dir = getDirection(f.getId(), f.getVelocity(), fishDirectionCache, "right");
+        renderImageAtEntity(gc, f, "org/openjfx/app/fish_swim/fish_" + dir + "_" + getWalkFrame(f.getId(), f.getVelocity()) + ".png");
+    }
+
+    private void renderElephantWithAnimation(GraphicsContext gc, Elephant e) {
+        String dir = getDirection(e.getId(), e.getVelocity(), elephantDirectionCache, "right");
+        renderImageAtEntity(gc, e, "org/openjfx/app/elephant_walk/elephant_" + dir + "_" + getWalkFrame(e.getId(), e.getVelocity()) + ".png");
+    }
+
+    private void renderBearWithAnimation(GraphicsContext gc, Bear b) {
+        String dir = getDirection(b.getId(), b.getVelocity(), bearDirectionCache, "right");
+        renderImageAtEntity(gc, b, "org/openjfx/app/bear_walk/bear_" + dir + "_" + getWalkFrame(b.getId(), b.getVelocity()) + ".png");
+    }
+
+    private String getDirection(int id, Vector2D vel, Map<Integer, String> cache, String def) {
+        if (vel == null || vel.magnitude() < 0.5) return cache.getOrDefault(id, def);
+        String dir = Math.abs(vel.x) >= Math.abs(vel.y)
+            ? (vel.x >= 0 ? "right" : "left")
+            : (vel.y >= 0 ? "down"  : "up");
+        cache.put(id, dir);
+        return dir;
+    }
+
+    private int getWalkFrame(int id, Vector2D vel) {
+        if (vel == null || vel.magnitude() < 0.5) return 0;
+        return (int) ((System.nanoTime() / 120_000_000L + id) % 4);
+    }
+
+    private void renderImageAtEntity(GraphicsContext gc, Entity entity, String imagePath) {
+        try {
+            Image img = imageCache.computeIfAbsent(imagePath,
+                k -> new Image(getClass().getResourceAsStream("/" + k)));
+            double x = entity.getPosition().x - entity.getSize() / 2;
+            double y = entity.getPosition().y - entity.getSize() / 2;
+            gc.drawImage(img, x, y, entity.getSize(), entity.getSize());
+        } catch (Exception e) {
+            gc.setFill(Color.RED);
+            gc.fillOval(entity.getPosition().x - 5, entity.getPosition().y - 5, 10, 10);
+        }
+    }
+
+    private void renderWanderDebug(GraphicsContext gc, Entity entity) {
+        WanderStrategy.DebugWanderState s = WanderStrategy.getDebugState(entity.getId());
+        if (s == null) return;
+        double r = s.getWanderRadius();
+        gc.save();
+        gc.setLineWidth(1.5);
+        gc.setStroke(Color.ORANGE);
+        gc.strokeOval(s.getCircleCenter().x - r, s.getCircleCenter().y - r, r * 2, r * 2);
+        gc.setStroke(Color.YELLOW);
+        gc.strokeOval(s.getRandomPoint().x - 5, s.getRandomPoint().y - 5, 10, 10);
+        gc.setFill(Color.YELLOW);
+        gc.fillOval(s.getRandomPoint().x - 2, s.getRandomPoint().y - 2, 4, 4);
+        gc.restore();
+    }
+
+    private void renderAStarPathDebug(GraphicsContext gc, Entity entity) {
+        List<Vector2D> path = null;
+        HunterStrategy.DebugPathState hp = HunterStrategy.getDebugPathState(entity.getId());
+        if (hp != null) {
+            path = hp.getPath();
+        } else {
+            FleeStrategy.DebugPathState fp = FleeStrategy.getDebugPathState(entity.getId());
+            if (fp != null) path = fp.getPath();
+        }
+        if (path == null || path.size() < 2) return;
+
+        gc.save();
+        gc.setLineWidth(2.0);
+        gc.setStroke(Color.web("#00D4FF", 0.85));
+        gc.setFill(Color.web("#00D4FF", 0.85));
+        Vector2D prev = null;
+        for (Vector2D pt : path) {
+            if (pt == null) continue;
+            if (prev != null) gc.strokeLine(prev.x, prev.y, pt.x, pt.y);
+            gc.fillOval(pt.x - 2.5, pt.y - 2.5, 5, 5);
+            prev = pt;
+        }
+        gc.restore();
+    }
 }

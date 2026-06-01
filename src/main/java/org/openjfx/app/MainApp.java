@@ -11,8 +11,13 @@ import org.openjfx.app.entities.movable.Fish;
 import org.openjfx.app.entities.movable.Rabbit;
 import org.openjfx.app.entities.movable.Wolf;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -67,9 +72,15 @@ public class MainApp extends Application {
     public void start(Stage stage) {
         double mapScaleX = WIDTH / SOURCE_MAP_SIZE;
         double mapScaleY = HEIGHT / SOURCE_MAP_SIZE;
+
+        String tmxAbsPath = Paths.get(System.getProperty("user.dir"),
+                "src", "main", "resources", "org", "openjfx", "app", "all.tmx")
+                .toString();
+
         worldMap = new WorldMap(WIDTH, HEIGHT);
         worldMap.setFixedBackgroundImageFromResource(IMG_SPRING);
-        worldMap.setObjectZonesFromTmxResource(SHARED_TMX_PATH, SHARED_TILE_SIZE, mapScaleX, mapScaleY);
+        worldMap.setObjectZonesFromTmxFile(tmxAbsPath, SHARED_TILE_SIZE, mapScaleX, mapScaleY);
+        startTmxWatcher(tmxAbsPath, mapScaleX, mapScaleY);
 
         ObservableList<String> logData = FXCollections.observableArrayList();
         ListView<String> listView = new ListView<>(logData);
@@ -276,6 +287,33 @@ public class MainApp extends Application {
         double oy = cy - (cy - worldMap.getOffsetY()) * (newScale / oldScale);
         worldMap.setScale(newScale);
         worldMap.setOffset(ox, oy);
+    }
+
+    private void startTmxWatcher(String absolutePath, double scaleX, double scaleY) {
+        Thread watcher = new Thread(() -> {
+            try {
+                Path path = Paths.get(absolutePath);
+                long[] lastModified = { Files.getLastModifiedTime(path).toMillis() };
+                while (true) {
+                    Thread.sleep(1000);
+                    long current = Files.getLastModifiedTime(path).toMillis();
+                    if (current != lastModified[0]) {
+                        lastModified[0] = current;
+                        Platform.runLater(() -> {
+                            try {
+                                worldMap.setObjectZonesFromTmxFile(absolutePath, SHARED_TILE_SIZE, scaleX, scaleY);
+                            } catch (Exception e) {
+                                System.err.println("TMX reload failed: " + e.getMessage());
+                            }
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("TMX watcher error: " + e.getMessage());
+            }
+        });
+        watcher.setDaemon(true);
+        watcher.start();
     }
 
     private Vector2D mapPosition(double sourceX, double sourceY) {

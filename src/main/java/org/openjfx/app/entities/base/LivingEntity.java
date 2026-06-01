@@ -94,8 +94,7 @@ public abstract class LivingEntity extends MovableEntity {
         // Máu tuỳ theo con vật
         this.health = health;
         
-        if (this.health <= 0 && this.isAlive == true) {
-            System.out.println("Death");
+        if (this.health <= 0 && this.isAlive) {
             this.isAlive = false;
         }
     }

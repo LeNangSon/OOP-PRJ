@@ -15,16 +15,15 @@ public class Bear extends Carnivore {
                 200.0,
                 1.5,
                 2.0,
-                38.0,
-                30.0,
-                12.0,
-                70.0,
-                35.0
+                28.0,  // maxSpeed (giảm 38→28)
+                40.0,  // maxForce
+                12.0,  // mass
+                70.0,  // wanderDistance
+                35.0   // wanderRadius
         );
 
-        this.setVisionRadius(200.0);
+        this.setVisionRadius(160.0);
         this.type = EntityType.BEAR;
-        this.setVelocity(new Vector2D(8.0, 0.0));
     }
 
     @Override

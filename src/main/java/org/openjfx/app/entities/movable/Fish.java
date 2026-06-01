@@ -22,15 +22,14 @@ public class Fish extends Herbivore {
                 100.0,     // initialHealth
                 0.5,       // hungerRate (Cá ăn ít, đói chậm)
                 0.0,       // thirstRate (Cá không khát nước vì sống trong nước)
-                40.0,      // maxSpeed (Tốc độ bơi vừa phải)
-                2.5,       // maxForce (Lực lái để quẹo cua)
-                3.0,       // mass (Khối lượng nhẹ để linh hoạt)
-                40.0,      // wanderDistance (Khoảng cách điểm lang thang)
-                25.0       // wanderRadius (Bán kính nhiễu)
+                30.0,      // maxSpeed
+                20.0,      // maxForce (tăng 2.5→20 để cá rẽ được)
+                3.0,       // mass
+                35.0,      // wanderDistance
+                20.0       // wanderRadius
         );
 
-        // Thiết lập tầm nhìn để tìm thức ăn hoặc tránh kẻ thù
-        this.setVisionRadius(80.0);
+        this.setVisionRadius(100.0); // tăng 80→100
         this.type = EntityType.FISH;
     }
 

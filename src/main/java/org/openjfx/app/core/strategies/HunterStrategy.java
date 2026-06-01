@@ -9,10 +9,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.terrain.TerrainGrid;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
+import org.openjfx.app.core.strategies.WanderStrategy;
 
 public class HunterStrategy implements MoveStrategy {
 
@@ -123,9 +123,11 @@ public class HunterStrategy implements MoveStrategy {
                     }
                 }
             } else {
+                // Không thấy mồi → wander để tìm kiếm
                 logCooldown = 0;
                 clearDebugPathState(owner.getId());
-
+                new WanderStrategy(owner.getWanderDistance(), owner.getWanderRadius())
+                        .updateVelocity(owner, neighbors, dt, world);
             }
         }
     }
@@ -142,7 +144,7 @@ public class HunterStrategy implements MoveStrategy {
         for (int i = 0; i < limit; i++) {
             Vector2D point = lastPath.get(i);
             if (point == null) continue;
-            TerrainGrid.GridCoordinate grid = world.worldToGrid(point);
+            WorldMap.GridCoordinate grid = world.worldToGrid(point);
             if (grid != null) {
                 blockedKeys.add(grid.getRow() + ":" + grid.getCol());
             }
