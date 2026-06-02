@@ -88,7 +88,15 @@ public class SeekWaterStrategy implements MoveStrategy {
 
         if (nearestWater != null) {
             lastKnownWaterPos = nearestWater;
-            // Pathfind thẳng đến mép nước, voi sẽ tự bước vào
+            // Entity không vào được nước (Rabbit, Wolf) → uống khi mép chạm nước
+            if (!world.canStandAtPoint(owner, nearestWater)
+                    && isEdgeTouchingWater(owner, currentPos, world)) {
+                owner.setVelocity(new Vector2D(0, 0));
+                owner.setAcceleration(new Vector2D(0, 0));
+                owner.drink(dt);
+                return;
+            }
+            // Pathfind thẳng đến mép nước (Elephant/Fish tự bước vào)
             moveToward(owner, currentPos, nearestWater, dt, world);
             return;
         }
@@ -106,6 +114,14 @@ public class SeekWaterStrategy implements MoveStrategy {
         }
 
         searchWander.updateVelocity(owner, neighbors, dt, world);
+    }
+
+    private boolean isEdgeTouchingWater(LivingEntity owner, Vector2D pos, WorldMap world) {
+        double r = owner.getSize() / 2.0 + 4.0;
+        return world.getTerrainAt(new Vector2D(pos.x + r, pos.y)) == TerrainType.WATER
+            || world.getTerrainAt(new Vector2D(pos.x - r, pos.y)) == TerrainType.WATER
+            || world.getTerrainAt(new Vector2D(pos.x, pos.y + r)) == TerrainType.WATER
+            || world.getTerrainAt(new Vector2D(pos.x, pos.y - r)) == TerrainType.WATER;
     }
 
     private void moveToward(LivingEntity owner, Vector2D from, Vector2D target, double dt, WorldMap world) {

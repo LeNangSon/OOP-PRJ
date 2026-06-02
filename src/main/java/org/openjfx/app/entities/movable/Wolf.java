@@ -10,7 +10,7 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class Wolf extends Carnivore {
 
     public Wolf(Vector2D position) {
-        super(position, 30.0, "circle", 200.0, 3.0, 0.0,
+        super(position, 30.0, "circle", 200.0, 3.0, 5.0,
                 35.0, 70.0, 3.0, 30.0, 30.0);
         setVisionRadius(50.0);
         type = EntityType.WOLF;

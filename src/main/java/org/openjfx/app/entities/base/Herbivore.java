@@ -31,12 +31,26 @@ public abstract class Herbivore extends LivingEntity {
 
     private List<StrategyCandidate> buildCandidates() {
         return List.of(
-                new StrategyCandidate(FleeStrategy::new, (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
+                new StrategyCandidate(FleeStrategy::new,
+                        (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
                 new StrategyCandidate(() -> new SeekWaterStrategy(wanderDistance, wanderRadius),
-                        (e, n) -> e.getThirst() > 70.0 || e.getMoveStrategy() instanceof SeekWaterStrategy ? e.getThirst() / 100.0 + 0.2 : 0.0),
-                new StrategyCandidate(HunterStrategy::new, (e, n) -> e.getHunger() > 70.0 ? e.getHunger() / 100.0 : 0.0),
-                new StrategyCandidate(MateStrategy::new, (e, n) -> canReproduce() && hasMateNearby() ? 0.45 : 0.0),
-                new StrategyCandidate(() -> new WanderStrategy(wanderDistance, wanderRadius), (e, n) -> 0.3)
+                        (e, n) -> {
+                            if (e.getThirst() < 5.0) return 0.0; // no bị kẹt tại nước khi đã đủ
+                            if (e.getThirst() > 70.0 || e.getMoveStrategy() instanceof SeekWaterStrategy)
+                                return e.getThirst() / 100.0 + 0.2;
+                            return 0.0;
+                        }),
+                new StrategyCandidate(HunterStrategy::new,
+                        (e, n) -> {
+                            if (e.getHunger() < 5.0) return 0.0; // no bị kẹt tìm ăn khi no
+                            if (e.getHunger() > 60.0 || e.getMoveStrategy() instanceof HunterStrategy)
+                                return e.getHunger() / 100.0;
+                            return 0.0;
+                        }),
+                new StrategyCandidate(MateStrategy::new,
+                        (e, n) -> canReproduce() && hasMateNearby() ? 0.45 : 0.0),
+                new StrategyCandidate(() -> new WanderStrategy(wanderDistance, wanderRadius),
+                        (e, n) -> 0.3)
         );
     }
 

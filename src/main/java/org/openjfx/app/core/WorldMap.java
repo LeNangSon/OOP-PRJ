@@ -51,6 +51,8 @@ public class WorldMap {
     private TmxObjectZones tmxObjectZones;
     private double objectGridTileSize = 32.0;
     private Image fixedBackgroundImage;
+    private Image transitionToImage  = null;
+    private double transitionAlpha   = 0.0;
     private double scale = 1.0;
     private double offsetX = 0;
     private double offsetY = 0;
@@ -268,8 +270,7 @@ public class WorldMap {
                 if (!isGridInside(nr, nc) || visited[nr][nc]) continue;
                 if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(nr, nc))) continue;
                 Vector2D center = gridToWorldCenter(nr, nc);
-                boolean isTarget = nr == targetNode.row && nc == targetNode.col;
-                if (isTarget ? !canStandAtPoint(entity, center) : !canStandOn(entity, center)) continue;
+                if (!canEntityStandOnTerrain(entity.getType(), getTerrainAt(center))) continue;
 
                 AstarNode next = nodes[nr][nc];
                 double cost = (dir[0] != 0 && dir[1] != 0) ? Math.sqrt(2) : 1.0;
@@ -278,8 +279,7 @@ public class WorldMap {
                     next.parent = current;
                     next.g = newG;
                     next.h = calculateHeuristic(next, targetNode);
-                    open.remove(next);
-                    open.add(next);
+                    open.add(next); // entry cũ sẽ bị bỏ qua khi poll vì visited[][]
                 }
             }
         }
@@ -500,6 +500,23 @@ public class WorldMap {
     public double getOffsetX() { return offsetX; }
     public double getOffsetY() { return offsetY; }
 
+    public void beginBackgroundTransition(Image toImage) {
+        this.transitionToImage = toImage;
+        this.transitionAlpha   = 0.0;
+    }
+
+    public void setTransitionAlpha(double alpha) {
+        this.transitionAlpha = Math.min(1.0, Math.max(0.0, alpha));
+    }
+
+    public void completeBackgroundTransition() {
+        if (transitionToImage != null) {
+            fixedBackgroundImage = transitionToImage;
+            transitionToImage    = null;
+            transitionAlpha      = 0.0;
+        }
+    }
+
     public void setFixedBackgroundImageFromResource(String resourcePath) {
         try {
             Image image = new Image(getClass().getResourceAsStream(resourcePath));
@@ -527,6 +544,12 @@ public class WorldMap {
             gc.drawImage(fixedBackgroundImage, 0, 0, width, height);
         } else {
             drawGrassBackground(gc);
+        }
+        if (transitionToImage != null) {
+            gc.save();
+            gc.setGlobalAlpha(transitionAlpha);
+            gc.drawImage(transitionToImage, 0, 0, width, height);
+            gc.restore();
         }
 
         for (Entity entity : entities) {

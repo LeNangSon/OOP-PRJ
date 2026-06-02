@@ -60,6 +60,7 @@ public class MainApp extends Application {
     private static final double MIN_ZOOM = 1.0;
     private static final double MAX_ZOOM = 3.0;
     private static final double SEASON_AUTO_SWITCH_SECONDS = 60.0;
+    private static final double SEASON_TRANSITION_SECONDS  = 6.0;
 
     private static final String SHARED_TMX_RESOURCE = "/org/openjfx/app/all.tmx";
     private static final int SHARED_TILE_SIZE = 32;
@@ -93,6 +94,9 @@ public class MainApp extends Application {
     private MenuButton seasonMenu;
     private ToggleGroup seasonGroup;
     private double seasonElapsedSeconds;
+    private boolean isTransitioning    = false;
+    private double  transitionElapsed  = 0.0;
+    private Season  targetSeason       = null;
     private double survivalTime;
     private boolean survivalEnded;
 
@@ -274,19 +278,47 @@ public class MainApp extends Application {
     }
 
     private void switchToSeason(Season season) {
-        if (currentSeason == season) return;
-        currentSeason = season;
+        if (currentSeason == season || isTransitioning) return;
+        targetSeason        = season;
+        isTransitioning     = true;
+        transitionElapsed   = 0.0;
         seasonElapsedSeconds = 0.0;
-        switch (season) {
-            case SPRING -> worldMap.setFixedBackgroundImageFromResource(IMG_SPRING);
-            case SUMMER -> worldMap.setFixedBackgroundImageFromResource(IMG_SUMMER);
-            case AUTUMN -> worldMap.setFixedBackgroundImageFromResource(IMG_AUTUMN);
-            case WINTER -> worldMap.setFixedBackgroundImageFromResource(IMG_WINTER);
-        }
+        javafx.scene.image.Image toImage = loadSeasonImage(season);
+        worldMap.beginBackgroundTransition(toImage);
         syncSeasonMenu();
     }
 
+    private javafx.scene.image.Image loadSeasonImage(Season season) {
+        String path = switch (season) {
+            case SPRING -> IMG_SPRING;
+            case SUMMER -> IMG_SUMMER;
+            case AUTUMN -> IMG_AUTUMN;
+            case WINTER -> IMG_WINTER;
+        };
+        try {
+            var stream = getClass().getResourceAsStream(path);
+            if (stream == null) return null;
+            var img = new javafx.scene.image.Image(stream);
+            return img.isError() ? null : img;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void tickSeasonCycle(double dt) {
+        if (isTransitioning) {
+            transitionElapsed += dt;
+            double alpha = transitionElapsed / SEASON_TRANSITION_SECONDS;
+            worldMap.setTransitionAlpha(alpha);
+            if (alpha >= 1.0) {
+                worldMap.completeBackgroundTransition();
+                currentSeason   = targetSeason;
+                targetSeason    = null;
+                isTransitioning = false;
+                syncSeasonMenu();
+            }
+            return;
+        }
         seasonElapsedSeconds += dt;
         if (seasonElapsedSeconds >= SEASON_AUTO_SWITCH_SECONDS) {
             switchToSeason(nextSeason(currentSeason));
