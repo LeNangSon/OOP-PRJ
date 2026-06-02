@@ -59,6 +59,7 @@ public class MainApp extends Application {
     private static final double TOOLBAR_HEIGHT = 42.0;
     private static final double MIN_ZOOM = 1.0;
     private static final double MAX_ZOOM = 3.0;
+    private static final double SEASON_AUTO_SWITCH_SECONDS = 60.0;
 
     private static final String SHARED_TMX_RESOURCE = "/org/openjfx/app/all.tmx";
     private static final int SHARED_TILE_SIZE = 32;
@@ -89,6 +90,9 @@ public class MainApp extends Application {
     private boolean updatingZoomSlider;
     private final Random random = new Random();
     private Label survivalLabel;
+    private MenuButton seasonMenu;
+    private ToggleGroup seasonGroup;
+    private double seasonElapsedSeconds;
     private double survivalTime;
     private boolean survivalEnded;
 
@@ -131,6 +135,7 @@ public class MainApp extends Application {
                 gc.clearRect(0, 0, WIDTH, HEIGHT);
                 worldMap.update(0.016);
                 worldMap.render(gc);
+                tickSeasonCycle(0.016);
                 tickSurvivalClock(0.016);
                 if (entityStatusPanel.isVisible()) entityStatusPanel.refreshData();
             }
@@ -205,9 +210,9 @@ public class MainApp extends Application {
             syncZoomSlider(MIN_ZOOM);
         });
 
-        MenuButton seasonMenu = new MenuButton("Mùa: Xuân");
+        seasonMenu = new MenuButton("Mùa: Xuân");
         seasonMenu.setStyle(BTN_BASE);
-        ToggleGroup seasonGroup = new ToggleGroup();
+        seasonGroup = new ToggleGroup();
         addSeasonItem(seasonMenu, seasonGroup, "Xuân", Season.SPRING, true);
         addSeasonItem(seasonMenu, seasonGroup, "Hạ", Season.SUMMER, false);
         addSeasonItem(seasonMenu, seasonGroup, "Thu", Season.AUTUMN, false);
@@ -260,9 +265,9 @@ public class MainApp extends Application {
     private void addSeasonItem(MenuButton menu, ToggleGroup group, String label, Season season, boolean selected) {
         RadioMenuItem item = new RadioMenuItem(label);
         item.setToggleGroup(group);
+        item.setUserData(season);
         item.setSelected(selected);
         item.setOnAction(e -> {
-            menu.setText("Mùa: " + label);
             switchToSeason(season);
         });
         menu.getItems().add(item);
@@ -271,12 +276,53 @@ public class MainApp extends Application {
     private void switchToSeason(Season season) {
         if (currentSeason == season) return;
         currentSeason = season;
+        seasonElapsedSeconds = 0.0;
         switch (season) {
             case SPRING -> worldMap.setFixedBackgroundImageFromResource(IMG_SPRING);
             case SUMMER -> worldMap.setFixedBackgroundImageFromResource(IMG_SUMMER);
             case AUTUMN -> worldMap.setFixedBackgroundImageFromResource(IMG_AUTUMN);
             case WINTER -> worldMap.setFixedBackgroundImageFromResource(IMG_WINTER);
         }
+        syncSeasonMenu();
+    }
+
+    private void tickSeasonCycle(double dt) {
+        seasonElapsedSeconds += dt;
+        if (seasonElapsedSeconds >= SEASON_AUTO_SWITCH_SECONDS) {
+            switchToSeason(nextSeason(currentSeason));
+        }
+    }
+
+    private Season nextSeason(Season season) {
+        return switch (season) {
+            case SPRING -> Season.SUMMER;
+            case SUMMER -> Season.AUTUMN;
+            case AUTUMN -> Season.WINTER;
+            case WINTER -> Season.SPRING;
+        };
+    }
+
+    private void syncSeasonMenu() {
+        if (seasonMenu != null) {
+            seasonMenu.setText("Mùa: " + seasonLabel(currentSeason));
+        }
+        if (seasonGroup != null) {
+            for (var toggle : seasonGroup.getToggles()) {
+                if (toggle instanceof RadioMenuItem item && item.getUserData() == currentSeason) {
+                    seasonGroup.selectToggle(item);
+                    break;
+                }
+            }
+        }
+    }
+
+    private String seasonLabel(Season season) {
+        return switch (season) {
+            case SPRING -> "Xuân";
+            case SUMMER -> "Hạ";
+            case AUTUMN -> "Thu";
+            case WINTER -> "Đông";
+        };
     }
 
     private void setupCanvasInput() {

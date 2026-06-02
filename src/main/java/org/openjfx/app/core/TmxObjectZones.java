@@ -19,6 +19,7 @@ public class TmxObjectZones {
     private final List<Zone> waterZones    = new ArrayList<>();
     private final List<Zone> obstacleZones = new ArrayList<>();
     private final List<Zone> bushZones     = new ArrayList<>();
+    private final List<Zone> troughZones   = new ArrayList<>();
 
     public static TmxObjectZones fromFile(String absolutePath, double scaleX, double scaleY) {
         try (InputStream in = new FileInputStream(absolutePath)) {
@@ -60,6 +61,8 @@ public class TmxObjectZones {
                 targetZones = zones.obstacleZones;
             } else if ("chotron".equals(groupName)) {
                 targetZones = zones.bushZones;
+            } else if ("chouongnuoc".equals(groupName)) {
+                targetZones = zones.troughZones;
             }
             if (targetZones == null) continue;
 
@@ -80,6 +83,36 @@ public class TmxObjectZones {
 
     public boolean isObstacle(Vector2D position) {
         return contains(obstacleZones, position);
+    }
+
+    public boolean isInTrough(Vector2D position) {
+        return contains(troughZones, position);
+    }
+
+    // Trả về true khi cạnh con vật (radius) chạm vào máng nước
+    public boolean isTouchingTrough(Vector2D position, double radius) {
+        if (position == null) return false;
+        for (Zone zone : troughZones) {
+            Vector2D nearest = zone.nearestPointTo(position);
+            double dx = nearest.x - position.x;
+            double dy = nearest.y - position.y;
+            if (dx * dx + dy * dy <= radius * radius) return true;
+        }
+        return false;
+    }
+
+    public Vector2D findNearestTrough(Vector2D from) {
+        if (from == null || troughZones.isEmpty()) return null;
+        Vector2D nearest = null;
+        double minDist = Double.MAX_VALUE;
+        for (Zone zone : troughZones) {
+            Vector2D center = zone.center();
+            double dx = center.x - from.x;
+            double dy = center.y - from.y;
+            double dist = dx * dx + dy * dy;
+            if (dist < minDist) { minDist = dist; nearest = center; }
+        }
+        return nearest;
     }
 
     public boolean isBush(Vector2D position) {

@@ -157,6 +157,18 @@ public class WorldMap {
         return null;
     }
 
+    public boolean isInTrough(Vector2D position) {
+        return tmxObjectZones != null && tmxObjectZones.isInTrough(position);
+    }
+
+    public boolean isTouchingTrough(Vector2D position, double radius) {
+        return tmxObjectZones != null && tmxObjectZones.isTouchingTrough(position, radius);
+    }
+
+    public Vector2D findNearestTrough(Vector2D from) {
+        return tmxObjectZones != null ? tmxObjectZones.findNearestTrough(from) : null;
+    }
+
     public Vector2D findNearestTerrainPosition(Vector2D from, TerrainType targetType) {
         return findNearestTerrainPositionInRadius(from, targetType, Double.MAX_VALUE);
     }
@@ -395,7 +407,8 @@ public class WorldMap {
 
     private boolean canEntityStandOnTerrain(EntityType entityType, TerrainType terrain) {
         if (terrain == TerrainType.ROCK || terrain == TerrainType.PIT) return false;
-        if (terrain == TerrainType.WATER) return entityType == EntityType.FISH;
+        if (terrain == TerrainType.WATER) return entityType == EntityType.FISH
+                                              || entityType == EntityType.ELEPHANT;
         if (terrain == TerrainType.BUSH) return entityType == EntityType.RABBIT;
         return entityType != EntityType.FISH;
     }
