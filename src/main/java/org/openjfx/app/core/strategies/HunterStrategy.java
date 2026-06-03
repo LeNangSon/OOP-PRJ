@@ -23,8 +23,10 @@ public class HunterStrategy implements MoveStrategy {
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
     private static final double WAYPOINT_ADVANCE_RADIUS = 10.0;
     private static final double REPLAN_PREY_MOVE = 48.0;
+    private static final double REPLAN_COOLDOWN = 0.3;
 
     private double logCooldown;
+    private double replanCooldown;
     private WanderStrategy wanderFallback;
     private List<Vector2D> cachedPath;
     private int waypointIdx;
@@ -78,19 +80,23 @@ public class HunterStrategy implements MoveStrategy {
 
         Vector2D ownerPos = owner.getPosition();
         Vector2D preyPos = prey.getPosition();
+        replanCooldown -= dt;
         boolean needReplan = cachedPath == null
                 || waypointIdx >= cachedPath.size()
                 || cachedTargetId != prey.getId()
                 || owner.getBlockedLastStep()
                 || (lastKnownPreyPos != null && preyPos.distance(lastKnownPreyPos) > REPLAN_PREY_MOVE);
 
-        if (needReplan) {
+        // Giới hạn tần suất tính lại đường (A* nặng): tối đa ~3 lần/giây mỗi predator.
+        // Giữa các lần replan, hunter vẫn bám theo path cũ / đi thẳng tới mồi (fallback bên dưới).
+        if (needReplan && replanCooldown <= 0) {
             Set<String> avoidedGridKeys = owner.getBlockedLastStep() ? collectBlockedWaypointKeys(owner.getId(), world) : null;
             List<Vector2D> rawPath = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
             cachedPath = rawPath == null ? null : world.densifyPath(rawPath, world.getCellSize() / 3.0);
             waypointIdx = 0;
             cachedTargetId = prey.getId();
             lastKnownPreyPos = preyPos;
+            replanCooldown = REPLAN_COOLDOWN;
         }
 
         if (cachedPath != null) {

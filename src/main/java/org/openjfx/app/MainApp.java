@@ -82,6 +82,9 @@ public class MainApp extends Application {
         SPRING, SUMMER, AUTUMN, WINTER
     }
 
+    private static final double PANEL_REFRESH_INTERVAL = 0.15;
+    private double panelRefreshAccum = 0;
+
     private WorldMap worldMap;
     private Canvas canvas;
     private SpawnKind pendingSpawnKind = SpawnKind.RABBIT;
@@ -134,14 +137,27 @@ public class MainApp extends Application {
 
         GraphicsContext gc = canvas.getGraphicsContext2D();
         AnimationTimer timer = new AnimationTimer() {
+            private long lastNow = 0;
+
             @Override
             public void handle(long now) {
+                // dt theo thời gian thực giữa 2 frame -> chuyển động đều dù FPS dao động.
+                double dt = (lastNow == 0) ? 1.0 / 60.0 : (now - lastNow) / 1_000_000_000.0;
+                lastNow = now;
+                // Kẹp dt để tránh nhảy lớn khi lag/alt-tab gây "teleport" xuyên vật cản.
+                dt = Math.min(dt, 0.05);
+
                 gc.clearRect(0, 0, WIDTH, HEIGHT);
-                worldMap.update(0.016);
+                worldMap.update(dt);
                 worldMap.render(gc);
-                tickSeasonCycle(0.016);
-                tickSurvivalClock(0.016);
-                if (entityStatusPanel.isVisible()) entityStatusPanel.refreshData();
+                tickSeasonCycle(dt);
+                tickSurvivalClock(dt);
+                // Refresh panel ~6-7Hz thay vì mỗi frame (rebuild list + sort toàn bộ entity rất nặng).
+                panelRefreshAccum += dt;
+                if (entityStatusPanel.isVisible() && panelRefreshAccum >= PANEL_REFRESH_INTERVAL) {
+                    entityStatusPanel.refreshData();
+                    panelRefreshAccum = 0;
+                }
             }
         };
         timer.start();

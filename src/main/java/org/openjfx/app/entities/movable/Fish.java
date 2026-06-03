@@ -30,7 +30,7 @@ public class Fish extends Herbivore {
     @Override
     public void update(double dt, WorldMap world) {
         super.update(dt, world);
-        reproduceInLake(dt, world);
+        // reproduceInLake(dt, world);
     }
 
     private void reproduceInLake(double dt, WorldMap world) {

@@ -17,9 +17,11 @@ public abstract class LivingEntity extends MovableEntity {
     private double hunger;
     private double thirst;
     private double health;
+    private double maxHealth;
     private boolean drinking;
     private boolean blockedLastStep;
     private static final double Cooldown = 0.5;
+    private static final double HEALTH_REGEN_RATE = 5.0;
     private double blockedCooldown;
 
 
@@ -55,6 +57,7 @@ public abstract class LivingEntity extends MovableEntity {
                         double wanderDistance, double wanderRadius){
         super(position, size, shape, maxSpeed, maxForce, mass);
         this.health = initialHealth;
+        this.maxHealth = initialHealth;
         this.hungerRate = hungerRate;
         this.thirstRate = thirstRate;
         this.hunger = 0.0;
@@ -101,12 +104,16 @@ public abstract class LivingEntity extends MovableEntity {
 
     //Setter
     public void setHealth(double health) {
-        // Máu tuỳ theo con vật
-        this.health = health;
-        
+        // Máu tuỳ theo con vật, không vượt quá máu gốc (maxHealth).
+        this.health = Math.min(health, maxHealth);
+
         if (this.health <= 0 && this.isAlive) {
             this.isAlive = false;
         }
+    }
+
+    public double getMaxHealth() {
+        return maxHealth;
     }
 
     public void setMoveStrategy(MoveStrategy moveStrategy) {
@@ -163,6 +170,9 @@ public abstract class LivingEntity extends MovableEntity {
                 world.recordDeath(this.getType(), cause);
                 world.broadcastDeath(entityNameWithId + " đã chết " + reason);
             }
+        } else if (hunger < 50.0 && thirst < 50.0 && health < maxHealth) {
+            // No & đủ nước -> hồi máu (kẹp trần ở maxHealth trong setHealth).
+            setHealth(this.health + HEALTH_REGEN_RATE * dt);
         }
 
         // Đi ngược lại nếu không vào được
@@ -192,24 +202,24 @@ public abstract class LivingEntity extends MovableEntity {
                 ? new Vector2D(Math.cos(this.id), Math.sin(this.id))
                 : currentVelocity.normalize();
 
-        Vector2D[] candidates = {
-                new Vector2D(-forward.y, forward.x),
-                new Vector2D(forward.y, -forward.x),
-                forward.multiply(-1),
-                new Vector2D(-forward.y, forward.x).add(forward.multiply(-0.35)),
-                new Vector2D(forward.y, -forward.x).add(forward.multiply(-0.35)),
-                new Vector2D(Math.cos(System.nanoTime() + this.id), Math.sin(System.nanoTime() + this.id))
+        double baseAngle = Math.atan2(forward.y, forward.x);
+        // Thử lệch dần khỏi hướng hiện tại (±30,±60,...,180 độ). Ưu tiên góc lệch nhỏ
+        // nhất -> giữ quán tính, tránh đổi hướng đột ngột (deterministic, không random).
+        double[] angleOffsets = {
+                Math.toRadians(30), Math.toRadians(-30),
+                Math.toRadians(60), Math.toRadians(-60),
+                Math.toRadians(90), Math.toRadians(-90),
+                Math.toRadians(120), Math.toRadians(-120),
+                Math.toRadians(150), Math.toRadians(-150),
+                Math.PI
         };
 
         double escapeSpeed = Math.max(this.getMaxSpeed() * 0.85, this.getWanderSpeed());
         double probeDistance = Math.max(this.size * 0.45, escapeSpeed * Math.max(dt, 0.08));
 
-        for (Vector2D candidate : candidates) {
-            if (candidate.magnitude() < 0.01) {
-                continue;
-            }
-
-            Vector2D direction = candidate.normalize();
+        for (double angleOffset : angleOffsets) {
+            double angle = baseAngle + angleOffset;
+            Vector2D direction = new Vector2D(Math.cos(angle), Math.sin(angle));
             Vector2D escapePosition = this.position.add(direction.multiply(probeDistance));
             if (world.canStandOn(this, escapePosition)) {
                 this.velocity = direction.multiply(escapeSpeed);

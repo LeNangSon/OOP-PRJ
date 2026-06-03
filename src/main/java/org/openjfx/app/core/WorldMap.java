@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -239,20 +240,18 @@ public class WorldMap {
         GridCoordinate targetGrid = worldToGrid(target);
         if (entity == null || startGrid == null || targetGrid == null) return null;
 
-        int rows = getGridRows();
         int cols = getGridCols();
-        AstarNode[][] nodes = new AstarNode[rows][cols];
-        boolean[][] visited = new boolean[rows][cols];
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                nodes[r][c] = new AstarNode(r, c);
-            }
-        }
+        int targetRow = targetGrid.getRow();
+        int targetCol = targetGrid.getCol();
 
-        AstarNode startNode = nodes[startGrid.getRow()][startGrid.getCol()];
-        AstarNode targetNode = nodes[targetGrid.getRow()][targetGrid.getCol()];
+        // Tạo node lười (lazy) theo nhu cầu thay vì cấp phát cả lưới rows×cols mỗi
+        // lần gọi -> giảm mạnh rác GC (A* được nhiều strategy gọi liên tục).
+        Map<Integer, AstarNode> nodes = new HashMap<>();
+        Set<Integer> visited = new HashSet<>();
+
+        AstarNode startNode = getOrCreateNode(nodes, startGrid.getRow(), startGrid.getCol(), cols);
         startNode.g = 0;
-        startNode.h = calculateHeuristic(startNode, targetNode);
+        startNode.h = calculateHeuristic(startNode.row, startNode.col, targetRow, targetCol);
 
         PriorityQueue<AstarNode> open = new PriorityQueue<>();
         open.add(startNode);
@@ -260,35 +259,38 @@ public class WorldMap {
 
         while (!open.isEmpty()) {
             AstarNode current = open.poll();
-            if (current.row == targetNode.row && current.col == targetNode.col) return buildPath(current);
-            if (visited[current.row][current.col]) continue;
-            visited[current.row][current.col] = true;
+            if (current.row == targetRow && current.col == targetCol) return buildPath(current);
+            if (!visited.add(current.row * cols + current.col)) continue;
 
             for (int[] dir : dirs) {
                 int nr = current.row + dir[0];
                 int nc = current.col + dir[1];
-                if (!isGridInside(nr, nc) || visited[nr][nc]) continue;
+                if (!isGridInside(nr, nc) || visited.contains(nr * cols + nc)) continue;
                 if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(nr, nc))) continue;
                 Vector2D center = gridToWorldCenter(nr, nc);
                 if (!canEntityStandOnTerrain(entity.getType(), getTerrainAt(center))) continue;
 
-                AstarNode next = nodes[nr][nc];
+                AstarNode next = getOrCreateNode(nodes, nr, nc, cols);
                 double cost = (dir[0] != 0 && dir[1] != 0) ? Math.sqrt(2) : 1.0;
                 double newG = current.g + cost;
                 if (newG < next.g) {
                     next.parent = current;
                     next.g = newG;
-                    next.h = calculateHeuristic(next, targetNode);
-                    open.add(next); // entry cũ sẽ bị bỏ qua khi poll vì visited[][]
+                    next.h = calculateHeuristic(nr, nc, targetRow, targetCol);
+                    open.add(next); // entry cũ sẽ bị bỏ qua khi poll vì đã visited
                 }
             }
         }
         return null;
     }
 
-    private double calculateHeuristic(AstarNode a, AstarNode b) {
-        double dx = a.col - b.col;
-        double dy = a.row - b.row;
+    private AstarNode getOrCreateNode(Map<Integer, AstarNode> nodes, int row, int col, int cols) {
+        return nodes.computeIfAbsent(row * cols + col, k -> new AstarNode(row, col));
+    }
+
+    private double calculateHeuristic(int row1, int col1, int row2, int col2) {
+        double dx = col1 - col2;
+        double dy = row1 - row2;
         return Math.sqrt(dx * dx + dy * dy);
     }
 
