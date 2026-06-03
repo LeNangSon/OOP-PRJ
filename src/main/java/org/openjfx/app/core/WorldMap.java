@@ -163,6 +163,10 @@ public class WorldMap {
         return tmxObjectZones != null && tmxObjectZones.isInTrough(position);
     }
 
+    public boolean isDeepInTrough(Vector2D position, double inset) {
+        return tmxObjectZones != null && tmxObjectZones.isDeepInTrough(position, inset);
+    }
+
     public boolean isTouchingTrough(Vector2D position, double radius) {
         return tmxObjectZones != null && tmxObjectZones.isTouchingTrough(position, radius);
     }
@@ -612,8 +616,8 @@ public class WorldMap {
     private void renderElephantWithAnimation(GraphicsContext gc, Elephant e) {
         String dir = getDirection(e.getId(), e.getVelocity(), elephantDirectionCache, "right");
         if (e.isDrinking()) {
-            String drinkDir = getDrinkingDirection(e, dir);
-            renderImageAtEntity(gc, e, "org/openjfx/app/elephant_anim/elephant_drink_" + drinkDir + "_" + getLoopFrame(e.getId()) + ".png");
+            String drinkDir = getDrinkingDirection(e);
+            renderDrinkingElephantImage(gc, e, drinkDir);
             return;
         }
         renderImageAtEntity(gc, e, "org/openjfx/app/elephant_anim/elephant_walk_" + dir + "_" + getWalkFrame(e.getId(), e.getVelocity()) + ".png");
@@ -642,23 +646,59 @@ public class WorldMap {
         return (int) ((System.nanoTime() / 160_000_000L + id) % 4);
     }
 
-    private String getDrinkingDirection(Elephant elephant, String fallbackDirection) {
+    private String getDrinkingDirection(Elephant elephant) {
         Vector2D water = findNearestTerrainPositionInRadius(
                 elephant.getPosition(),
                 TerrainType.WATER,
                 elephant.getVisionRadius());
-        if (water == null) return fallbackDirection;
-        Vector2D delta = water.sub(elephant.getPosition());
+        if (water != null) {
+            return directionTo(elephant.getPosition(), water, "left");
+        }
+
+        Vector2D trough = findNearestTrough(elephant.getPosition());
+        if (trough != null) {
+            return directionTo(elephant.getPosition(), trough, "left");
+        }
+
+        return "left";
+    }
+
+    private String directionTo(Vector2D from, Vector2D to, String defaultDirection) {
+        Vector2D delta = to.sub(from);
+        if (delta.magnitude() < 1.0) return defaultDirection;
         if (Math.abs(delta.x) >= Math.abs(delta.y)) return delta.x >= 0 ? "right" : "left";
         return delta.y >= 0 ? "down" : "up";
     }
 
+    private void renderDrinkingElephantImage(GraphicsContext gc, Elephant elephant, String direction) {
+        double tuck = elephant.getSize() * 0.18;
+        double offsetX = 0.0;
+        double offsetY = 0.0;
+        switch (direction) {
+            case "right" -> offsetX = -tuck;
+            case "left" -> offsetX = tuck;
+            case "down" -> offsetY = -tuck;
+            case "up" -> offsetY = tuck;
+            default -> { }
+        }
+        renderImageAtEntity(
+                gc,
+                elephant,
+                "org/openjfx/app/elephant_anim/elephant_drink_" + direction + "_" + getLoopFrame(elephant.getId()) + ".png",
+                offsetX,
+                offsetY);
+    }
+
     private void renderImageAtEntity(GraphicsContext gc, Entity entity, String imagePath) {
+        renderImageAtEntity(gc, entity, imagePath, 0.0, 0.0);
+    }
+
+    private void renderImageAtEntity(GraphicsContext gc, Entity entity, String imagePath, double offsetX, double offsetY) {
         try {
             Image img = imageCache.computeIfAbsent(imagePath,
                     key -> new Image(getClass().getResourceAsStream("/" + key)));
-            double x = entity.getPosition().x - entity.getSize() / 2;
-            double y = entity.getPosition().y - entity.getSize() / 2;
+            double x = entity.getPosition().x - entity.getSize() / 2 + offsetX;
+            double y = entity.getPosition().y - entity.getSize() / 2 + offsetY;
             gc.drawImage(img, x, y, entity.getSize(), entity.getSize());
         } catch (Exception e) {
             gc.setFill(Color.RED);

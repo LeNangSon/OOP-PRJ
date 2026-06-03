@@ -2,6 +2,7 @@ package org.openjfx.app.core.strategies;
 
 import java.util.List;
 
+import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.terrain.TerrainType;
@@ -28,11 +29,12 @@ public class SeekWaterStrategy implements MoveStrategy {
         // --- Máng nước (chouongnuoc) ---
         Vector2D nearestTrough = world.findNearestTrough(currentPos);
         if (nearestTrough != null) {
-            double halfSize    = owner.getSize() / 2.0;
             double distToTrough = currentPos.distance(nearestTrough);
 
-            // Uống khi mép trước (front = halfSize) chạm tâm máng
-            if (distToTrough < halfSize + 5.0) {
+            double troughInset = owner.getSize() * 0.25;
+
+            // Voi chi uong khi da vao sau hon trong object chouongnuoc.
+            if (world.isDeepInTrough(currentPos, troughInset)) {
                 owner.setVelocity(new Vector2D(0, 0));
                 owner.setAcceleration(new Vector2D(0, 0));
                 owner.drink(dt);
@@ -41,13 +43,25 @@ public class SeekWaterStrategy implements MoveStrategy {
 
             if (distToTrough <= owner.getVisionRadius()) {
                 lastKnownWaterPos = nearestTrough;
-                // Pathfind đến điểm cách tâm máng halfSize (về phía voi)
-                // → voi dừng khi front edge chạm tâm máng
-                Vector2D approachPoint = nearestTrough.add(
-                        nearestTrough.directionTo(currentPos).multiply(halfSize));
-                moveToward(owner, currentPos, approachPoint, dt, world);
+                // Di vao tam mang de dam bao voi that su nam trong object chouongnuoc.
+                moveToward(owner, currentPos, nearestTrough, dt, world);
                 return;
             }
+        }
+
+        // Voi chỉ uống tại máng nước (chouongnuoc), không uống ở hồ
+        if (owner.getType() == EntityType.ELEPHANT) {
+            if (lastKnownWaterPos != null) {
+                double distToMemory = currentPos.distance(lastKnownWaterPos);
+                if (distToMemory < owner.getSize()) {
+                    lastKnownWaterPos = null;
+                } else {
+                    moveToward(owner, currentPos, lastKnownWaterPos, dt, world);
+                    return;
+                }
+            }
+            searchWander.updateVelocity(owner, neighbors, dt, world);
+            return;
         }
 
         // --- Voi đang trong nước ---

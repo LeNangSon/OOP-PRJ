@@ -89,6 +89,15 @@ public class TmxObjectZones {
         return contains(troughZones, position);
     }
 
+    public boolean isDeepInTrough(Vector2D position, double inset) {
+        if (position == null) return false;
+        double safeInset = Math.max(0.0, inset);
+        for (Zone zone : troughZones) {
+            if (zone.containsInset(position, safeInset)) return true;
+        }
+        return false;
+    }
+
     // Trả về true khi cạnh con vật (radius) chạm vào máng nước
     public boolean isTouchingTrough(Vector2D position, double radius) {
         if (position == null) return false;
@@ -230,6 +239,12 @@ public class TmxObjectZones {
         private boolean contains(Vector2D position) {
             return position.x >= x && position.x <= x + width
                     && position.y >= y && position.y <= y + height;
+        }
+
+        private boolean containsInset(Vector2D position, double inset) {
+            double effectiveInset = Math.min(inset, Math.min(width, height) * 0.35);
+            return position.x >= x + effectiveInset && position.x <= x + width - effectiveInset
+                    && position.y >= y + effectiveInset && position.y <= y + height - effectiveInset;
         }
 
         private Vector2D nearestPointTo(Vector2D position) {
