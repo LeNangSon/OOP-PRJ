@@ -5,4 +5,4 @@ public class Launcher {
         // Gọi hàm main của MainApp để "lách" kiểm tra runtime của JavaFX
         MainApp.main(args);
     }
-} 
+}
