@@ -61,7 +61,7 @@ public class TmxObjectZones {
                 targetZones = zones.obstacleZones;
             } else if ("chotron".equals(groupName)) {
                 targetZones = zones.bushZones;
-            } else if ("chouongnuoc".equals(groupName)) {
+            } else if (groupName.contains("chouongnuoc")) {
                 targetZones = zones.troughZones;
             }
             if (targetZones == null) continue;

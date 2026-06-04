@@ -23,11 +23,11 @@ public class HunterStrategy implements MoveStrategy {
     private static final double DEFAULT_WANDER_DISTANCE_FACTOR = 0.6;
     private static final double DEFAULT_WANDER_RADIUS_FACTOR = 0.35;
     private static final double WAYPOINT_ADVANCE_RADIUS = 10.0;
-    private static final double REPLAN_PREY_MOVE = 48.0;
+    private static final double REPLAN_PREY_MOVE = 20.0;
     private static final double REPLAN_COOLDOWN = 0.3;
     // Trong khoảng này (theo số ô lưới) thì bỏ bám đường, đuổi thẳng vào điểm đón đầu của
     // mồi -> hết cảnh vờn theo điểm lưới cũ ở pha cận chiến. Ở xa vẫn dùng A* để né vật cản.
-    private static final double DIRECT_PURSUIT_CELLS = 1.5;
+    private static final double DIRECT_PURSUIT_CELLS = 2.5;
     // Đón đầu: trần thời gian dự đoán vị trí mồi (giây). Lớn quá -> nhắm hụt khi mồi bẻ hướng.
     private static final double MAX_LEAD_TIME = 0.7;
 

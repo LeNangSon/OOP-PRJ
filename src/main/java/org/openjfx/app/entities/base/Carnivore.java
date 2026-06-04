@@ -5,14 +5,14 @@ import java.util.List;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.terrain.TerrainType;
-import org.openjfx.app.entities.staticobjs.Plant;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.StrategyCandidate;
 import org.openjfx.app.core.strategies.WanderStrategy;
+import org.openjfx.app.core.terrain.TerrainType;
+import org.openjfx.app.entities.staticobjs.Plant;
 
 public abstract class Carnivore extends LivingEntity {
 
