@@ -24,6 +24,15 @@ public abstract class LivingEntity extends MovableEntity {
     private static final double HEALTH_REGEN_RATE = 5.0;
     private double blockedCooldown;
 
+    // Ngưỡng khát (hysteresis 2 mức): bắt đầu đi tìm nước khi khát vượt START, nhưng một
+    // khi đã uống thì uống cho tới khi tụt dưới SATED mới thôi -> chống chạy ra/vào mép
+    // nước liên tục khi đói & khát cùng cao.
+    protected static final double THIRST_SEEK_START = 70.0;
+    protected static final double THIRST_SATED = 25.0;
+    // Điểm ưu tiên khi đang uống dở: đủ cao để cơn đói không kéo đi (Hunter nền ~1.0),
+    // nhưng vẫn dưới cú vồ mồi tận miệng (2.0) và phản xạ bỏ chạy (100).
+    protected static final double DRINK_COMMIT_SCORE = 1.4;
+
 
     public double getWanderRadius() {
         return wanderRadius;

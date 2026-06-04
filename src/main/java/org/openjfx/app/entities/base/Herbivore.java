@@ -35,10 +35,11 @@ public abstract class Herbivore extends LivingEntity {
                         (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
                 new StrategyCandidate(() -> new SeekWaterStrategy(wanderDistance, wanderRadius),
                         (e, n) -> {
-                            if (e.getThirst() < 5.0) return 0.0; // no bị kẹt tại nước khi đã đủ
-                            if (e.getThirst() > 70.0 || e.getMoveStrategy() instanceof SeekWaterStrategy)
-                                return e.getThirst() / 100.0 + 0.2;
-                            return 0.0;
+                            // Đang uống dở -> uống cho tới khi hết khát hẳn (chống yo-yo ở mép nước).
+                            if (e.getMoveStrategy() instanceof SeekWaterStrategy)
+                                return e.getThirst() > THIRST_SATED ? DRINK_COMMIT_SCORE : 0.0;
+                            // Chưa uống -> chỉ đi tìm nước khi đã khát đáng kể.
+                            return e.getThirst() > THIRST_SEEK_START ? e.getThirst() / 100.0 + 0.2 : 0.0;
                         }),
                 new StrategyCandidate(HunterStrategy::new,
                         (e, n) -> {
@@ -59,7 +60,7 @@ public abstract class Herbivore extends LivingEntity {
         setDrinking(false);
         neighbors = world.getNeighbors(this, visionRadius);
         if (candidates == null) candidates = buildCandidates();
-        moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, this, neighbors);
+        moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, dt, this, neighbors);
         if (moveStrategy != null && !isAvoidingBlockedPath()) {
             moveStrategy.updateVelocity(this, neighbors, dt, world);
         }

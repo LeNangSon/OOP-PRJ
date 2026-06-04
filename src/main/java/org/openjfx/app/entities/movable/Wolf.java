@@ -11,8 +11,8 @@ public class Wolf extends Carnivore {
 
     public Wolf(Vector2D position) {
         super(position, 30.0, "circle", 200.0, 3.0, 5.0,
-                35.0, 70.0, 3.0, 30.0, 30.0);
-        setVisionRadius(50.0);
+                40.0, 70.0, 3.0, 50.0, 30.0);
+        setVisionRadius(70.0);
         type = EntityType.WOLF;
         moveStrategy = new HunterStrategy();
         matureAge = 10.0;

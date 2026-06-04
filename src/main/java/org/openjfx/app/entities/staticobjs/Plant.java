@@ -25,7 +25,10 @@ public abstract class Plant extends StaticEntity {
                  double reproduceTime, double nutrition) {
         super(position, size, shape);
         this.reproduceTime = reproduceTime;
-        this.reproduceTimer = 0;
+        // Lệch pha ngẫu nhiên: nếu mọi cây cùng đếm từ 0 (vd 35 cỏ seed cùng t=0) thì
+        // chúng sinh sản đúng CÙNG MỘT frame mỗi `reproduceTime` giây -> dồn O(n^2) vào
+        // một frame -> giật đều đặn. Rải pha để công việc trải ra nhiều frame.
+        this.reproduceTimer = Math.random() * reproduceTime;
         this.nutrition = nutrition;
         this.alive = true;
     }

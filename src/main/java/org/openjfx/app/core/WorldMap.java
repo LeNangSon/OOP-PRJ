@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.core.terrain.TerrainProvider;
 import org.openjfx.app.core.terrain.TerrainType;
@@ -47,6 +48,11 @@ public class WorldMap {
     private final double height;
     private final List<Entity> entities = new ArrayList<>();
     private final List<Entity> pendingSpawns = new ArrayList<>();
+    // Tập con của `entities` để tránh quét toàn bộ list ở các hàm nóng:
+    //  - terrainProviders: chỉ vài vật cản đặt sẵn (Rock/Bush) -> getTerrainAt khỏi duyệt cả map.
+    //  - livingEntities: chỉ con vật -> va chạm khỏi duyệt qua hàng trăm cây cỏ.
+    private final List<TerrainProvider> terrainProviders = new ArrayList<>();
+    private final List<LivingEntity> livingEntities = new ArrayList<>();
     private final List<GameObserver> observers = new ArrayList<>();
     private final Map<EntityType, EnumMap<DeathCause, Integer>> deathCounts = new EnumMap<>(EntityType.class);
     private TmxObjectZones tmxObjectZones;
@@ -74,7 +80,37 @@ public class WorldMap {
     public double getHeight() { return height; }
 
     public void addEntity(Entity entity) {
-        if (entity != null) entities.add(entity);
+        if (entity == null) return;
+        entities.add(entity);
+        registerEntity(entity);
+    }
+
+    // Đăng ký vào các tập con tra cứu nhanh khi entity được thêm vào map.
+    private void registerEntity(Entity entity) {
+        if (entity instanceof TerrainProvider provider) terrainProviders.add(provider);
+        if (entity instanceof LivingEntity living) livingEntities.add(living);
+    }
+
+    // Gỡ entity khỏi tập con và dọn các cache tĩnh (theo id) để tránh rò rỉ bộ nhớ.
+    private void unregisterEntity(Entity entity) {
+        if (entity instanceof TerrainProvider provider) terrainProviders.remove(provider);
+        if (entity instanceof LivingEntity living) livingEntities.remove(living);
+        purgeEntityCaches(entity.getId());
+    }
+
+    // Entity đã chết/bị xóa: xóa luôn entry của nó trong các cache hướng đi và debug path
+    // (trước đây giữ mãi -> map phình to dần theo số lần sinh/tử -> áp lực GC -> giật).
+    private void purgeEntityCaches(int id) {
+        Integer key = id;
+        rabbitDirectionCache.remove(key);
+        wolfDirectionCache.remove(key);
+        fishDirectionCache.remove(key);
+        elephantDirectionCache.remove(key);
+        bearDirectionCache.remove(key);
+        HunterStrategy.clearDebugPathState(id);
+        FleeStrategy.clearDebugPathState(id);
+        MateStrategy.clearDebugPathState(id);
+        WanderStrategy.clearDebugState(id);
     }
 
     public void queueSpawn(Entity entity) {
@@ -152,8 +188,8 @@ public class WorldMap {
     }
 
     private TerrainType terrainFromPlacedObstacles(Vector2D position) {
-        for (Entity entity : entities) {
-            if (entity instanceof TerrainProvider provider && provider.covers(position)) {
+        for (TerrainProvider provider : terrainProviders) {
+            if (provider.covers(position)) {
                 return provider.getTerrainType();
             }
         }
@@ -196,8 +232,7 @@ public class WorldMap {
         Vector2D nearest = null;
         double radiusSq = radius * radius;
         double bestSq = Double.MAX_VALUE;
-        for (Entity entity : entities) {
-            if (!(entity instanceof TerrainProvider provider)) continue;
+        for (TerrainProvider provider : terrainProviders) {
             if (provider.getTerrainType() != targetType) continue;
             Vector2D center = provider.getPosition();
             double dx = center.x - from.x;
@@ -417,8 +452,8 @@ public class WorldMap {
 
     private boolean collidesWithAnotherLivingEntity(LivingEntity movingEntity, Vector2D nextPosition) {
         double movingRadius = Math.max(4.0, movingEntity.getSize() * 0.35);
-        for (Entity other : entities) {
-            if (other == movingEntity || !(other instanceof LivingEntity otherLiving) || !otherLiving.isAlive()) continue;
+        for (LivingEntity other : livingEntities) {
+            if (other == movingEntity || !other.isAlive()) continue;
             double otherRadius = Math.max(4.0, other.getSize() * 0.35);
             double minDistance = movingRadius + otherRadius;
             if (RelationManager.isPrey(other.getType(), movingEntity.getType())) minDistance *= 0.35;
@@ -441,11 +476,14 @@ public class WorldMap {
             e.update(dt, this);
             if (e instanceof LivingEntity living && !living.isAlive()) {
                 entities.remove(i);
+                unregisterEntity(e);
             } else if (e instanceof Plant plant && plant.shouldBeRemoved()) {
                 entities.remove(i);
+                unregisterEntity(e);
             }
         }
         if (!pendingSpawns.isEmpty()) {
+            for (Entity spawn : pendingSpawns) registerEntity(spawn);
             entities.addAll(pendingSpawns);
             pendingSpawns.clear();
         }

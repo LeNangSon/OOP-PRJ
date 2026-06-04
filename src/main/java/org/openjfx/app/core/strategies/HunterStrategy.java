@@ -13,6 +13,7 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
+import org.openjfx.app.entities.base.MovableEntity;
 import org.openjfx.app.entities.staticobjs.Plant;
 
 public class HunterStrategy implements MoveStrategy {
@@ -24,6 +25,11 @@ public class HunterStrategy implements MoveStrategy {
     private static final double WAYPOINT_ADVANCE_RADIUS = 10.0;
     private static final double REPLAN_PREY_MOVE = 48.0;
     private static final double REPLAN_COOLDOWN = 0.3;
+    // Trong khoảng này (theo số ô lưới) thì bỏ bám đường, đuổi thẳng vào điểm đón đầu của
+    // mồi -> hết cảnh vờn theo điểm lưới cũ ở pha cận chiến. Ở xa vẫn dùng A* để né vật cản.
+    private static final double DIRECT_PURSUIT_CELLS = 1.5;
+    // Đón đầu: trần thời gian dự đoán vị trí mồi (giây). Lớn quá -> nhắm hụt khi mồi bẻ hướng.
+    private static final double MAX_LEAD_TIME = 0.7;
 
     private double logCooldown;
     private double replanCooldown;
@@ -91,7 +97,11 @@ public class HunterStrategy implements MoveStrategy {
         // Giữa các lần replan, hunter vẫn bám theo path cũ / đi thẳng tới mồi (fallback bên dưới).
         if (needReplan && replanCooldown <= 0) {
             Set<String> avoidedGridKeys = owner.getBlockedLastStep() ? collectBlockedWaypointKeys(owner.getId(), world) : null;
-            List<Vector2D> rawPath = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
+            // Đón đầu: tìm đường tới chỗ mồi SẼ tới; nếu điểm đón rơi vào vật cản (A* null)
+            // thì lui về tìm đường tới vị trí thật của mồi.
+            Vector2D aim = leadAimPoint(owner, prey, ownerPos, preyPos);
+            List<Vector2D> rawPath = world.findPathAStar(owner, ownerPos, aim, avoidedGridKeys);
+            if (rawPath == null) rawPath = world.findPathAStar(owner, ownerPos, preyPos, avoidedGridKeys);
             cachedPath = rawPath == null ? null : world.densifyPath(rawPath, world.getCellSize() / 3.0);
             waypointIdx = 0;
             cachedTargetId = prey.getId();
@@ -101,18 +111,27 @@ public class HunterStrategy implements MoveStrategy {
 
         if (cachedPath != null) {
             DEBUG_PATH_STATES.put(owner.getId(), new DebugPathState(cachedPath));
-            while (waypointIdx < cachedPath.size() - 1
-                    && ownerPos.distance(cachedPath.get(waypointIdx)) < WAYPOINT_ADVANCE_RADIUS) {
-                waypointIdx++;
+            // Tiến waypoint khi đã tới gần HOẶC đã vọt qua (điểm kế không xa hơn điểm hiện
+            // tại) -> không kẹt quay đầu khi ôm cua rộng hơn dung sai WAYPOINT_ADVANCE_RADIUS.
+            while (waypointIdx < cachedPath.size() - 1) {
+                double distCur = ownerPos.distance(cachedPath.get(waypointIdx));
+                double distNext = ownerPos.distance(cachedPath.get(waypointIdx + 1));
+                if (distCur < WAYPOINT_ADVANCE_RADIUS || distNext <= distCur) waypointIdx++;
+                else break;
             }
         } else {
             clearDebugPathState(owner.getId());
         }
 
-        Vector2D desiredVelocity = null;
+        Vector2D desiredVelocity;
         Vector2D nextWaypoint = cachedPath != null && waypointIdx < cachedPath.size() ? cachedPath.get(waypointIdx) : null;
-        if (nextWaypoint != null) desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
-        if (desiredVelocity == null) desiredVelocity = ownerPos.directionTo(preyPos).multiply(owner.getMaxSpeed());
+        if (ownerPos.distance(preyPos) <= world.getCellSize() * DIRECT_PURSUIT_CELLS || nextWaypoint == null) {
+            // Cận chiến (hoặc không có đường) -> lao thẳng vào điểm đón đầu của mồi.
+            Vector2D aim = leadAimPoint(owner, prey, ownerPos, preyPos);
+            desiredVelocity = ownerPos.directionTo(aim).multiply(owner.getMaxSpeed());
+        } else {
+            desiredVelocity = ownerPos.directionTo(nextWaypoint).multiply(owner.getMaxSpeed());
+        }
 
         Vector2D steering = desiredVelocity.sub(owner.getVelocity());
         Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(owner.getMaxForce());
@@ -122,6 +141,15 @@ public class HunterStrategy implements MoveStrategy {
         }
         owner.setAcceleration(acceleration);
         owner.setVelocity(newVelocity);
+    }
+
+    // Điểm đón đầu: vị trí dự đoán của mồi sau leadTime (tỉ lệ khoảng cách / tốc độ sói,
+    // chặn trần MAX_LEAD_TIME). Mồi đứng yên / không phải vật di chuyển -> trả về vị trí hiện tại.
+    private Vector2D leadAimPoint(LivingEntity owner, Entity prey, Vector2D ownerPos, Vector2D preyPos) {
+        double speed = owner.getMaxSpeed();
+        if (speed <= 1e-6 || !(prey instanceof MovableEntity moving)) return preyPos;
+        double leadTime = Math.min(ownerPos.distance(preyPos) / speed, MAX_LEAD_TIME);
+        return preyPos.add(moving.getVelocity().multiply(leadTime));
     }
 
     private Entity findClosestPrey(LivingEntity owner, List<Entity> neighbors, WorldMap world) {

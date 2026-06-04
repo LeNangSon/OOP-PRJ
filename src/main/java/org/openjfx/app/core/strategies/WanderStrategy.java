@@ -52,6 +52,10 @@ public class WanderStrategy implements MoveStrategy {
         return DEBUG_STATES.get(entityId);
     }
 
+    public static void clearDebugState(int entityId) {
+        DEBUG_STATES.remove(entityId);
+    }
+
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
         // Né chướng ngại (đá/nước/biên) do LivingEntity.avoidBlockedDirection() xử lý;
