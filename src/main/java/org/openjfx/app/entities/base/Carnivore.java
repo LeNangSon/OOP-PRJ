@@ -5,22 +5,22 @@ import java.util.List;
 import org.openjfx.app.core.RelationManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
-import org.openjfx.app.core.terrain.TerrainType;
-import org.openjfx.app.entities.staticobjs.Plant;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
 import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
 import org.openjfx.app.core.strategies.StrategyCandidate;
 import org.openjfx.app.core.strategies.WanderStrategy;
+import org.openjfx.app.core.terrain.TerrainType;
+import org.openjfx.app.entities.staticobjs.Plant;
 
 public abstract class Carnivore extends LivingEntity {
 
     // "Tầm vồ": mồi gần hơn mức này (closeness 0..1 so với tầm nhìn, 1 = ngay sát) thì
     // chộp luôn dù đang khát/bận việc khác — phản xạ cơ hội, không bỏ miếng ăn trước mặt.
-    private static final double POUNCE_CLOSENESS = 0.5;
+    private static final double POUNCE_CLOSENESS = 0.35;
     // Điểm khi vồ: thắng mọi nhu cầu thường (SeekWater tối đa ~1.2) nhưng vẫn thua bỏ chạy (100).
-    private static final double POUNCE_HUNT_SCORE = 2.0;
+    private static final double POUNCE_HUNT_SCORE = 3.0;
 
     private List<StrategyCandidate> candidates;
     // Lưu world của frame hiện tại để hàm chấm điểm lọc mồi giống HunterStrategy (địa hình bụi).

@@ -4555,7 +4555,7 @@
    <ellipse/>
   </object>
  </objectgroup>
- <objectgroup id="8" name="chouongnuoc" visible="0">
+ <objectgroup id="8" name="chouongnuoc">
   <object id="1985" x="1043" y="312">
    <capsule/>
   </object>
