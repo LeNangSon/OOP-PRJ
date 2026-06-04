@@ -1365,7 +1365,7 @@
   <object id="571" x="1047" y="280" width="27" height="5"/>
   <object id="572" x="1029" y="290" height="1"/>
  </objectgroup>
- <objectgroup id="3" name="vatcan" visible="0">
+ <objectgroup id="3" name="vatcan">
   <object id="573" x="56" y="174">
    <ellipse/>
   </object>

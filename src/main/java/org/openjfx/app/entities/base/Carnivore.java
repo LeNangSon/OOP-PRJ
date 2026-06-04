@@ -57,12 +57,9 @@ public abstract class Carnivore extends LivingEntity {
                         }),
                 new StrategyCandidate(HunterStrategy::new,
                         (e, n) -> {
-                            double closeness = nearestPreyCloseness(); // 0..1 theo tầm nhìn, 0 nếu không thấy mồi
-                            // Mồi trong tầm vồ -> chộp luôn, không bỏ miếng ăn trước mặt chỉ vì
-                            // đang khát/bận việc khác (vẫn nhường phản xạ bỏ chạy điểm 100).
+                            double closeness = nearestPreyCloseness();
                             if (closeness >= POUNCE_CLOSENESS) return POUNCE_HUNT_SCORE;
                             if (closeness <= 0 && e.getHunger() <= 60.0) return 0.0;
-                            // Mồi còn xa: chấm theo độ đói + độ sát, "đã trót đuổi thì làm nốt".
                             return Math.max(0.75, e.getHunger() / 100.0) + 0.5 * closeness;
                         }),
                 new StrategyCandidate(MateStrategy::new,

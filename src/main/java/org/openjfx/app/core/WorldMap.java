@@ -303,7 +303,7 @@ public class WorldMap {
                 if (!isGridInside(nr, nc) || visited.contains(nr * cols + nc)) continue;
                 if (avoidedGridKeys != null && avoidedGridKeys.contains(gridKey(nr, nc))) continue;
                 Vector2D center = gridToWorldCenter(nr, nc);
-                if (!canEntityStandOnTerrain(entity.getType(), getTerrainAt(center))) continue;
+                if (!canEntityStandOnTerrain(entity, getTerrainAt(center))) continue;
 
                 AstarNode next = getOrCreateNode(nodes, nr, nc, cols);
                 double cost = (dir[0] != 0 && dir[1] != 0) ? Math.sqrt(2) : 1.0;
@@ -433,19 +433,22 @@ public class WorldMap {
         };
         for (Vector2D point : points) {
             if (point.x < 0 || point.y < 0 || point.x > width || point.y > height) return false;
-            if (!canEntityStandOnTerrain(entity.getType(), getTerrainAt(point))) return false;
+            if (!canEntityStandOnTerrain(entity, getTerrainAt(point))) return false;
         }
         return true;
     }
 
     public boolean canStandAtPoint(LivingEntity entity, Vector2D position) {
-        return entity != null && canEntityStandOnTerrain(entity.getType(), getTerrainAt(position));
+        return entity != null && canEntityStandOnTerrain(entity, getTerrainAt(position));
     }
 
-    private boolean canEntityStandOnTerrain(EntityType entityType, TerrainType terrain) {
+    private boolean canEntityStandOnTerrain(LivingEntity entity, TerrainType terrain) {
+        if (entity == null) return false;
+        EntityType entityType = entity.getType();
         if (terrain == TerrainType.ROCK || terrain == TerrainType.PIT) return false;
         if (terrain == TerrainType.WATER) return entityType == EntityType.FISH
-                                              || entityType == EntityType.ELEPHANT;
+                                              || entityType == EntityType.ELEPHANT
+                                              || entityType == EntityType.BEAR;
         if (terrain == TerrainType.BUSH) return entityType == EntityType.RABBIT;
         return entityType != EntityType.FISH;
     }
