@@ -7,9 +7,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.openjfx.app.core.DeathCause;
-import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.RelationManager;
-import org.openjfx.app.core.SoundManager;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.terrain.TerrainType;
@@ -80,9 +78,6 @@ public class HunterStrategy implements MoveStrategy {
             boolean preyWasAlive = prey instanceof LivingEntity preyLiving && preyLiving.isAlive();
             owner.eat(prey, dt);
             if (preyWasAlive && prey instanceof LivingEntity preyLiving && !preyLiving.isAlive()) {
-                if (shouldPlayEatMeatSound(owner, prey)) {
-                    SoundManager.playEatMeat();
-                }
                 world.recordDeath(prey.getType(), DeathCause.PREDATION);
                 world.broadcastDeath(preyName + " đã chết vì bị " + ownerName + " săn");
             }
@@ -171,15 +166,6 @@ public class HunterStrategy implements MoveStrategy {
             }
         }
         return closest;
-    }
-
-    private boolean shouldPlayEatMeatSound(LivingEntity owner, Entity prey) {
-        if (owner == null || prey == null) return false;
-        EntityType predator = owner.getType();
-        EntityType target = prey.getType();
-        return (predator == EntityType.WOLF && target == EntityType.RABBIT)
-                || (predator == EntityType.BEAR && target == EntityType.RABBIT)
-                || (predator == EntityType.BEAR && target == EntityType.FISH);
     }
 
     private void resetPath(LivingEntity owner) {
