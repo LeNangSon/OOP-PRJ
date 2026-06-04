@@ -16,10 +16,15 @@ import org.openjfx.app.core.strategies.WanderStrategy;
 
 public abstract class Carnivore extends LivingEntity {
 
-    // "Tầm vồ": mồi gần hơn mức này (closeness 0..1 so với tầm nhìn, 1 = ngay sát) thì
-    // chộp luôn dù đang khát/bận việc khác — phản xạ cơ hội, không bỏ miếng ăn trước mặt.
+    // Chỉ khi đói tới ngưỡng này thú mới CHỦ ĐỘNG đi săn/đuổi mồi. Dưới ngưỡng (no) thì
+    // kệ thỏ, không đuổi — trừ khi mồi ở ngay tận miệng (xem POUNCE_WHEN_FULL_CLOSENESS).
+    private static final double HUNT_HUNGER_START = 50.0;
+    // "Tầm vồ" khi ĐANG ĐÓI: mồi vào trong nửa tầm nhìn thì chốt đuổi dứt khoát (không vờn).
     private static final double POUNCE_CLOSENESS = 0.5;
-    // Điểm khi vồ: thắng mọi nhu cầu thường (SeekWater tối đa ~1.2) nhưng vẫn thua bỏ chạy (100).
+    // Phản xạ khi CHƯA ĐÓI: chỉ đớp khi mồi sát tận miệng (closeness ~ tầm bắt được, rất gần)
+    // -> miếng ăn miễn phí ngay cạnh thì không bỏ, nhưng không chủ động đuổi con ở xa.
+    private static final double POUNCE_WHEN_FULL_CLOSENESS = 0.85;
+    // Điểm khi vồ: thắng mọi nhu cầu thường (SeekWater tối đa ~1.4) nhưng vẫn thua bỏ chạy (100).
     private static final double POUNCE_HUNT_SCORE = 2.0;
 
     private List<StrategyCandidate> candidates;
@@ -49,6 +54,8 @@ public abstract class Carnivore extends LivingEntity {
                         (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
                 new StrategyCandidate(() -> new SeekWaterStrategy(wanderDistance, wanderRadius),
                         (e, n) -> {
+                            // Sắp chết khát -> uống là ưu tiên sống còn, thắng cả đi săn (vồ 2.0).
+                            if (e.getThirst() >= THIRST_CRITICAL) return THIRST_EMERGENCY_SCORE;
                             // Đang uống dở -> uống cho tới khi hết khát hẳn (chống yo-yo ở mép nước).
                             if (e.getMoveStrategy() instanceof SeekWaterStrategy)
                                 return e.getThirst() > THIRST_SATED ? DRINK_COMMIT_SCORE : 0.0;
@@ -58,11 +65,14 @@ public abstract class Carnivore extends LivingEntity {
                 new StrategyCandidate(HunterStrategy::new,
                         (e, n) -> {
                             double closeness = nearestPreyCloseness(); // 0..1 theo tầm nhìn, 0 nếu không thấy mồi
-                            // Mồi trong tầm vồ -> chộp luôn, không bỏ miếng ăn trước mặt chỉ vì
-                            // đang khát/bận việc khác (vẫn nhường phản xạ bỏ chạy điểm 100).
+                            // Mồi tận miệng -> đớp miếng ăn miễn phí dù chưa đói (vẫn thua bỏ chạy 100).
+                            if (closeness >= POUNCE_WHEN_FULL_CLOSENESS) return POUNCE_HUNT_SCORE;
+                            // Chưa đói tới ngưỡng -> không chủ động đuổi, kệ thỏ.
+                            if (e.getHunger() < HUNT_HUNGER_START) return 0.0;
+                            if (closeness <= 0) return 0.0; // đói nhưng không thấy mồi
+                            // Đang đói + mồi vào nửa tầm nhìn -> chốt đuổi dứt khoát.
                             if (closeness >= POUNCE_CLOSENESS) return POUNCE_HUNT_SCORE;
-                            if (closeness <= 0 && e.getHunger() <= 60.0) return 0.0;
-                            // Mồi còn xa: chấm theo độ đói + độ sát, "đã trót đuổi thì làm nốt".
+                            // Đói + mồi còn xa: chấm theo độ đói + độ sát, "đã trót đuổi thì làm nốt".
                             return Math.max(0.75, e.getHunger() / 100.0) + 0.5 * closeness;
                         }),
                 new StrategyCandidate(MateStrategy::new,

@@ -29,6 +29,10 @@ public abstract class LivingEntity extends MovableEntity {
     // nước liên tục khi đói & khát cùng cao.
     protected static final double THIRST_SEEK_START = 70.0;
     protected static final double THIRST_SATED = 25.0;
+    // Khát tới mức nguy hiểm -> uống là ưu tiên SỐNG CÒN, thắng cả đi săn (vồ 2.0) để khỏi
+    // chết khát giữa lúc đuổi mồi. Chỉ thua phản xạ bỏ chạy (100).
+    protected static final double THIRST_CRITICAL = 75.0;
+    protected static final double THIRST_EMERGENCY_SCORE = 50.0;
     // Điểm ưu tiên khi đang uống dở: đủ cao để cơn đói không kéo đi (Hunter nền ~1.0),
     // nhưng vẫn dưới cú vồ mồi tận miệng (2.0) và phản xạ bỏ chạy (100).
     protected static final double DRINK_COMMIT_SCORE = 1.4;

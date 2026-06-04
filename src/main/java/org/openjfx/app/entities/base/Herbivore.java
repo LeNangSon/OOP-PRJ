@@ -35,6 +35,8 @@ public abstract class Herbivore extends LivingEntity {
                         (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
                 new StrategyCandidate(() -> new SeekWaterStrategy(wanderDistance, wanderRadius),
                         (e, n) -> {
+                            // Sắp chết khát -> uống là ưu tiên sống còn, vượt mọi nhu cầu khác.
+                            if (e.getThirst() >= THIRST_CRITICAL) return THIRST_EMERGENCY_SCORE;
                             // Đang uống dở -> uống cho tới khi hết khát hẳn (chống yo-yo ở mép nước).
                             if (e.getMoveStrategy() instanceof SeekWaterStrategy)
                                 return e.getThirst() > THIRST_SATED ? DRINK_COMMIT_SCORE : 0.0;
