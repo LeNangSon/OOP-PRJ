@@ -490,6 +490,19 @@ public class WorldMap {
             entities.addAll(pendingSpawns);
             pendingSpawns.clear();
         }
+        updateFishSwimmingSound();
+    }
+
+    private void updateFishSwimmingSound() {
+        for (Entity entity : entities) {
+            if (entity instanceof Fish fish
+                    && fish.isAlive()
+                    && getTerrainAt(fish.getPosition()) == TerrainType.WATER) {
+                SoundManager.setFishSwimming(true);
+                return;
+            }
+        }
+        SoundManager.setFishSwimming(false);
     }
 
     public List<Entity> getNeighbors(Entity owner, double radius) {
