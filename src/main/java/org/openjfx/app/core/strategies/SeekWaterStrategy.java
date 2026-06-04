@@ -7,6 +7,7 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
+import org.openjfx.app.entities.movable.Elephant;
 
 public class SeekWaterStrategy implements MoveStrategy {
     private static final double STEERING_GAIN = 4.0;
@@ -24,15 +25,15 @@ public class SeekWaterStrategy implements MoveStrategy {
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
         Vector2D currentPos = owner.getPosition();
+        boolean elephant = owner instanceof Elephant;
 
-        // --- Máng nước (chouongnuoc) ---
+        // --- Mang nuoc (chouongnuoc) ---
         Vector2D nearestTrough = world.findNearestTrough(currentPos);
         if (nearestTrough != null) {
-            double halfSize    = owner.getSize() / 2.0;
             double distToTrough = currentPos.distance(nearestTrough);
 
-            // Uống khi mép trước (front = halfSize) chạm tâm máng
-            if (distToTrough < halfSize + 5.0) {
+            // Voi phai di vao object mang nuoc moi duoc uong.
+            if (world.isInTrough(currentPos)) {
                 owner.setVelocity(new Vector2D(0, 0));
                 owner.setAcceleration(new Vector2D(0, 0));
                 owner.drink(dt);
@@ -41,16 +42,25 @@ public class SeekWaterStrategy implements MoveStrategy {
 
             if (distToTrough <= owner.getVisionRadius()) {
                 lastKnownWaterPos = nearestTrough;
-                // Pathfind đến điểm cách tâm máng halfSize (về phía voi)
-                // → voi dừng khi front edge chạm tâm máng
-                Vector2D approachPoint = nearestTrough.add(
-                        nearestTrough.directionTo(currentPos).multiply(halfSize));
-                moveToward(owner, currentPos, approachPoint, dt, world);
+                moveToward(owner, currentPos, nearestTrough, dt, world);
                 return;
             }
         }
 
-        // --- Voi đang trong nước ---
+        // Voi chi dung chouongnuoc, khong uong trong object ho.
+        if (elephant) {
+            if (lastKnownWaterPos != null) {
+                if (currentPos.distance(lastKnownWaterPos) < owner.getSize()) {
+                    lastKnownWaterPos = null;
+                } else {
+                    moveToward(owner, currentPos, lastKnownWaterPos, dt, world);
+                    return;
+                }
+            }
+            searchWander.updateVelocity(owner, neighbors, dt, world);
+            return;
+        }
+
         if (world.getTerrainAt(currentPos) == TerrainType.WATER) {
             if (waterEntryPos == null) waterEntryPos = new Vector2D(currentPos.x, currentPos.y);
 
