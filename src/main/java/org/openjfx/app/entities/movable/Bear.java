@@ -9,13 +9,19 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class Bear extends Carnivore {
 
     public Bear(Vector2D position) {
-        super(position, 30, "circle", 200.0, 1.5, 2.0,
+        // Gấu trao đổi chất chậm hơn sói: đói săn (50) sau ~83s, chết đói sau ~206s,
+        // uống mỗi ~58s. Gấu chậm (36 px/s) nên săn trượt nhiều, cần trữ đói lớn.
+        super(position, 30, "circle", 200.0, 0.6, 1.2,
                 36.0, 44.0, 12.0, 70.0, 35.0);
         setVisionRadius(80.0);
         type = EntityType.BEAR;
-        matureAge = 15.0;
-        reproduceCooldownMax = 40.0;
-        reproduceHungerCost = 35.0;
+        // Gấu đứng đầu chuỗi thức ăn, không thiên địch -> đẻ chậm để không phình vô hạn.
+        // NHƯNG đừng hãm quá tay: đo 900s với 180s/lứa, đàn thú săn không tăng kịp theo
+        // boom thỏ -> 269 thỏ, cỏ sụp, chết đói hàng loạt. Thú săn tăng theo đàn mồi
+        // chính là cơ chế tự cân bằng (Lotka-Volterra).
+        matureAge = 35.0;
+        reproduceCooldownMax = 110.0;
+        reproduceHungerCost = 50.0;
     }
 
     public void setVisionRadius(double visionRadius) {

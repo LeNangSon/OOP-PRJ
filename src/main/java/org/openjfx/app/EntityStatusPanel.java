@@ -86,7 +86,7 @@ public class EntityStatusPanel extends VBox {
         this.worldMap = worldMap;
         setPrefWidth(400);
         setFillWidth(true);
-        setStyle("-fx-background-color: #1a1a1a;");
+        setStyle("-fx-background-color: #151d24;");
 
         buildSummaryList();
         buildDetailTable();
@@ -101,41 +101,41 @@ public class EntityStatusPanel extends VBox {
     // ── Header ────────────────────────────────────────────────────────────────
     private VBox buildHeader() {
         backButton.setStyle(
-            "-fx-background-color: #3a3a3a; -fx-text-fill: #aaaaaa; -fx-font-size: 11px;"
-            + " -fx-cursor: hand; -fx-padding: 4 10; -fx-background-radius: 4;");
+            "-fx-background-color: #1b242e; -fx-text-fill: #8294a5; -fx-font-size: 11px;"
+            + " -fx-cursor: hand; -fx-padding: 4 10; -fx-background-radius: 8;");
         backButton.setOnAction(e -> showSummary());
         backButton.setVisible(false);
         backButton.setManaged(false);
 
         titleLabel.setStyle(
-            "-fx-text-fill: #e8e8e8; -fx-font-size: 13px; -fx-font-weight: bold;"
-            + " -fx-font-family: 'Consolas', 'Monospaced';");
+            "-fx-text-fill: #dbe5ee; -fx-font-size: 13px; -fx-font-weight: bold;"
+            + " -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';");
 
         subtitleLabel.setStyle(
-            "-fx-text-fill: #777777; -fx-font-size: 10.5px;"
-            + " -fx-font-family: 'Consolas', 'Monospaced';");
+            "-fx-text-fill: #8294a5; -fx-font-size: 10.5px;"
+            + " -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';");
 
         HBox titleRow = new HBox(8, backButton, titleLabel);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox header = new VBox(4, titleRow, subtitleLabel);
         header.setPadding(new Insets(10, 14, 10, 14));
-        header.setStyle("-fx-background-color: #252525;"
-            + " -fx-border-color: #333333; -fx-border-width: 0 0 1 0;");
+        header.setStyle("-fx-background-color: #10161b;"
+            + " -fx-border-color: #263240; -fx-border-width: 0 0 1 0;");
         return header;
     }
 
     // ── Footer ────────────────────────────────────────────────────────────────
     private HBox buildFooter() {
         footerLabel.setStyle(
-            "-fx-text-fill: #5a5a5a; -fx-font-size: 10px;"
-            + " -fx-font-family: 'Consolas', 'Monospaced';");
+            "-fx-text-fill: #8294a5; -fx-font-size: 10px;"
+            + " -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';");
 
         HBox footer = new HBox(footerLabel);
         footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setPadding(new Insets(5, 14, 5, 14));
-        footer.setStyle("-fx-background-color: #252525;"
-            + " -fx-border-color: #333333; -fx-border-width: 1 0 0 0;");
+        footer.setPadding(new Insets(6, 14, 6, 14));
+        footer.setStyle("-fx-background-color: #10161b;"
+            + " -fx-border-color: #263240; -fx-border-width: 1 0 0 0;");
         return footer;
     }
 
@@ -143,7 +143,7 @@ public class EntityStatusPanel extends VBox {
     private void buildSummaryList() {
         summaryList.setItems(summaryRows);
         summaryList.setFocusTraversable(false);
-        summaryList.setStyle("-fx-background-color: #1a1a1a; -fx-border-color: transparent;");
+        summaryList.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
         summaryList.setCellFactory(lv -> new SummaryCell());
     }
 
@@ -152,8 +152,8 @@ public class EntityStatusPanel extends VBox {
         detailTable.setItems(detailRows);
         detailTable.setFocusTraversable(false);
         detailTable.setStyle(
-            "-fx-control-inner-background: #1e1e1e;"
-            + " -fx-font-family: 'Consolas', 'Monospaced';"
+            "-fx-control-inner-background: #151d24;"
+            + " -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';"
             + " -fx-font-size: 12px;");
         detailTable.setPlaceholder(new Label("Không có cá thể nào"));
 
@@ -187,9 +187,9 @@ public class EntityStatusPanel extends VBox {
                 super.updateItem(item, empty);
                 if (empty || item == null || item.health < 0) { setStyle(""); return; }
                 if (item.health < 30) {
-                    setStyle("-fx-background-color: #2d1818;");
+                    setStyle("-fx-background-color: rgba(248,113,113,0.10);");
                 } else if (item.hunger > 70 || item.thirst > 70) {
-                    setStyle("-fx-background-color: #252015;");
+                    setStyle("-fx-background-color: rgba(251,191,36,0.08);");
                 } else {
                     setStyle("");
                 }
@@ -322,17 +322,18 @@ public class EntityStatusPanel extends VBox {
             root.setMaxWidth(Double.MAX_VALUE);
 
             setPadding(new Insets(1, 0, 1, 0));
-            setStyle("-fx-background-color: transparent; -fx-padding: 0;");
+            setStyle("-fx-background-color: transparent; -fx-padding: 2 8 2 8;");
             setCursor(Cursor.HAND);
 
             setOnMouseEntered(e -> {
                 if (getItem() != null)
-                    content.setStyle("-fx-background-color: #2c2c2c;");
+                    content.setStyle("-fx-background-color: #232f3b; -fx-background-radius: 0 8 8 0;");
             });
             setOnMouseExited(e -> {
                 if (getItem() != null)
                     content.setStyle("-fx-background-color: "
-                        + (getItem().alive == 0 ? "#1c1c1c" : "#212121") + ";");
+                        + (getItem().alive == 0 ? "#161d24" : "#1b242e")
+                        + "; -fx-background-radius: 0 8 8 0;");
             });
             setOnMouseClicked(e -> {
                 if (!isEmpty() && getItem() != null) showDetail(getItem().type);
@@ -346,20 +347,21 @@ public class EntityStatusPanel extends VBox {
 
             boolean extinct = item.alive == 0;
             String color = speciesColor(item.type);
-            accentBar.setStyle("-fx-background-color: " + (extinct ? "#3a3a3a" : color) + ";");
+            accentBar.setStyle("-fx-background-color: " + (extinct ? "#2a3540" : color)
+                + "; -fx-background-radius: 8 0 0 8;");
 
             nameLabel.setText(speciesEmoji(item.type) + "  " + item.type);
-            nameLabel.setStyle("-fx-text-fill: " + (extinct ? "#666666" : "#dedede") + ";"
+            nameLabel.setStyle("-fx-text-fill: " + (extinct ? "#5a6b7c" : "#dbe5ee") + ";"
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', 'Monospaced';");
+                + " -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';");
 
             if (!extinct) {
                 aliveLabel.setText("● " + item.alive);
-                aliveLabel.setStyle("-fx-text-fill: #77dd77; -fx-font-size: 12px;"
-                    + " -fx-font-weight: bold; -fx-font-family: 'Consolas', 'Monospaced';");
+                aliveLabel.setStyle("-fx-text-fill: #34d399; -fx-font-size: 12px;"
+                    + " -fx-font-weight: bold; -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';");
             } else {
                 aliveLabel.setText("tuyệt chủng");
-                aliveLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 11px;");
+                aliveLabel.setStyle("-fx-text-fill: #5a6b7c; -fx-font-size: 11px;");
             }
 
             boolean anyDeath = item.diedHunger > 0 || item.diedThirst > 0 || item.diedPredation > 0;
@@ -369,14 +371,15 @@ public class EntityStatusPanel extends VBox {
                 if (item.diedThirst    > 0) sb.append("khát: ").append(item.diedThirst).append("  ");
                 if (item.diedPredation > 0) sb.append("bị săn: ").append(item.diedPredation);
                 deathLabel.setText(sb.toString().strip());
-                deathLabel.setStyle("-fx-text-fill: #886655; -fx-font-size: 10.5px;"
-                    + " -fx-font-family: 'Consolas', 'Monospaced';");
+                deathLabel.setStyle("-fx-text-fill: #b08968; -fx-font-size: 10.5px;"
+                    + " -fx-font-family: 'Menlo', 'Consolas', 'Monospaced';");
             } else {
                 deathLabel.setText("chưa có tử vong");
-                deathLabel.setStyle("-fx-text-fill: #404040; -fx-font-size: 10.5px;");
+                deathLabel.setStyle("-fx-text-fill: #46586a; -fx-font-size: 10.5px;");
             }
 
-            content.setStyle("-fx-background-color: " + (extinct ? "#1c1c1c" : "#212121") + ";");
+            content.setStyle("-fx-background-color: " + (extinct ? "#161d24" : "#1b242e")
+                + "; -fx-background-radius: 0 8 8 0;");
             setGraphic(root);
         }
     }
@@ -392,7 +395,7 @@ public class EntityStatusPanel extends VBox {
             this.inverted = inverted;
             pb.setMaxWidth(Double.MAX_VALUE);
             pb.setPrefHeight(15);
-            text.setStyle("-fx-text-fill: white; -fx-font-size: 10px;");
+            text.setStyle("-fx-text-fill: #dbe5ee; -fx-font-size: 10px; -fx-font-weight: bold;");
             container = new StackPane(pb, text);
             container.setMaxWidth(Double.MAX_VALUE);
             setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
@@ -405,9 +408,9 @@ public class EntityStatusPanel extends VBox {
             if (empty || v == null || v < 0) { setGraphic(null); return; }
             pb.setProgress(v / 100.0);
             String accent = inverted
-                ? (v < 40 ? "#5cb85c" : v < 70 ? "#f0ad4e" : "#d9534f")
-                : (v > 60 ? "#5cb85c" : v > 30 ? "#f0ad4e" : "#d9534f");
-            pb.setStyle("-fx-accent: " + accent + "; -fx-control-inner-background: #2a2a2a;");
+                ? (v < 40 ? "#34d399" : v < 70 ? "#fbbf24" : "#f87171")
+                : (v > 60 ? "#34d399" : v > 30 ? "#fbbf24" : "#f87171");
+            pb.setStyle("-fx-accent: " + accent + "; -fx-control-inner-background: #232c36;");
             text.setText(String.format("%.0f", v));
             setGraphic(container);
         }

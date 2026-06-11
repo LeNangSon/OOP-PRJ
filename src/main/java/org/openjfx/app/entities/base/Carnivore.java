@@ -87,8 +87,12 @@ public abstract class Carnivore extends LivingEntity {
         setDrinking(false);
         currentWorld = world;
         neighbors = world.getNeighbors(this, visionRadius);
-        if (candidates == null) candidates = buildCandidates();
-        moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, dt, this, neighbors);
+        if (fixedStrategy != null) {
+            moveStrategy = fixedStrategy;          // Q-learning điều khiển trực tiếp
+        } else {
+            if (candidates == null) candidates = buildCandidates();
+            moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, dt, this, neighbors);
+        }
         if (moveStrategy != null && !isAvoidingBlockedPath()) {
             moveStrategy.updateVelocity(this, neighbors, dt, world);
         }

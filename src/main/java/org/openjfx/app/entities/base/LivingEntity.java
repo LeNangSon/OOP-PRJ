@@ -14,6 +14,9 @@ import org.openjfx.app.core.strategies.WanderStrategy;
 public abstract class LivingEntity extends MovableEntity {
     //Atribute
     protected MoveStrategy moveStrategy;
+    // Khi != null: bỏ qua việc chọn chiến lược theo điểm số, dùng cố định chiến lược này
+    // (ví dụ để Q-learning điều khiển trực tiếp con vật). Xem setFixedStrategy().
+    protected MoveStrategy fixedStrategy;
     private double hunger;
     private double thirst;
     private double health;
@@ -137,6 +140,11 @@ public abstract class LivingEntity extends MovableEntity {
         return moveStrategy;
     }
 
+    public void setFixedStrategy(MoveStrategy strategy) {
+        this.fixedStrategy = strategy;
+        this.moveStrategy = strategy;
+    }
+
     protected void setDrinking(boolean drinking) {
         this.drinking = drinking;
     }
@@ -192,7 +200,10 @@ public abstract class LivingEntity extends MovableEntity {
         Vector2D nextPosition = this.position.add(this.velocity.multiply(dt));
         if (world.canStandOn(this, nextPosition)) {
             this.position = nextPosition;
-            
+
+        } else if (trySlideAlongObstacle(world, dt)) {
+            // Đâm chéo vào tường -> trượt dọc theo tường (collide-and-slide), không tính
+            // là kẹt nên strategy vẫn giữ quyền điều khiển ở frame sau.
         } else {
             avoidBlockedDirection(world, dt);
             this.setBlockedLastStep(true);
@@ -207,6 +218,60 @@ public abstract class LivingEntity extends MovableEntity {
 
         handleOutOfMap(world);
 
+    }
+
+    // Collide-and-slide: cắt bỏ thành phần vận tốc đâm VÀO tường, giữ thành phần song
+    // song -> chạy chéo vào vách thì trượt mượt dọc theo vách thay vì khựng lại rồi xoay
+    // bậc thang ±30° như avoidBlockedDirection. Trả về false nếu không trượt được (đâm
+    // vuông góc, kẹt góc lõm, hoặc bị chặn bởi con vật khác) -> dùng fallback cũ.
+    private boolean trySlideAlongObstacle(WorldMap world, double dt) {
+        Vector2D normal = estimateObstacleNormal(world);
+        if (normal == null) {
+            return false;
+        }
+        double intoWall = this.velocity.dot(normal);
+        if (intoWall >= 0) {
+            return false; // không đâm về phía tường -> kẹt vì lý do khác
+        }
+        Vector2D slide = this.velocity.sub(normal.multiply(intoWall));
+        if (slide.magnitude() < 1e-3) {
+            return false; // đâm gần như vuông góc, không còn thành phần trượt
+        }
+        Vector2D slidePosition = this.position.add(slide.multiply(dt));
+        if (!world.canStandOn(this, slidePosition)) {
+            return false;
+        }
+        this.velocity = slide;
+        this.position = slidePosition;
+        return true;
+    }
+
+    // Ước lượng pháp tuyến tường: dò 8 hướng quanh con vật (ngay ngoài vòng probe của
+    // canStandOn), cộng vector các hướng bị chặn về địa hình/biên map rồi đảo dấu.
+    // null nếu không hướng nào (bị chặn bởi entity khác, không phải tường) hoặc mọi
+    // hướng đều chặn (kẹt hộp kín - trượt vô nghĩa).
+    private Vector2D estimateObstacleNormal(WorldMap world) {
+        double probeRadius = Math.max(2.0, this.size * 0.35) + 2.0;
+        double sumX = 0, sumY = 0;
+        int blockedCount = 0;
+        for (int i = 0; i < 8; i++) {
+            double angle = i * Math.PI / 4;
+            Vector2D dir = new Vector2D(Math.cos(angle), Math.sin(angle));
+            Vector2D probe = this.position.add(dir.multiply(probeRadius));
+            if (!world.isInside(probe) || !world.canStandAtPoint(this, probe)) {
+                sumX += dir.x;
+                sumY += dir.y;
+                blockedCount++;
+            }
+        }
+        if (blockedCount == 0 || blockedCount == 8) {
+            return null;
+        }
+        double mag = Math.hypot(sumX, sumY);
+        if (mag < 1e-6) {
+            return null; // hai phía đối xứng cùng chặn (hành lang hẹp) -> không có pháp tuyến rõ
+        }
+        return new Vector2D(-sumX / mag, -sumY / mag);
     }
 
     private void avoidBlockedDirection(WorldMap world, double dt) {

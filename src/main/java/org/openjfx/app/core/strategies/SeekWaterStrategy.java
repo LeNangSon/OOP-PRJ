@@ -27,38 +27,23 @@ public class SeekWaterStrategy implements MoveStrategy {
         Vector2D currentPos = owner.getPosition();
         boolean elephant = owner instanceof Elephant;
 
-        // --- Mang nuoc (chouongnuoc) ---
-        Vector2D nearestTrough = world.findNearestTrough(currentPos);
-        if (nearestTrough != null) {
-            double distToTrough = currentPos.distance(nearestTrough);
-
-            // Voi phai di vao object mang nuoc moi duoc uong.
-            if (world.isInTrough(currentPos)) {
-                owner.setVelocity(new Vector2D(0, 0));
-                owner.setAcceleration(new Vector2D(0, 0));
-                owner.drink(dt);
-                return;
-            }
-
-            if (distToTrough <= owner.getVisionRadius()) {
-                lastKnownWaterPos = nearestTrough;
-                moveToward(owner, currentPos, nearestTrough, dt, world);
-                return;
-            }
-        }
-
-        // Voi chi dung chouongnuoc, khong uong trong object ho.
+        // --- Voi: uu tien mang nuoc (chouongnuoc) vi co hoat anh uong rieng ---
         if (elephant) {
-            if (lastKnownWaterPos != null) {
-                if (currentPos.distance(lastKnownWaterPos) < owner.getSize()) {
-                    lastKnownWaterPos = null;
-                } else {
-                    moveToward(owner, currentPos, lastKnownWaterPos, dt, world);
+            Vector2D nearestTrough = world.findNearestTrough(currentPos);
+            if (nearestTrough != null) {
+                if (world.isInTrough(currentPos)) {
+                    owner.setVelocity(new Vector2D(0, 0));
+                    owner.setAcceleration(new Vector2D(0, 0));
+                    owner.drink(dt);
+                    return;
+                }
+                if (currentPos.distance(nearestTrough) <= owner.getVisionRadius()) {
+                    moveToward(owner, currentPos, nearestTrough, dt, world);
                     return;
                 }
             }
-            searchWander.updateVelocity(owner, neighbors, dt, world);
-            return;
+            // Khong co mang nuoc gan -> voi xuong uong o ho nhu binh thuong (no loi nuoc duoc),
+            // khoi chet khat khi mang o xa. Roi xuong logic ho ben duoi.
         }
 
         if (world.getTerrainAt(currentPos) == TerrainType.WATER) {
@@ -92,9 +77,10 @@ public class SeekWaterStrategy implements MoveStrategy {
         waterEntryPos = null;
         exitingWater  = false;
 
-        // --- Tìm mép nước trong tầm nhìn → đi vào nước ---
-        Vector2D nearestWater = world.findNearestTerrainPositionInRadius(
-                currentPos, TerrainType.WATER, owner.getVisionRadius());
+        // --- Tìm mép nước gần nhất (KHÔNG giới hạn tầm nhìn) → đi tới uống ---
+        // Đã khát thì con vật "biết" hướng nguồn nước gần nhất, không lang thang mù
+        // rồi chết khát khi hồ nằm ngoài tầm nhìn ngắn.
+        Vector2D nearestWater = world.findNearestTerrainPosition(currentPos, TerrainType.WATER);
 
         if (nearestWater != null) {
             lastKnownWaterPos = nearestWater;

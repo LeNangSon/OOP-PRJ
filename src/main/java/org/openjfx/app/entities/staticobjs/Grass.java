@@ -8,11 +8,14 @@ import org.openjfx.app.entities.base.Entity;
 
 public class Grass extends Plant {
 
-    private static final double MIN_DISTANCE_FROM_GRASS = 18.0;
+    private static final double MIN_DISTANCE_FROM_GRASS = 22.0;
     private static final double REGROW_TIME = 30.0;
+    // 20s/lần lan + cách nhau 22px: map phủ dần trong vài phút thay vì thảm cỏ kín
+    // sau 3 phút như bộ cũ (10s/18px), đủ dư cho thỏ + voi ăn.
+    private static final double REPRODUCE_TIME_SECONDS = 20.0;
 
     public Grass(Vector2D position) {
-        super(position, 10, "Grass", 10);
+        super(position, 10, "Grass", REPRODUCE_TIME_SECONDS);
         this.type = EntityType.GRASS;
         this.regrowTime = REGROW_TIME;
     }
@@ -29,7 +32,9 @@ public class Grass extends Plant {
         }
         double minSq = MIN_DISTANCE_FROM_GRASS * MIN_DISTANCE_FROM_GRASS;
         for (Entity e : world.getEntities()) {
-            if (!(e instanceof Grass) || !((Grass) e).isAlive()) {
+            // Cỏ ĐANG MỌC LẠI (bị ăn, chờ hồi sinh) cũng chiếm chỗ: nếu bỏ qua nó thì cỏ
+            // mới mọc đè lên, lúc cây cũ hồi sinh sẽ thành 2 cụm chồng nhau (phá trần mật độ).
+            if (!(e instanceof Grass g) || (!g.isAlive() && !g.isRegrowing())) {
                 continue;
             }
             double dx = e.getPosition().x - position.x;

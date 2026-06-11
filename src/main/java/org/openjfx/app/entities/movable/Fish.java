@@ -18,8 +18,10 @@ public class Fish extends Herbivore {
         setVisionRadius(50.0);
         type = EntityType.FISH;
         matureAge = 10.0;
-        reproduceCooldownMax = 8.0;
-        reproduceHungerCost = 15.0;
+        // 8s/lứa cũ làm đàn cá bùng nổ ~95 con trong khi tảo chỉ nuôi nổi vài chục ->
+        // cá chết đói liên tục (churn). 20s/lứa + tốn 25 đói bám theo nhịp tảo (140s/cây).
+        reproduceCooldownMax = 20.0;
+        reproduceHungerCost = 25.0;
     }
 
     @Override
@@ -27,10 +29,18 @@ public class Fish extends Herbivore {
         return new Fish(spawnPos);
     }
 
+    // Cá đẻ theo cơ chế CÓ TRẦN (reproduceInLake, tối đa MAX_FISH_COUNT) thay vì tìm bạn
+    // tình: vừa không bùng nổ ~95 con như mate-based cooldown 8s, vừa không tuyệt chủng
+    // chỉ vì 2 con không gặp được nhau trong hồ.
+    @Override
+    public boolean canReproduce() {
+        return false;
+    }
+
     @Override
     public void update(double dt, WorldMap world) {
         super.update(dt, world);
-        // reproduceInLake(dt, world);
+        reproduceInLake(dt, world);
     }
 
     private void reproduceInLake(double dt, WorldMap world) {

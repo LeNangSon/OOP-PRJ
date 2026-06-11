@@ -61,8 +61,12 @@ public abstract class Herbivore extends LivingEntity {
     public void update(double dt, WorldMap world) {
         setDrinking(false);
         neighbors = world.getNeighbors(this, visionRadius);
-        if (candidates == null) candidates = buildCandidates();
-        moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, dt, this, neighbors);
+        if (fixedStrategy != null) {
+            moveStrategy = fixedStrategy;          // Q-learning điều khiển trực tiếp
+        } else {
+            if (candidates == null) candidates = buildCandidates();
+            moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, dt, this, neighbors);
+        }
         if (moveStrategy != null && !isAvoidingBlockedPath()) {
             moveStrategy.updateVelocity(this, neighbors, dt, world);
         }

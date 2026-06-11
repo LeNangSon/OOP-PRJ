@@ -83,7 +83,10 @@ public abstract class Plant extends StaticEntity {
             double newX = position.x + (Math.random() * 60 - 30);
             double newY = position.y + (Math.random() * 60 - 30);
             Vector2D candidate = new Vector2D(newX, newY);
-            if (canReproduceAt(world, candidate)) {
+            // BẮT BUỘC trong map: getTerrainAt mặc định trả LAND cho điểm NGOÀI bản đồ,
+            // không chặn ở đây thì cỏ lan vô hạn ra ngoài màn hình (population bùng nổ
+            // vượt trần mật độ + tụt FPS dần theo thời gian).
+            if (world.isInside(candidate) && canReproduceAt(world, candidate)) {
                 world.addEntity(createNewPlant(candidate));
                 return;
             }

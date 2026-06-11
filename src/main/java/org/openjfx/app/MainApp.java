@@ -8,6 +8,10 @@ import java.util.Random;
 import org.openjfx.app.core.TerminalLogger;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
+import org.openjfx.app.core.deeprl.DQNAgent;
+import org.openjfx.app.core.qlearning.QTable;
+import org.openjfx.app.core.strategies.DeepQLearningStrategy;
+import org.openjfx.app.core.strategies.QLearningStrategy;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
 import org.openjfx.app.entities.base.LivingEntity;
@@ -25,19 +29,19 @@ import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.RadioMenuItem;
-import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
@@ -46,6 +50,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -56,7 +61,7 @@ public class MainApp extends Application {
     private static final double WIDTH = 576.0;
     private static final double HEIGHT = 576.0;
     private static final double TERMINAL_WIDTH = 400.0;
-    private static final double TOOLBAR_HEIGHT = 42.0;
+    private static final double TOP_BAR_HEIGHT = 48.0;
     private static final double MIN_ZOOM = 1.0;
     private static final double MAX_ZOOM = 3.0;
     private static final double SEASON_AUTO_SWITCH_SECONDS = 60.0;
@@ -68,11 +73,6 @@ public class MainApp extends Application {
     private static final String IMG_SUMMER = "/org/openjfx/app/summer.png";
     private static final String IMG_AUTUMN = "/org/openjfx/app/autumn.png";
     private static final String IMG_WINTER = "/org/openjfx/app/winter.png";
-
-    private static final String TOOLBAR_STYLE = "-fx-background-color: rgba(20,20,20,0.55); -fx-padding: 6 8;";
-    private static final String BTN_BASE = "-fx-background-color: rgba(35,35,35,0.72); -fx-text-fill: white; -fx-padding: 4 10; -fx-cursor: hand; -fx-font-size: 12px;";
-    private static final String BTN_SELECTED = "-fx-background-color: rgba(80,135,80,0.85); -fx-text-fill: white; -fx-padding: 4 10; -fx-cursor: crosshair; -fx-font-size: 12px; -fx-font-weight: bold;";
-    private static final String BTN_ACCENT = "-fx-background-color: rgba(90,45,45,0.78); -fx-text-fill: #ffdddd; -fx-padding: 4 10; -fx-cursor: hand; -fx-font-size: 12px;";
 
     private enum SpawnKind {
         RABBIT, WOLF, BEAR, ELEPHANT, FISH, GRASS, ALGAE, BUSH, ROCK
@@ -87,6 +87,15 @@ public class MainApp extends Application {
 
     private WorldMap worldMap;
     private Canvas canvas;
+    // Q-learning: bật bằng cờ JVM -Dql=true. Khi bật, CHỈ sói dùng não RL đã train;
+    // thỏ dùng lại bộ chiến lược luật gốc (RBS) cho "ngu" và dễ đoán để sói săn.
+    private boolean useQLearning;
+    private QTable wolfQ;
+    private QTable rabbitQ;
+    // Deep Q-learning: bật bằng cờ JVM -Ddqn=true. Khi bật, sói dùng não DQN (mạng nơ-ron);
+    // thỏ vẫn dùng RBS. Ưu tiên hơn -Dql nếu cả hai cùng bật.
+    private boolean useDqn;
+    private DQNAgent wolfDqn;
     private SpawnKind pendingSpawnKind = SpawnKind.RABBIT;
     private Season currentSeason = Season.SPRING;
     private ToggleGroup spawnGroup;
@@ -102,6 +111,11 @@ public class MainApp extends Application {
     private Season  targetSeason       = null;
     private double survivalTime;
     private boolean survivalEnded;
+    // Sidebar phải: 2 tab Nhật ký / Thống kê (TAB cũng chuyển qua lại được).
+    private ListView<String> logListView;
+    private EntityStatusPanel statusPanel;
+    private ToggleButton tabLogButton;
+    private ToggleButton tabStatsButton;
 
     @Override
     public void start(Stage stage) {
@@ -118,18 +132,16 @@ public class MainApp extends Application {
         }
 
         ObservableList<String> logData = FXCollections.observableArrayList();
-        ListView<String> listView = new ListView<>(logData);
-        listView.setPrefWidth(TERMINAL_WIDTH);
-        listView.setFocusTraversable(false);
-        listView.setStyle("-fx-control-inner-background: #1e1e1e; -fx-font-family: 'Consolas', 'Monospaced'; -fx-font-size: 13px;");
+        logListView = buildLogList(logData);
         worldMap.addObserver(new TerminalLogger(logData));
 
+        initQLearning();
         seedInitialEntities();
         worldMap.notifyAction("Hệ thống", "đã khởi tạo", "map 4 mùa dùng chung all.tmx");
 
-        EntityStatusPanel entityStatusPanel = new EntityStatusPanel(worldMap);
-        entityStatusPanel.setVisible(false);
-        entityStatusPanel.setManaged(false);
+        statusPanel = new EntityStatusPanel(worldMap);
+        statusPanel.setVisible(false);
+        statusPanel.setManaged(false);
 
         canvas = new Canvas(WIDTH, HEIGHT);
         canvas.setFocusTraversable(true);
@@ -154,30 +166,30 @@ public class MainApp extends Application {
                 tickSurvivalClock(dt);
                 // Refresh panel ~6-7Hz thay vì mỗi frame (rebuild list + sort toàn bộ entity rất nặng).
                 panelRefreshAccum += dt;
-                if (entityStatusPanel.isVisible() && panelRefreshAccum >= PANEL_REFRESH_INTERVAL) {
-                    entityStatusPanel.refreshData();
+                if (statusPanel.isVisible() && panelRefreshAccum >= PANEL_REFRESH_INTERVAL) {
+                    statusPanel.refreshData();
                     panelRefreshAccum = 0;
                 }
             }
         };
         timer.start();
 
-        HBox toolbar = buildToolbar();
-        StackPane mapPane = new StackPane(canvas, toolbar);
-        StackPane.setAlignment(toolbar, Pos.TOP_LEFT);
-        mapPane.setStyle("-fx-background-color: transparent;");
+        // Mọi điều khiển dồn lên THANH NGANG phía trên, trải hết bề rộng cửa sổ —
+        // map 576x576 bên dưới hoàn toàn trống, không bị bất cứ thứ gì che.
+        HBox topBar = buildTopBar();
 
-        HBox root = new HBox(mapPane, listView, entityStatusPanel);
-        root.setStyle("-fx-background-color: #1a1a1a;");
-        Scene scene = new Scene(root, WIDTH + TERMINAL_WIDTH, HEIGHT, Color.rgb(26, 26, 26));
+        StackPane mapPane = new StackPane(canvas);
+        mapPane.setStyle("-fx-background-color: black;");
+
+        HBox mainRow = new HBox(mapPane, buildSidebar());
+        VBox root = new VBox(topBar, mainRow);
+        root.getStyleClass().add("app-root");
+        VBox.setVgrow(mainRow, Priority.ALWAYS);
+        Scene scene = new Scene(root, WIDTH + TERMINAL_WIDTH, HEIGHT + TOP_BAR_HEIGHT, Color.web("#10161b"));
+        scene.getStylesheets().add(getClass().getResource("/org/openjfx/app/ui.css").toExternalForm());
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.TAB) {
-                boolean showStats = !entityStatusPanel.isVisible();
-                entityStatusPanel.setVisible(showStats);
-                entityStatusPanel.setManaged(showStats);
-                listView.setVisible(!showStats);
-                listView.setManaged(!showStats);
-                if (showStats) entityStatusPanel.refreshData();
+                showSidePane(!statusPanel.isVisible());
                 event.consume();
             } else if (event.getCode() == KeyCode.ESCAPE) {
                 clearPlacementMode();
@@ -186,31 +198,133 @@ public class MainApp extends Application {
         });
 
         stage.setScene(scene);
-        stage.setTitle("Project - Ecology Simulation");
+        stage.setTitle("🌿 Ecosystem Simulation");
+        stage.setResizable(false);
         stage.show();
         canvas.requestFocus();
     }
 
-    private HBox buildToolbar() {
+    /** Nhật ký sự kiện: tô màu theo loại (chết/sinh/cảnh báo) + tự cuộn xuống dòng mới. */
+    private ListView<String> buildLogList(ObservableList<String> logData) {
+        ListView<String> list = new ListView<>(logData);
+        list.getStyleClass().add("log-list");
+        list.setFocusTraversable(false);
+        list.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String msg, boolean empty) {
+                super.updateItem(msg, empty);
+                if (empty || msg == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+                setText(msg);
+                if (msg.contains("đã chết") || msg.contains("kết thúc")) {
+                    setStyle("-fx-text-fill: #f87171;");
+                } else if (msg.contains("sinh ra")) {
+                    setStyle("-fx-text-fill: #34d399;");
+                } else if (msg.contains("không thể")) {
+                    setStyle("-fx-text-fill: #fbbf24;");
+                } else if (msg.startsWith("Hệ thống")) {
+                    setStyle("-fx-text-fill: #8294a5;");
+                } else {
+                    setStyle("");
+                }
+            }
+        });
+        logData.addListener((ListChangeListener<String>) c -> list.scrollTo(logData.size() - 1));
+        return list;
+    }
+
+    /** Sidebar phải: tiêu đề + tab Nhật ký / Thống kê + nội dung tương ứng. */
+    private VBox buildSidebar() {
+        Label title = new Label("🌿 Hệ Sinh Thái");
+        title.getStyleClass().add("app-title");
+        Label subtitle = new Label("Mô phỏng chuỗi thức ăn · 4 mùa · " + (useDqn ? "DQN" : useQLearning ? "Q-learning" : "luật RBS"));
+        subtitle.getStyleClass().add("app-subtitle");
+
+        ToggleGroup tabs = new ToggleGroup();
+        tabLogButton = new ToggleButton("📜 Nhật ký");
+        tabStatsButton = new ToggleButton("📊 Thống kê");
+        for (ToggleButton b : new ToggleButton[] { tabLogButton, tabStatsButton }) {
+            b.getStyleClass().add("seg-button");
+            b.setToggleGroup(tabs);
+            b.setMaxWidth(Double.MAX_VALUE);
+            b.setFocusTraversable(false);
+        }
+        tabLogButton.setSelected(true);
+        tabLogButton.setOnAction(e -> { showSidePane(false); canvas.requestFocus(); });
+        tabStatsButton.setOnAction(e -> { showSidePane(true); canvas.requestFocus(); });
+        // Bấm lại tab đang chọn không được phép "bỏ chọn cả hai".
+        tabs.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            if (newT == null && oldT != null) tabs.selectToggle(oldT);
+        });
+        HBox segBar = new HBox(2, tabLogButton, tabStatsButton);
+        segBar.getStyleClass().add("seg-bar");
+        HBox.setHgrow(tabLogButton, Priority.ALWAYS);
+        HBox.setHgrow(tabStatsButton, Priority.ALWAYS);
+
+        VBox header = new VBox(8, new VBox(2, title, subtitle), segBar);
+        header.getStyleClass().add("side-header");
+
+        StackPane content = new StackPane(logListView, statusPanel);
+        VBox.setVgrow(content, Priority.ALWAYS);
+
+        Label hint = new Label("🖱 nhấp: thả · kéo: di chuyển · TAB: thống kê · ESC: bỏ chọn");
+        hint.getStyleClass().add("side-footer");
+        hint.setMaxWidth(Double.MAX_VALUE);
+
+        VBox sidebar = new VBox(header, content, hint);
+        sidebar.getStyleClass().add("sidebar");
+        sidebar.setPrefWidth(TERMINAL_WIDTH);
+        sidebar.setMinWidth(TERMINAL_WIDTH);
+        sidebar.setMaxWidth(TERMINAL_WIDTH);
+        return sidebar;
+    }
+
+    private void showSidePane(boolean stats) {
+        statusPanel.setVisible(stats);
+        statusPanel.setManaged(stats);
+        logListView.setVisible(!stats);
+        logListView.setManaged(!stats);
+        if (stats) {
+            statusPanel.refreshData();
+            tabStatsButton.setSelected(true);
+        } else {
+            tabLogButton.setSelected(true);
+        }
+    }
+
+    /** Thanh điều khiển ngang phía trên cửa sổ: palette thả con vật bên trái,
+     *  đồng hồ sinh tồn + mùa + zoom bên phải. Không che map. */
+    private HBox buildTopBar() {
         spawnGroup = new ToggleGroup();
+        HBox spawnBox = new HBox(2,
+                createSpawnToggle("🐰", "Thỏ", SpawnKind.RABBIT),
+                createSpawnToggle("🐺", "Sói", SpawnKind.WOLF),
+                createSpawnToggle("🐻", "Gấu", SpawnKind.BEAR),
+                createSpawnToggle("🐘", "Voi", SpawnKind.ELEPHANT),
+                createSpawnToggle("🐟", "Cá", SpawnKind.FISH),
+                createSpawnToggle("🌿", "Cỏ", SpawnKind.GRASS),
+                createSpawnToggle("🌊", "Tảo", SpawnKind.ALGAE),
+                createSpawnToggle("🌳", "Bụi", SpawnKind.BUSH),
+                createSpawnToggle("🪨", "Đá", SpawnKind.ROCK));
+        spawnBox.setAlignment(Pos.CENTER_LEFT);
 
-        HBox animalBox = new HBox(4,
-                createSpawnToggle("Thỏ", SpawnKind.RABBIT),
-                createSpawnToggle("Sói", SpawnKind.WOLF),
-                createSpawnToggle("Gấu", SpawnKind.BEAR),
-                createSpawnToggle("Voi", SpawnKind.ELEPHANT),
-                createSpawnToggle("Cá", SpawnKind.FISH));
-        animalBox.setAlignment(Pos.CENTER_LEFT);
+        survivalLabel = new Label("00:00");
+        survivalLabel.getStyleClass().add("clock-chip");
+        survivalLabel.setTooltip(new Tooltip("Thời gian hệ sinh thái sinh tồn"));
 
-        HBox staticBox = new HBox(4,
-                createSpawnToggle("Cỏ", SpawnKind.GRASS),
-                createSpawnToggle("Tảo", SpawnKind.ALGAE),
-                createSpawnToggle("Bụi", SpawnKind.BUSH),
-                createSpawnToggle("Đá", SpawnKind.ROCK));
-        staticBox.setAlignment(Pos.CENTER_LEFT);
+        seasonMenu = new MenuButton(seasonLabel(Season.SPRING));
+        seasonMenu.setTooltip(new Tooltip("Mùa hiện tại — bấm để đổi"));
+        seasonGroup = new ToggleGroup();
+        addSeasonItem(seasonMenu, seasonGroup, seasonLabel(Season.SPRING), Season.SPRING, true);
+        addSeasonItem(seasonMenu, seasonGroup, seasonLabel(Season.SUMMER), Season.SUMMER, false);
+        addSeasonItem(seasonMenu, seasonGroup, seasonLabel(Season.AUTUMN), Season.AUTUMN, false);
+        addSeasonItem(seasonMenu, seasonGroup, seasonLabel(Season.WINTER), Season.WINTER, false);
 
         zoomSlider = new Slider(MIN_ZOOM, MAX_ZOOM, MIN_ZOOM);
-        zoomSlider.setPrefWidth(110);
+        zoomSlider.setPrefWidth(84);
         zoomSlider.setTooltip(new Tooltip("Phóng to / thu nhỏ"));
         zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (!updatingZoomSlider) {
@@ -218,10 +332,9 @@ public class MainApp extends Application {
             }
         });
 
-        Button btnMinus = createToolbarButton("-");
-        Button btnPlus = createToolbarButton("+");
-        Button btnReset = createToolbarButton("Đặt lại");
-        btnReset.setStyle(BTN_ACCENT);
+        Button btnMinus = createToolButton("−", "Thu nhỏ");
+        Button btnPlus = createToolButton("+", "Phóng to");
+        Button btnReset = createToolButton("⟲", "Đặt lại khung nhìn");
         btnMinus.setOnAction(e -> applyZoom(worldMap.getScale() - 0.1));
         btnPlus.setOnAction(e -> applyZoom(worldMap.getScale() + 0.1));
         btnReset.setOnAction(e -> {
@@ -229,56 +342,41 @@ public class MainApp extends Application {
             worldMap.setOffset(0, 0);
             syncZoomSlider(MIN_ZOOM);
         });
+        HBox zoomBox = new HBox(5, btnMinus, zoomSlider, btnPlus, btnReset);
+        zoomBox.setAlignment(Pos.CENTER_LEFT);
 
-        seasonMenu = new MenuButton("Mùa: Xuân");
-        seasonMenu.setStyle(BTN_BASE);
-        seasonGroup = new ToggleGroup();
-        addSeasonItem(seasonMenu, seasonGroup, "Xuân", Season.SPRING, true);
-        addSeasonItem(seasonMenu, seasonGroup, "Hạ", Season.SUMMER, false);
-        addSeasonItem(seasonMenu, seasonGroup, "Thu", Season.AUTUMN, false);
-        addSeasonItem(seasonMenu, seasonGroup, "Đông", Season.WINTER, false);
-
-        survivalLabel = new Label("00:00");
-        survivalLabel.setStyle("-fx-text-fill: #ffe066; -fx-font-size: 13px; -fx-font-weight: bold; -fx-font-family: 'Consolas', 'Monospaced';");
-
-        HBox zoomBox = new HBox(6, btnMinus, zoomSlider, btnPlus, btnReset);
-        zoomBox.setAlignment(Pos.CENTER_RIGHT);
-        HBox toolbar = new HBox(8, animalBox, new Separator(), staticBox, new Separator(), survivalLabel, new Separator(), zoomBox, seasonMenu);
-        toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.setMinHeight(TOOLBAR_HEIGHT);
-        toolbar.setMaxHeight(TOOLBAR_HEIGHT);
-        toolbar.setPrefHeight(TOOLBAR_HEIGHT);
-        toolbar.setPadding(new Insets(6));
-        toolbar.setStyle(TOOLBAR_STYLE);
-        HBox.setHgrow(zoomBox, Priority.ALWAYS);
-        return toolbar;
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox bar = new HBox(8, spawnBox, spacer, survivalLabel, seasonMenu, zoomBox);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.getStyleClass().add("top-bar");
+        bar.setMinHeight(TOP_BAR_HEIGHT);
+        bar.setPrefHeight(TOP_BAR_HEIGHT);
+        bar.setMaxHeight(TOP_BAR_HEIGHT);
+        return bar;
     }
 
-    private ToggleButton createSpawnToggle(String label, SpawnKind kind) {
-        ToggleButton button = new ToggleButton(label);
+    private ToggleButton createSpawnToggle(String emoji, String label, SpawnKind kind) {
+        ToggleButton button = new ToggleButton(emoji + " " + label);
+        button.getStyleClass().add("spawn-toggle");
         button.setToggleGroup(spawnGroup);
-        button.setStyle(kind == pendingSpawnKind ? BTN_SELECTED : BTN_BASE);
-        button.setCursor(Cursor.HAND);
         button.setSelected(kind == pendingSpawnKind);
+        button.setFocusTraversable(false);
+        button.setTooltip(new Tooltip("Nhấp lên bản đồ để thả " + label));
         button.setOnAction(e -> {
+            // Bấm lại nút đang chọn không được "bỏ chọn cả nhóm" — luôn có 1 loài chờ thả.
+            if (!button.isSelected()) button.setSelected(true);
             pendingSpawnKind = kind;
-            refreshSpawnToggleStyles();
             canvas.requestFocus();
         });
         return button;
     }
 
-    private void refreshSpawnToggleStyles() {
-        for (var toggle : spawnGroup.getToggles()) {
-            if (toggle instanceof ToggleButton button) {
-                button.setStyle(button.isSelected() ? BTN_SELECTED : BTN_BASE);
-            }
-        }
-    }
-
-    private Button createToolbarButton(String text) {
+    private Button createToolButton(String text, String tip) {
         Button button = new Button(text);
-        button.setStyle(BTN_BASE);
+        button.getStyleClass().add("tool-button");
+        button.setFocusTraversable(false);
+        button.setTooltip(new Tooltip(tip));
         return button;
     }
 
@@ -352,7 +450,7 @@ public class MainApp extends Application {
 
     private void syncSeasonMenu() {
         if (seasonMenu != null) {
-            seasonMenu.setText("Mùa: " + seasonLabel(currentSeason));
+            seasonMenu.setText(seasonLabel(currentSeason));
         }
         if (seasonGroup != null) {
             for (var toggle : seasonGroup.getToggles()) {
@@ -366,10 +464,10 @@ public class MainApp extends Application {
 
     private String seasonLabel(Season season) {
         return switch (season) {
-            case SPRING -> "Xuân";
-            case SUMMER -> "Hạ";
-            case AUTUMN -> "Thu";
-            case WINTER -> "Đông";
+            case SPRING -> "🌸 Xuân";
+            case SUMMER -> "☀️ Hạ";
+            case AUTUMN -> "🍂 Thu";
+            case WINTER -> "❄️ Đông";
         };
     }
 
@@ -451,7 +549,7 @@ public class MainApp extends Application {
     }
 
     private LivingEntity createLivingByKind(SpawnKind kind, Vector2D position) {
-        return switch (kind) {
+        LivingEntity entity = switch (kind) {
             case RABBIT -> new Rabbit(position);
             case WOLF -> new Wolf(position);
             case BEAR -> new Bear(position);
@@ -459,6 +557,8 @@ public class MainApp extends Application {
             case FISH -> new Fish(position);
             default -> null;
         };
+        applyBrain(entity);   // gắn não RL nếu bật cờ (chỉ sói/thỏ)
+        return entity;
     }
 
     private void addEntityAndLog(Entity entity) {
@@ -476,14 +576,90 @@ public class MainApp extends Application {
         return new Vector2D(sourceX * WIDTH / SOURCE_MAP_SIZE, sourceY * HEIGHT / SOURCE_MAP_SIZE);
     }
 
+    // Bật Q-learning nếu có cờ JVM -Dql=true VÀ đã có bảng Q của sói (chạy ./train.sh trước).
+    private void initQLearning() {
+        initDeepQLearning();
+        useQLearning = Boolean.getBoolean("ql");
+        if (!useQLearning) return;
+        Path wolfPath = Paths.get("qtables", "wolf.qtable");
+        if (!Files.exists(wolfPath)) {
+            useQLearning = false;
+            System.err.println("[Q-learning] Chua co qtables/wolf.qtable -> chay ./train.sh truoc. Tam dung AI cu.");
+            worldMap.notifyAction("Hệ thống", "Q-learning TẮT", "chưa có bảng Q (chạy ./train.sh)");
+            return;
+        }
+        wolfQ = QTable.load(wolfPath, QLearningStrategy.NUM_ACTIONS);
+        // Bảng thỏ là TUỲ CHỌN: có thì thỏ cũng dùng não RL (học né sói), không thì RBS.
+        Path rabbitPath = Paths.get("qtables", "rabbit.qtable");
+        if (Files.exists(rabbitPath)) {
+            rabbitQ = QTable.load(rabbitPath, QLearningStrategy.NUM_ACTIONS);
+        }
+        String rabbitBrain = rabbitQ != null ? "tho RL (" + rabbitQ.size() + " trang thai)" : "tho RBS";
+        System.out.println("[Q-learning] BAT: soi RL (" + wolfQ.size() + " trang thai); " + rabbitBrain + ".");
+        worldMap.notifyAction("Hệ thống", "Q-learning BẬT",
+                "sói RL, " + (rabbitQ != null ? "thỏ RL" : "thỏ RBS (chưa có rabbit.qtable)"));
+    }
+
+    // Bật Deep Q-learning nếu có cờ JVM -Ddqn=true VÀ đã có mạng sói qtables/wolf.dqn.
+    private void initDeepQLearning() {
+        useDqn = Boolean.getBoolean("dqn");
+        if (!useDqn) return;
+        Path netPath = Paths.get("qtables", "wolf.dqn");
+        if (!DQNAgent.exists(netPath)) {
+            useDqn = false;
+            System.err.println("[DQN] Chua co qtables/wolf.dqn -> chay ./train_dqn.sh truoc. Tam dung AI cu.");
+            worldMap.notifyAction("Hệ thống", "DQN TẮT", "chưa có mạng (chạy ./train_dqn.sh)");
+            return;
+        }
+        wolfDqn = DQNAgent.loadForPlay(netPath);
+        System.out.println("[DQN] BAT: soi dung nao Deep Q-Network; tho dung RBS.");
+        worldMap.notifyAction("Hệ thống", "DQN BẬT", "sói dùng mạng nơ-ron, thỏ dùng RBS");
+    }
+
+    // Gắn não RL cho SÓI khi bật cờ. Ưu tiên DQN (-Ddqn) hơn tabular (-Dql). Thỏ & loài khác giữ RBS.
+    private void applyBrain(LivingEntity entity) {
+        if (entity == null) return;
+        if (entity instanceof Wolf) {
+            if (useDqn) {
+                entity.setFixedStrategy(DeepQLearningStrategy.play(wolfDqn, DeepQLearningStrategy.Role.PREDATOR));
+            } else if (useQLearning) {
+                entity.setFixedStrategy(QLearningStrategy.play(wolfQ, QLearningStrategy.Role.PREDATOR));
+            }
+        } else if (entity instanceof Rabbit && useQLearning && rabbitQ != null) {
+            entity.setFixedStrategy(QLearningStrategy.play(rabbitQ, QLearningStrategy.Role.PREY));
+        }
+    }
+
+    // Thêm một con vật vào map, gắn não RL trước nếu cần.
+    private void seedLiving(LivingEntity entity) {
+        applyBrain(entity);
+        worldMap.addEntity(entity);
+    }
+
     private void seedInitialEntities() {
-        worldMap.addEntity(new Rabbit(mapPosition(410, 350)));
-        worldMap.addEntity(new Rabbit(mapPosition(450, 350)));
-        worldMap.addEntity(new Rabbit(mapPosition(430, 380)));
-        worldMap.addEntity(new Wolf(mapPosition(500, 300)));
-        worldMap.addEntity(new Bear(mapPosition(720, 310)));
-        worldMap.addEntity(new Elephant(mapPosition(860, 330)));
-        worldMap.addEntity(new Fish(mapPosition(170, 120)));
+        // 5 thỏ (đàn mồi phải đông hơn thú săn nhiều lần mới gánh nổi cả sói lẫn gấu),
+        // thả theo cụm để chúng tìm được bạn tình ngay từ đầu.
+        seedLiving(new Rabbit(mapPosition(410, 350)));
+        seedLiving(new Rabbit(mapPosition(450, 350)));
+        seedLiving(new Rabbit(mapPosition(430, 380)));
+        seedLiving(new Rabbit(mapPosition(390, 380)));
+        seedLiving(new Rabbit(mapPosition(470, 380)));
+        seedLiving(new Rabbit(mapPosition(370, 350)));
+        seedLiving(new Rabbit(mapPosition(490, 350)));
+        seedLiving(new Rabbit(mapPosition(430, 410)));
+        // Thú săn thả theo CẶP: 1 con đơn độc không bao giờ sinh sản được -> quần thể
+        // thú săn không tăng theo đàn mồi -> thỏ bùng nổ rồi chết đói hàng loạt.
+        seedLiving(new Wolf(mapPosition(500, 300)));
+        seedLiving(new Wolf(mapPosition(540, 280)));
+        seedLiving(new Bear(mapPosition(720, 310)));
+        seedLiving(new Bear(mapPosition(760, 340)));
+        seedLiving(new Elephant(mapPosition(860, 330)));
+        seedLiving(new Elephant(mapPosition(900, 360)));
+        // Cá cần ÍT NHẤT 2 con mới sinh sản được (mate-based); 1 con như cũ là chắc chắn
+        // tuyệt chủng ngay khi bị gấu ăn.
+        seedLiving(new Fish(mapPosition(170, 120)));
+        seedLiving(new Fish(mapPosition(200, 140)));
+        seedLiving(new Fish(mapPosition(150, 160)));
 
         for (int i = 0; i < 35; i++) {
             Vector2D p = randomLandPosition();
@@ -532,7 +708,7 @@ public class MainApp extends Application {
 
     private void updateSurvivalLabel(boolean ended) {
         if (survivalLabel == null) return;
-        survivalLabel.setText(ended ? formatTime(survivalTime) + " (đã kết thúc)" : formatTime(survivalTime));
+        survivalLabel.setText(ended ? "☠ " + formatTime(survivalTime) : formatTime(survivalTime));
     }
 
     private String formatTime(double seconds) {
@@ -547,7 +723,6 @@ public class MainApp extends Application {
         pendingSpawnKind = SpawnKind.RABBIT;
         if (spawnGroup != null && !spawnGroup.getToggles().isEmpty()) {
             spawnGroup.selectToggle(spawnGroup.getToggles().get(0));
-            refreshSpawnToggleStyles();
         }
     }
 

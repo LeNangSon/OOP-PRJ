@@ -9,15 +9,21 @@ import org.openjfx.app.entities.base.LivingEntity;
 public class Elephant extends Herbivore {
 
     public Elephant(Vector2D position) {
-        super(position, 30.0, "rect", 100.0, 5.0, 6.0,
+        // Bộ cũ (đói 5/s, khát 6/s) khiến voi chết liên tục: 1 cụm cỏ chỉ nuôi được 6s.
+        // Voi to xác trao đổi chất CHẬM nhất + đi chậm nhất (26 px/s): đói 0.5/s
+        // (1 cỏ nuôi 60s), khát 1.5/s.
+        super(position, 30.0, "rect", 100.0, 0.5, 1.5,
                 26.0, 36.0, 10.0, 100.0, 40.0);
         setVisionRadius(50.0);
-        setThirst(80.0);
+        // Khát sẵn 60 (dưới ngưỡng nguy hiểm 75): vẫn ra hồ uống sớm nhưng không cận kề cái chết.
+        setThirst(60.0);
         type = EntityType.ELEPHANT;
         setVelocity(new Vector2D(8.0, 0.0));
-        matureAge = 20.0;
-        reproduceCooldownMax = 60.0;
-        reproduceHungerCost = 40.0;
+        // Voi không có thiên địch -> không gì ghìm số lượng ngoài tốc độ đẻ. Đo 600s với
+        // 60s/lứa: voi bùng 2->15 con. Voi thật đẻ chậm nhất rừng — ở đây cũng vậy.
+        matureAge = 40.0;
+        reproduceCooldownMax = 120.0;
+        reproduceHungerCost = 60.0;
     }
 
     @Override
