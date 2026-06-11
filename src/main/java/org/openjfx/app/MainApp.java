@@ -642,7 +642,6 @@ public class MainApp extends Application {
         seedLiving(new Rabbit(mapPosition(410, 350)));
         seedLiving(new Rabbit(mapPosition(450, 350)));
         seedLiving(new Rabbit(mapPosition(430, 380)));
-        seedLiving(new Rabbit(mapPosition(390, 380)));
         seedLiving(new Rabbit(mapPosition(470, 380)));
         seedLiving(new Rabbit(mapPosition(370, 350)));
         seedLiving(new Rabbit(mapPosition(490, 350)));
