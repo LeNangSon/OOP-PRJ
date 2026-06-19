@@ -33,6 +33,14 @@ public class QLearningStrategy implements MoveStrategy {
 
     public static final int NUM_ACTIONS = 8;            // 8 hướng la bàn
     private static final double[][] DIRS = buildDirs();
+
+    // --- Instrumentation (cho harness so sánh): bước RL "thuần" (applyAction 8 hướng) vs
+    //     bước phải mượn chiến lược luật (fallback dùng A*: SeekWater/Mate/Flee). Đếm tĩnh.
+    private static long pureActionSteps = 0;
+    private static long fallbackSteps = 0;
+    public static void resetActionCounters() { pureActionSteps = 0; fallbackSteps = 0; }
+    public static long getPureActionSteps() { return pureActionSteps; }
+    public static long getFallbackSteps() { return fallbackSteps; }
     private static final double STEERING_GAIN = 4.0;
 
     private static final double THIRST_HIGH = 60.0;     // khát tới đây -> mục tiêu ưu tiên là nước
@@ -104,7 +112,16 @@ public class QLearningStrategy implements MoveStrategy {
      * 5% bước ngẫu nhiên đủ phá kẹt mà không làm hỏng hành vi đã học.
      */
     public static QLearningStrategy play(QTable q, Role role) {
-        return new QLearningStrategy(q, role, 0.0, 0.97, 0.05, false, new Random());
+        return play(q, role, new Random());
+    }
+
+    /**
+     * Như {@link #play(QTable, Role)} nhưng nhận RNG có seed cho 5% bước epsilon. Dùng ở
+     * harness so sánh (BrainCompare) để chạy lại CÙNG seed ra CÙNG kết quả — nếu để
+     * {@code new Random()} không seed thì nhánh RL nhiễu, phá thiết kế so theo cặp.
+     */
+    public static QLearningStrategy play(QTable q, Role role, Random rng) {
+        return new QLearningStrategy(q, role, 0.0, 0.97, 0.05, false, rng);
     }
 
     public void setEpsilon(double epsilon) { this.epsilon = epsilon; }
@@ -131,6 +148,7 @@ public class QLearningStrategy implements MoveStrategy {
         // rạc) né cận chiến kém hơn hình học liên tục -> không có dòng này thỏ RL là mồi
         // dễ, đàn thỏ tuyệt chủng khi bật ql. RL chỉ học vùng "thấy địch từ xa" (né sớm).
         if (role == Role.PREY && curEnemyDist >= 0 && curEnemyDist < curVision * 0.5) {
+            fallbackSteps++;
             if (fallbackFlee == null) fallbackFlee = new FleeStrategy();
             fallbackFlee.updateVelocity(owner, neighbors, dt, world);
             prevState = null;
@@ -145,6 +163,7 @@ public class QLearningStrategy implements MoveStrategy {
         }
 
         if (curTargetType == 0 && curEnemyDist < 0) {
+            fallbackSteps++;
             fallback(owner, curThirsty).updateVelocity(owner, neighbors, dt, world);
             prevState = null;
             prevAction = -1;
@@ -157,6 +176,7 @@ public class QLearningStrategy implements MoveStrategy {
             return;
         }
 
+        pureActionSteps++;
         int action = q.selectAction(state, epsilon, rng);
         applyAction(owner, action, dt);
 

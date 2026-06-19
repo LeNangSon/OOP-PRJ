@@ -11,6 +11,7 @@ import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.deeprl.DQNAgent;
 import org.openjfx.app.core.qlearning.QTable;
 import org.openjfx.app.core.strategies.DeepQLearningStrategy;
+import org.openjfx.app.core.strategies.MonteCarloStrategy;
 import org.openjfx.app.core.strategies.QLearningStrategy;
 import org.openjfx.app.core.terrain.TerrainType;
 import org.openjfx.app.entities.base.Entity;
@@ -96,6 +97,11 @@ public class MainApp extends Application {
     // thỏ vẫn dùng RBS. Ưu tiên hơn -Dql nếu cả hai cùng bật.
     private boolean useDqn;
     private DQNAgent wolfDqn;
+    // Monte Carlo: bật bằng cờ JVM -Dmc=true. Nạp bảng từ mc_wolf.qtable (+ tuỳ chọn
+    // mc_rabbit.qtable). Bảng MC độc lập với QL; chạy ./train_mc.sh để tạo.
+    private boolean useMonteCarlo;
+    private QTable mcWolfQ;
+    private QTable mcRabbitQ;
     private SpawnKind pendingSpawnKind = SpawnKind.RABBIT;
     private Season currentSeason = Season.SPRING;
     private ToggleGroup spawnGroup;
@@ -579,6 +585,7 @@ public class MainApp extends Application {
     // Bật Q-learning nếu có cờ JVM -Dql=true VÀ đã có bảng Q của sói (chạy ./train.sh trước).
     private void initQLearning() {
         initDeepQLearning();
+        initMonteCarlo();
         useQLearning = Boolean.getBoolean("ql");
         if (!useQLearning) return;
         Path wolfPath = Paths.get("qtables", "wolf.qtable");
@@ -616,17 +623,46 @@ public class MainApp extends Application {
         worldMap.notifyAction("Hệ thống", "DQN BẬT", "sói dùng mạng nơ-ron, thỏ dùng RBS");
     }
 
-    // Gắn não RL cho SÓI khi bật cờ. Ưu tiên DQN (-Ddqn) hơn tabular (-Dql). Thỏ & loài khác giữ RBS.
+    // Bật Monte Carlo nếu có cờ JVM -Dmc=true VÀ đã có bảng MC của sói (chạy ./train_mc.sh).
+    private void initMonteCarlo() {
+        useMonteCarlo = Boolean.getBoolean("mc");
+        if (!useMonteCarlo) return;
+        Path wolfPath = Paths.get("qtables", "mc_wolf.qtable");
+        if (!Files.exists(wolfPath)) {
+            useMonteCarlo = false;
+            System.err.println("[Monte Carlo] Chua co qtables/mc_wolf.qtable -> chay ./train_mc.sh truoc. Tam dung AI cu.");
+            worldMap.notifyAction("Hệ thống", "Monte Carlo TẮT", "chưa có bảng MC (chạy ./train_mc.sh)");
+            return;
+        }
+        mcWolfQ = QTable.load(wolfPath, MonteCarloStrategy.NUM_ACTIONS);
+        // Bảng thỏ là TUỲ CHỌN: có thì thỏ cũng dùng não MC (học né sói), không thì RBS.
+        Path rabbitPath = Paths.get("qtables", "mc_rabbit.qtable");
+        if (Files.exists(rabbitPath)) {
+            mcRabbitQ = QTable.load(rabbitPath, MonteCarloStrategy.NUM_ACTIONS);
+        }
+        String rabbitBrain = mcRabbitQ != null ? "tho MC (" + mcRabbitQ.size() + " trang thai)" : "tho RBS";
+        System.out.println("[Monte Carlo] BAT: soi MC (" + mcWolfQ.size() + " trang thai); " + rabbitBrain + ".");
+        worldMap.notifyAction("Hệ thống", "Monte Carlo BẬT",
+                "sói MC, " + (mcRabbitQ != null ? "thỏ MC" : "thỏ RBS (chưa có mc_rabbit.qtable)"));
+    }
+
+    // Gắn não RL cho SÓI khi bật cờ. Ưu tiên DQN > Monte Carlo > tabular Q. Thỏ & loài khác giữ RBS.
     private void applyBrain(LivingEntity entity) {
         if (entity == null) return;
         if (entity instanceof Wolf) {
             if (useDqn) {
                 entity.setFixedStrategy(DeepQLearningStrategy.play(wolfDqn, DeepQLearningStrategy.Role.PREDATOR));
+            } else if (useMonteCarlo) {
+                entity.setFixedStrategy(MonteCarloStrategy.play(mcWolfQ, MonteCarloStrategy.Role.PREDATOR));
             } else if (useQLearning) {
                 entity.setFixedStrategy(QLearningStrategy.play(wolfQ, QLearningStrategy.Role.PREDATOR));
             }
-        } else if (entity instanceof Rabbit && useQLearning && rabbitQ != null) {
-            entity.setFixedStrategy(QLearningStrategy.play(rabbitQ, QLearningStrategy.Role.PREY));
+        } else if (entity instanceof Rabbit) {
+            if (useMonteCarlo && mcRabbitQ != null) {
+                entity.setFixedStrategy(MonteCarloStrategy.play(mcRabbitQ, MonteCarloStrategy.Role.PREY));
+            } else if (useQLearning && rabbitQ != null) {
+                entity.setFixedStrategy(QLearningStrategy.play(rabbitQ, QLearningStrategy.Role.PREY));
+            }
         }
     }
 
@@ -639,26 +675,14 @@ public class MainApp extends Application {
     private void seedInitialEntities() {
         // 5 thỏ (đàn mồi phải đông hơn thú săn nhiều lần mới gánh nổi cả sói lẫn gấu),
         // thả theo cụm để chúng tìm được bạn tình ngay từ đầu.
-        seedLiving(new Rabbit(mapPosition(410, 350)));
-        seedLiving(new Rabbit(mapPosition(450, 350)));
-        seedLiving(new Rabbit(mapPosition(430, 380)));
-        seedLiving(new Rabbit(mapPosition(470, 380)));
-        seedLiving(new Rabbit(mapPosition(370, 350)));
-        seedLiving(new Rabbit(mapPosition(490, 350)));
-        seedLiving(new Rabbit(mapPosition(430, 410)));
         // Thú săn thả theo CẶP: 1 con đơn độc không bao giờ sinh sản được -> quần thể
         // thú săn không tăng theo đàn mồi -> thỏ bùng nổ rồi chết đói hàng loạt.
         seedLiving(new Wolf(mapPosition(500, 300)));
-        seedLiving(new Wolf(mapPosition(540, 280)));
-        seedLiving(new Bear(mapPosition(720, 310)));
-        seedLiving(new Bear(mapPosition(760, 340)));
-        seedLiving(new Elephant(mapPosition(860, 330)));
-        seedLiving(new Elephant(mapPosition(900, 360)));
+
         // Cá cần ÍT NHẤT 2 con mới sinh sản được (mate-based); 1 con như cũ là chắc chắn
-        // tuyệt chủng ngay khi bị gấu ăn.
-        seedLiving(new Fish(mapPosition(170, 120)));
-        seedLiving(new Fish(mapPosition(200, 140)));
-        seedLiving(new Fish(mapPosition(150, 160)));
+        // tuyệt chủng ngay khi bị gấu ăn
+
+
 
         for (int i = 0; i < 35; i++) {
             Vector2D p = randomLandPosition();

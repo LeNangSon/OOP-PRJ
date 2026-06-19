@@ -34,9 +34,11 @@ public final class BalanceCheck {
     private static final int TILE = 32;
     private static final double DT = 0.1;
 
-    // Não RL tuỳ chọn (chỉ nạp khi chạy với tham số "ql").
+    // Não RL tuỳ chọn (chỉ nạp khi chạy với tham số "ql" hoặc "mc").
     private static org.openjfx.app.core.qlearning.QTable wolfQ;
     private static org.openjfx.app.core.qlearning.QTable rabbitQ;
+    // true = bảng nạp ở trên là của Monte Carlo (dùng MonteCarloStrategy thay vì QLearningStrategy).
+    private static boolean useMc;
 
     private BalanceCheck() {
     }
@@ -46,10 +48,14 @@ public final class BalanceCheck {
         // Tham số thứ 2 = "ql": gắn não RL (qtables/wolf.qtable + rabbit.qtable nếu có)
         // cho sói/thỏ THẢ BAN ĐẦU — giống hệt cách MainApp -Dql=true hoạt động (con đẻ
         // ra sau vẫn RBS) — để kiểm chứng não đã train không phá cân bằng sinh thái.
+        // Tham số thứ 2 = "mc": tương tự nhưng nạp bảng Monte Carlo (mc_wolf/mc_rabbit.qtable).
         boolean ql = args.length > 1 && "ql".equalsIgnoreCase(args[1]);
-        if (ql) {
-            java.nio.file.Path wolfPath = java.nio.file.Paths.get("qtables", "wolf.qtable");
-            java.nio.file.Path rabbitPath = java.nio.file.Paths.get("qtables", "rabbit.qtable");
+        useMc = args.length > 1 && "mc".equalsIgnoreCase(args[1]);
+        if (ql || useMc) {
+            String wolfFile = useMc ? "mc_wolf.qtable" : "wolf.qtable";
+            String rabbitFile = useMc ? "mc_rabbit.qtable" : "rabbit.qtable";
+            java.nio.file.Path wolfPath = java.nio.file.Paths.get("qtables", wolfFile);
+            java.nio.file.Path rabbitPath = java.nio.file.Paths.get("qtables", rabbitFile);
             if (java.nio.file.Files.exists(wolfPath)) {
                 wolfQ = org.openjfx.app.core.qlearning.QTable.load(wolfPath,
                         org.openjfx.app.core.strategies.QLearningStrategy.NUM_ACTIONS);
@@ -58,7 +64,8 @@ public final class BalanceCheck {
                 rabbitQ = org.openjfx.app.core.qlearning.QTable.load(rabbitPath,
                         org.openjfx.app.core.strategies.QLearningStrategy.NUM_ACTIONS);
             }
-            System.out.printf("Nao RL: soi=%s, tho=%s%n",
+            System.out.printf("Nao %s: soi=%s, tho=%s%n",
+                    useMc ? "Monte Carlo" : "RL",
                     wolfQ != null ? wolfQ.size() + " trang thai" : "RBS (thieu bang)",
                     rabbitQ != null ? rabbitQ.size() + " trang thai" : "RBS (thieu bang)");
         }
@@ -169,8 +176,11 @@ public final class BalanceCheck {
         if (kind == Wolf.class) {
             Wolf w = new Wolf(p);
             if (wolfQ != null) {
-                w.setFixedStrategy(org.openjfx.app.core.strategies.QLearningStrategy
-                        .play(wolfQ, org.openjfx.app.core.strategies.QLearningStrategy.Role.PREDATOR));
+                w.setFixedStrategy(useMc
+                        ? org.openjfx.app.core.strategies.MonteCarloStrategy
+                                .play(wolfQ, org.openjfx.app.core.strategies.MonteCarloStrategy.Role.PREDATOR)
+                        : org.openjfx.app.core.strategies.QLearningStrategy
+                                .play(wolfQ, org.openjfx.app.core.strategies.QLearningStrategy.Role.PREDATOR));
             }
             return w;
         }
@@ -179,8 +189,11 @@ public final class BalanceCheck {
         if (kind == Fish.class) return new Fish(p);
         Rabbit r = new Rabbit(p);
         if (rabbitQ != null) {
-            r.setFixedStrategy(org.openjfx.app.core.strategies.QLearningStrategy
-                    .play(rabbitQ, org.openjfx.app.core.strategies.QLearningStrategy.Role.PREY));
+            r.setFixedStrategy(useMc
+                    ? org.openjfx.app.core.strategies.MonteCarloStrategy
+                            .play(rabbitQ, org.openjfx.app.core.strategies.MonteCarloStrategy.Role.PREY)
+                    : org.openjfx.app.core.strategies.QLearningStrategy
+                            .play(rabbitQ, org.openjfx.app.core.strategies.QLearningStrategy.Role.PREY));
         }
         return r;
     }

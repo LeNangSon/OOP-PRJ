@@ -270,10 +270,19 @@ public class WorldMap {
         return findPathAStar(entity, start, target, null);
     }
 
+    // --- Instrumentation A* (chỉ cho harness so sánh BrainCompare; không ảnh hưởng gameplay).
+    //     Đếm tĩnh, single-thread: số lần A* thực sự chạy + tổng số node được mở rộng.
+    private static long aStarCalls = 0;
+    private static long aStarNodes = 0;
+    public static void resetAStarCounters() { aStarCalls = 0; aStarNodes = 0; }
+    public static long getAStarCalls() { return aStarCalls; }
+    public static long getAStarNodes() { return aStarNodes; }
+
     public List<Vector2D> findPathAStar(LivingEntity entity, Vector2D start, Vector2D target, Set<String> avoidedGridKeys) {
         GridCoordinate startGrid = worldToGrid(start);
         GridCoordinate targetGrid = worldToGrid(target);
         if (entity == null || startGrid == null || targetGrid == null) return null;
+        aStarCalls++;   // chỉ đếm lần A* thật sự chạy tìm đường
 
         int cols = getGridCols();
         int targetRow = targetGrid.getRow();
@@ -296,6 +305,7 @@ public class WorldMap {
             AstarNode current = open.poll();
             if (current.row == targetRow && current.col == targetCol) return buildPath(current);
             if (!visited.add(current.row * cols + current.col)) continue;
+            aStarNodes++;   // node được mở rộng (đại diện chi phí A*)
 
             for (int[] dir : dirs) {
                 int nr = current.row + dir[0];

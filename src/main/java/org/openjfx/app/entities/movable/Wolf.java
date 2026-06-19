@@ -15,7 +15,7 @@ public class Wolf extends Carnivore {
         // (đo 600s với 1.2/s: sói ăn sạch cụm thỏ đầu rồi cả đàn chết đói dây chuyền).
         // thirstRate 1.5/s: phải uống mỗi ~47s (ngưỡng 70) — đủ áp lực nhưng không chết khát
         // sau 20s như bộ số cũ (5/s) vốn là nguyên nhân chính sói chết hàng loạt.
-        super(position, 30.0, "circle", 200.0, 0.65, 1.5,
+        super(position, 30.0, "circle", 200.0, 0.5, 1.5,
                 40.0, 70.0, 3.0, 50.0, 30.0);
         setVisionRadius(70.0);
         type = EntityType.WOLF;
