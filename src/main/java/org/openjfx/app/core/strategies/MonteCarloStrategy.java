@@ -170,11 +170,11 @@ public class MonteCarloStrategy implements MoveStrategy {
         if (role == Role.PREDATOR) {
             r = -0.02;
             if (pendingCaught) r += 10.0;
-            if (pendingDrank) r += 0.3;
+            if (pendingDrank) r += 4;
         } else {
             r = 0.05;
             if (pendingAte) r += 1.0;
-            if (pendingDrank) r += 0.3;
+            if (pendingDrank) r += 4;
         }
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
             double closed = prevTargetDist - curTargetDist;

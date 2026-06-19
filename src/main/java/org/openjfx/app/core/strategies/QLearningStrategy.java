@@ -179,11 +179,11 @@ public class QLearningStrategy implements MoveStrategy {
         if (role == Role.PREDATOR) {
             r = -0.02;                          // sức ép thời gian: bắt nhanh thì lời
             if (pendingCaught) r += 10.0;       // KẾT QUẢ: bắt được mồi
-            if (pendingDrank) r += 0.3;         // sống còn (chết khát = -10)
+            if (pendingDrank) r += 4;           // chống chết khát (đồng bộ với MonteCarloStrategy)
         } else {
             r = 0.05;                           // còn sống thêm 1 bước
             if (pendingAte) r += 1.0;
-            if (pendingDrank) r += 0.3;
+            if (pendingDrank) r += 4;
         }
         // Thưởng tiến-gần mục tiêu (chỉ khi cùng loại mục tiêu 2 bước) — BẤT ĐỐI XỨNG.
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {

@@ -144,11 +144,11 @@ public class DeepQLearningStrategy implements MoveStrategy {
         if (role == Role.PREDATOR) {
             r = -0.02;
             if (pendingCaught) r += 10.0;
-            if (pendingDrank) r += 0.3;         // uống nước cũng là sống còn (chết khát = -10)
+            if (pendingDrank) r += 4;         // uống nước cũng là sống còn (chết khát = -10)
         } else {
             r = 0.05;
             if (pendingAte) r += 1.0;
-            if (pendingDrank) r += 0.3;
+            if (pendingDrank) r += 4;
         }
         // Chỉ shaping khi mục tiêu hai bước cùng loại: đổi loại (mồi -> nước lúc khát)
         // làm hiệu khoảng cách vô nghĩa.
