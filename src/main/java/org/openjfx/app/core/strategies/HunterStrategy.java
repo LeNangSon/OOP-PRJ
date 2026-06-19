@@ -29,7 +29,16 @@ public class HunterStrategy implements MoveStrategy {
     // mồi -> hết cảnh vờn theo điểm lưới cũ ở pha cận chiến. Ở xa vẫn dùng A* để né vật cản.
     private static final double DIRECT_PURSUIT_CELLS = 2.5;
     // Đón đầu: trần thời gian dự đoán vị trí mồi (giây). Lớn quá -> nhắm hụt khi mồi bẻ hướng.
-    private static final double MAX_LEAD_TIME = 0.7;
+    // RBS dùng giá trị mặc định cố định; RL (rl_v03) dựng nhiều HunterStrategy với leadTimeCap
+    // khác nhau làm các "kiểu săn" macro-action, rồi học chọn kiểu theo tình huống.
+    public static final double DEFAULT_LEAD_TIME = 0.7;
+    private final double leadTimeCap;
+
+    /** Constructor mặc định (RBS): đón đầu cố định {@value #DEFAULT_LEAD_TIME}s. */
+    public HunterStrategy() { this(DEFAULT_LEAD_TIME); }
+
+    /** Constructor có tham số: cho RL chọn độ "cắt góc" đón đầu (0 = lao thẳng, lớn = mai phục). */
+    public HunterStrategy(double leadTimeCap) { this.leadTimeCap = leadTimeCap; }
 
     private double logCooldown;
     private double replanCooldown;
@@ -148,7 +157,7 @@ public class HunterStrategy implements MoveStrategy {
     private Vector2D leadAimPoint(LivingEntity owner, Entity prey, Vector2D ownerPos, Vector2D preyPos) {
         double speed = owner.getMaxSpeed();
         if (speed <= 1e-6 || !(prey instanceof MovableEntity moving)) return preyPos;
-        double leadTime = Math.min(ownerPos.distance(preyPos) / speed, MAX_LEAD_TIME);
+        double leadTime = Math.min(ownerPos.distance(preyPos) / speed, leadTimeCap);
         return preyPos.add(moving.getVelocity().multiply(leadTime));
     }
 

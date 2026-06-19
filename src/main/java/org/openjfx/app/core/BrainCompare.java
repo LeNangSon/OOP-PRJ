@@ -104,10 +104,8 @@ public final class BrainCompare {
         for (int i = 0; i < WOLVES; i++) spawnWolf(brain, world, rng, wolfQ, mcWolfQ, wolfRecs, 0, seed);
         for (int i = 0; i < RABBITS; i++) spawnRabbit(world, rng);
 
-        // Reset bộ đếm instrumentation NGAY trước vòng mô phỏng (spawn ở trên không gọi A*).
+        // Reset bộ đếm A* NGAY trước vòng mô phỏng (spawn ở trên không gọi A*).
         WorldMap.resetAStarCounters();
-        QLearningStrategy.resetActionCounters();
-        MonteCarloStrategy.resetActionCounters();
 
         int firstCatchStep = -1;
         long cpuNanos = 0;
@@ -146,16 +144,10 @@ public final class BrainCompare {
         }
         m.avgLifespanSteps = wolfRecs.isEmpty() ? 0 : sumLife / wolfRecs.size();
 
-        // Instrumentation: chi phí A* end-to-end + mức độ "lai" của RL.
+        // Instrumentation: chi phí A* (rl_v03: cả RBS lẫn RL đều dùng A* qua strategy nên
+        // đây là so sánh tải tìm đường của "bộ chọn học" vs "bộ chọn chấm tay").
         m.aStarCallsPerStep = WorldMap.getAStarCalls() / (double) steps;
         m.aStarNodesPerStep = WorldMap.getAStarNodes() / (double) steps;
-        long pure = brain == Brain.MC ? MonteCarloStrategy.getPureActionSteps()
-                                      : QLearningStrategy.getPureActionSteps();
-        long fb = brain == Brain.MC ? MonteCarloStrategy.getFallbackSteps()
-                                    : QLearningStrategy.getFallbackSteps();
-        m.purePct = brain == Brain.RBS || (pure + fb) == 0
-                ? Double.NaN                              // RBS không có khái niệm action thuần
-                : 100.0 * pure / (pure + fb);
         return m;
     }
 
@@ -232,12 +224,10 @@ public final class BrainCompare {
         printMetric("CPU ms/step (thap=tot)",  brains, all, m -> m.cpuMsPerStep, "%.4f");
         printMetric("A* goi/step",              brains, all, m -> m.aStarCallsPerStep, "%.2f");
         printMetric("A* node/step",             brains, all, m -> m.aStarNodesPerStep, "%.1f");
-        printMetric("RL action thuan %",        brains, all, m -> m.purePct, "%.1f");
         System.out.println();
         System.out.println("Ghi chu: 'Step toi lan bat dau' = maxStep nghia la khong bat duoc (bi kiem duyet).");
-        System.out.println("         'A* goi/step', 'A* node/step' = chi phi tim duong thuc te (so sanh dung thay vi doan).");
-        System.out.println("         'RL action thuan %' = ty le buoc RL di 8-huong; phan con lai muon fallback A* -> RL la");
-        System.out.println("         the LAI, khong re hon RBS ve A* nhu ky vong neu ty le nay thap. RBS = nan.");
+        System.out.println("         rl_v03: RL hoc CHON strategy (Flee/SeekWater/Hunter/Mate/Wander), A* lo dieu huong");
+        System.out.println("         -> ca 3 nao dung chung A*; 'A* goi/step','A* node/step' so tai tim duong cong bang.");
     }
 
     private interface Field { double get(Metric m); }
@@ -295,6 +285,5 @@ public final class BrainCompare {
         double cpuMsPerStep;
         double aStarCallsPerStep;
         double aStarNodesPerStep;
-        double purePct;             // % bước RL chạy 8-hướng thuần (NaN cho RBS)
     }
 }
