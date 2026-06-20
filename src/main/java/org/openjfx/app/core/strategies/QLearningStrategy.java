@@ -44,6 +44,7 @@ public class QLearningStrategy implements MoveStrategy {
     private static final double THIRST_SATED = 25.0;    // hysteresis: uống tới khi tụt dưới mức này
     private static final double HUNGER_SEEK = 60.0;     // thỏ coi cỏ là mục tiêu khi đói > ngưỡng này
     private static final double HUNT_HUNGER = 50.0;     // sói coi mồi là mục tiêu khi đói > ngưỡng này
+    private static final double THIRST_PENALTY = 0.2;   // phạt/bước tối đa khi khát chạm 100 (vùng >THIRST_HIGH)
 
     private final QTable q;
     private final Role role;
@@ -77,6 +78,7 @@ public class QLearningStrategy implements MoveStrategy {
     private double curVision = 1.0;
     private int curTargetType = 0;
     private boolean curThirsty;
+    private double curThirstLevel;            // mức khát hiện tại (cho phạt khát)
 
     public QLearningStrategy(QTable q, Role role, double alpha, double gamma,
                              double epsilon, boolean training, Random rng) {
@@ -179,11 +181,15 @@ public class QLearningStrategy implements MoveStrategy {
         if (role == Role.PREDATOR) {
             r = -0.02;                          // sức ép thời gian: bắt nhanh thì lời
             if (pendingCaught) r += 10.0;       // KẾT QUẢ: bắt được mồi
-            if (pendingDrank) r += 4;           // chống chết khát (đồng bộ với MonteCarloStrategy)
         } else {
             r = 0.05;                           // còn sống thêm 1 bước
             if (pendingAte) r += 1.0;
-            if (pendingDrank) r += 4;
+        }
+        // PHẠT KHÁT (thay thưởng uống): chỉ trong vùng nguy hiểm (> THIRST_HIGH), tăng tuyến
+        // tính tới khi chết khát. KHÔNG farm được như thưởng uống/bước -> sói chỉ uống đủ để
+        // tránh phạt rồi quay lại săn. Vùng <THIRST_HIGH không phạt -> săn bình thường không bị động.
+        if (curThirstLevel > THIRST_HIGH) {
+            r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
         }
         // Thưởng tiến-gần mục tiêu (chỉ khi cùng loại mục tiêu 2 bước) — BẤT ĐỐI XỨNG.
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
@@ -206,6 +212,7 @@ public class QLearningStrategy implements MoveStrategy {
         Vector2D enemy = nearestScaredOf(owner, neighbors);
         curEnemyDist = enemy == null ? -1 : pos.distance(enemy);
 
+        curThirstLevel = owner.getThirst();
         thirstCommit = thirstCommit
                 ? owner.getThirst() > THIRST_SATED
                 : owner.getThirst() >= THIRST_HIGH;

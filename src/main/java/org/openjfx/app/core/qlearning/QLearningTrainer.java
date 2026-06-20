@@ -55,9 +55,6 @@ public class QLearningTrainer {
     private static final double DT = 0.1;          // bước thời gian mô phỏng (giây)
 
     private static final int GRASS_PER_EPISODE = 50;
-    // 10 thỏ (tăng từ 6): đo chuẩn cho thấy môi trường cũ bị giới hạn bởi tần suất CHẠM
-    // MẶT mồi (RBS 1.34 ~ random 1.38) chứ không phải kỹ năng đuổi -> tăng mật độ mồi
-    // để mỗi episode có nhiều pha rượt hơn, tín hiệu học rõ hơn.
     private static final int RABBITS_PER_EPISODE = 10;
     private static final int WOLVES_PER_EPISODE = 3;
 
@@ -71,14 +68,10 @@ public class QLearningTrainer {
         int maxSteps = intArg(args, 1, 600);
         Mode mode = parseMode(args);
         double alpha = 0.2;
-        // gamma 0.97: horizon hiệu dụng ~33 bước (3.3s mô phỏng) — đủ "nhìn xa" hết một
-        // pha rượt mồi. 0.9 cũ chỉ ~1s nên phần thưởng bắt mồi gần như không lan ngược.
         double gamma = 0.97;
 
         QTable wolfQ = QTable.loadOrNew(WOLF_TABLE, NUM_ACTIONS);
         QTable rabbitQ = QTable.loadOrNew(RABBIT_TABLE, NUM_ACTIONS);
-        // Train tiếp trên bảng đã học thì đừng quay lại khám phá toàn ngẫu nhiên (epsilon
-        // ~1.0 + alpha 0.2 sẽ ghi đè lên policy cũ); chỉ thăm dò nhẹ quanh policy hiện có.
         QTable trainedTable = switch (mode) {
             case RABBIT -> rabbitQ;
             case RBS -> null;

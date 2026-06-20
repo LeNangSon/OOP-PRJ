@@ -33,6 +33,7 @@ public class MonteCarloStrategy implements MoveStrategy {
     private static final double THIRST_SATED = 25.0;
     private static final double HUNGER_SEEK  = 60.0;   // thỏ: tìm cỏ khi đói > ngưỡng này
     private static final double HUNT_HUNGER  = 50.0;   // sói: săn khi đói > ngưỡng này
+    private static final double THIRST_PENALTY = 0.2;  // phạt/bước tối đa khi khát chạm 100 (vùng >THIRST_HIGH)
 
     private final QTable         q;
     private final Role           role;
@@ -65,6 +66,7 @@ public class MonteCarloStrategy implements MoveStrategy {
     private double  curVision     = 1.0;
     private int     curTargetType = 0;
     private boolean curThirsty;
+    private double  curThirstLevel;            // mức khát hiện tại (cho phạt khát)
 
     public MonteCarloStrategy(QTable q, Role role, double alpha, double gamma,
                               double epsilon, boolean training, Random rng) {
@@ -170,11 +172,13 @@ public class MonteCarloStrategy implements MoveStrategy {
         if (role == Role.PREDATOR) {
             r = -0.02;
             if (pendingCaught) r += 10.0;
-            if (pendingDrank) r += 4;
         } else {
             r = 0.05;
             if (pendingAte) r += 1.0;
-            if (pendingDrank) r += 4;
+        }
+        // PHẠT KHÁT (xem QLearningStrategy.stepReward): chỉ vùng >THIRST_HIGH, không farm được.
+        if (curThirstLevel > THIRST_HIGH) {
+            r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
         }
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
             double closed = prevTargetDist - curTargetDist;
@@ -196,6 +200,7 @@ public class MonteCarloStrategy implements MoveStrategy {
         Vector2D enemy = nearestScaredOf(owner, neighbors);
         curEnemyDist = enemy == null ? -1 : pos.distance(enemy);
 
+        curThirstLevel = owner.getThirst();
         thirstCommit = thirstCommit
                 ? owner.getThirst() > THIRST_SATED
                 : owner.getThirst() >= THIRST_HIGH;
