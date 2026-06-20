@@ -172,41 +172,23 @@ public class QLearningStrategy implements MoveStrategy {
         prevAction = -1;
     }
 
-    // ----------------------------------------------------------------- phần thưởng (OUTCOME-BASED)
-    // Thiết kế cho tầng macro-action: thưởng theo KẾT QUẢ của option (bắt/ăn/uống/sống), KHÔNG
-    // dùng shaping khoảng cách dày như bản 8-hướng. Shaping cũ (+0.05·Δdist, +0.4 áp sát,
-    // -0.5 mất dấu) phạt oan các kiểu săn trễ (ambush/lead-long) vì chúng tạm thời không tiến
-    // gần -> RL không dám chọn -> không khai thác được superset action. Thay bằng thưởng
-    // tiến-gần BẤT ĐỐI XỨNG: thưởng khi lại gần, KHÔNG phạt khi tạm lùi (đón đầu/mai phục).
+    // ----------------------------------------------------------------- phần thưởng (SPARSE — rl_v10)
+    // BẢN REWARD THƯA: bỏ TOÀN BỘ shaping dày của bản trước (base/step -0.02 & +0.05, phạt khát,
+    // phạt đói, thưởng tiến-gần, thưởng tăng-cách-địch). Chỉ còn tín hiệu RỜI RẠC theo sự kiện:
+    //   sói +10 khi bắt được mồi,  thỏ +1 khi ăn được cỏ,  -10 khi chết (đặt ở learnTerminal).
+    // Mọi bước khác reward = 0.
+    //
+    // Mục đích thí nghiệm: làm bài toán credit-assignment KHÓ để lộ rõ chênh lệch MC vs Q-learning.
+    // - MC lan return cả episode trong 1 lượt -> vẫn nối được +10/-10 về các state trước đó.
+    // - TD (QL) phải "thấm" 1-hop mỗi lần thăm lại + gamma^horizon -> tín hiệu thưa bị loãng,
+    //   học chậm/kẹt hơn; reward-hacking "cắm trại ở hồ" lại có đất sống vì không còn phạt đói.
+    // So sánh hai bảng học ra từ CÙNG reward thưa này = minh hoạ trực tiếp phần lý thuyết đã mổ xẻ.
     private double stepReward() {
-        double r;
+        double r = 0.0;
         if (role == Role.PREDATOR) {
-            r = -0.02;                          // sức ép thời gian: bắt nhanh thì lời
-            if (pendingCaught) r += 10.0;       // KẾT QUẢ: bắt được mồi
+            if (pendingCaught) r += 10.0;   // sự kiện duy nhất có thưởng cho sói
         } else {
-            r = 0.05;                           // còn sống thêm 1 bước
-            if (pendingAte) r += 1.0;
-        }
-        // PHẠT KHÁT (thay thưởng uống): chỉ trong vùng nguy hiểm (> THIRST_HIGH), tăng tuyến
-        // tính tới khi chết khát. KHÔNG farm được như thưởng uống/bước -> sói chỉ uống đủ để
-        // tránh phạt rồi quay lại săn. Vùng <THIRST_HIGH không phạt -> săn bình thường không bị động.
-        if (curThirstLevel > THIRST_HIGH) {
-            r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
-        }
-        // PHẠT ĐÓI (đối xứng phạt khát): chống reward-hacking "cắm trại ở hồ". Không có dòng này,
-        // đói là vô hình với TD (chết đói cách ~2000 bước, gamma^2000≈0) -> sói né phạt khát bằng
-        // cách đứng cạnh nước, không chịu đi săn. Phạt đói > HUNT_HUNGER buộc nó săn để hạ đói.
-        if (curHungerLevel > HUNT_HUNGER) {
-            r -= HUNGER_PENALTY * (curHungerLevel - HUNT_HUNGER) / (100.0 - HUNT_HUNGER);
-        }
-        // Thưởng tiến-gần mục tiêu (chỉ khi cùng loại mục tiêu 2 bước) — BẤT ĐỐI XỨNG.
-        if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
-            double closed = prevTargetDist - curTargetDist;
-            if (closed > 0) r += 0.03 * closed;     // chỉ thưởng khi lại gần; lùi -> 0 (không phạt)
-        }
-        // Thỏ: thưởng khi tăng khoảng cách với sói (giữ — chạy trốn không phải tactic trễ).
-        if (role == Role.PREY && prevEnemyDist >= 0 && curEnemyDist >= 0) {
-            r += 0.06 * (curEnemyDist - prevEnemyDist);
+            if (pendingAte)    r += 1.0;    // sự kiện duy nhất có thưởng cho thỏ
         }
         return r;
     }

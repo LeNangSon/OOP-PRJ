@@ -165,27 +165,15 @@ public class MonteCarloStrategy implements MoveStrategy {
 
     // ================================================================= reward
 
-    // OUTCOME-BASED (xem giải thích ở QLearningStrategy.stepReward): thưởng theo kết quả option,
-    // tiến-gần bất đối xứng (không phạt lùi) để ambush/lead-long không bị trừng phạt.
+    // SPARSE — rl_v10 (xem giải thích đầy đủ ở QLearningStrategy.stepReward): bỏ toàn bộ shaping
+    // (base/step, phạt khát, tiến-gần, tăng-cách-địch). Chỉ +10 khi bắt mồi / +1 khi ăn cỏ, và
+    // -10 khi chết (learnTerminal). Dùng CÙNG reward thưa với QL để so trực tiếp MC vs TD.
     private double stepReward() {
-        double r;
+        double r = 0.0;
         if (role == Role.PREDATOR) {
-            r = -0.02;
             if (pendingCaught) r += 10.0;
         } else {
-            r = 0.05;
-            if (pendingAte) r += 1.0;
-        }
-        // PHẠT KHÁT (xem QLearningStrategy.stepReward): chỉ vùng >THIRST_HIGH, không farm được.
-        if (curThirstLevel > THIRST_HIGH) {
-            r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
-        }
-        if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
-            double closed = prevTargetDist - curTargetDist;
-            if (closed > 0) r += 0.03 * closed;
-        }
-        if (role == Role.PREY && prevEnemyDist >= 0 && curEnemyDist >= 0) {
-            r += 0.06 * (curEnemyDist - prevEnemyDist);
+            if (pendingAte)    r += 1.0;
         }
         return r;
     }
