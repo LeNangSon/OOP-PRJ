@@ -40,7 +40,7 @@ public class MonteCarloAgent {
         for(int i = step-1;i >= 0; i--){
             Step s = trajectory.get(i);
             G = (s.reward + gamma * G);
-            q.q(s.state)[s.action] = (1-alpha) * q.q(s.state)[s.action] + alpha*G;
+            q.q(s.state)[s.action] += alpha * (G -  q.q(s.state)[s.action]);
         }
     }
     public void clear() {

@@ -45,6 +45,7 @@ public class QLearningStrategy implements MoveStrategy {
     private static final double HUNGER_SEEK = 60.0;     // thỏ coi cỏ là mục tiêu khi đói > ngưỡng này
     private static final double HUNT_HUNGER = 50.0;     // sói coi mồi là mục tiêu khi đói > ngưỡng này
     private static final double THIRST_PENALTY = 0.2;   // phạt/bước tối đa khi khát chạm 100 (vùng >THIRST_HIGH)
+    private static final double HUNGER_PENALTY = 0.2;   // phạt/bước tối đa khi đói chạm 100 (vùng >HUNT_HUNGER) — đối xứng phạt khát
 
     private final QTable q;
     private final Role role;
@@ -79,6 +80,7 @@ public class QLearningStrategy implements MoveStrategy {
     private int curTargetType = 0;
     private boolean curThirsty;
     private double curThirstLevel;            // mức khát hiện tại (cho phạt khát)
+    private double curHungerLevel;            // mức đói hiện tại (cho phạt đói)
 
     public QLearningStrategy(QTable q, Role role, double alpha, double gamma,
                              double epsilon, boolean training, Random rng) {
@@ -191,6 +193,12 @@ public class QLearningStrategy implements MoveStrategy {
         if (curThirstLevel > THIRST_HIGH) {
             r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
         }
+        // PHẠT ĐÓI (đối xứng phạt khát): chống reward-hacking "cắm trại ở hồ". Không có dòng này,
+        // đói là vô hình với TD (chết đói cách ~2000 bước, gamma^2000≈0) -> sói né phạt khát bằng
+        // cách đứng cạnh nước, không chịu đi săn. Phạt đói > HUNT_HUNGER buộc nó săn để hạ đói.
+        if (curHungerLevel > HUNT_HUNGER) {
+            r -= HUNGER_PENALTY * (curHungerLevel - HUNT_HUNGER) / (100.0 - HUNT_HUNGER);
+        }
         // Thưởng tiến-gần mục tiêu (chỉ khi cùng loại mục tiêu 2 bước) — BẤT ĐỐI XỨNG.
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
             double closed = prevTargetDist - curTargetDist;
@@ -213,6 +221,7 @@ public class QLearningStrategy implements MoveStrategy {
         curEnemyDist = enemy == null ? -1 : pos.distance(enemy);
 
         curThirstLevel = owner.getThirst();
+        curHungerLevel = owner.getHunger();
         thirstCommit = thirstCommit
                 ? owner.getThirst() > THIRST_SATED
                 : owner.getThirst() >= THIRST_HIGH;

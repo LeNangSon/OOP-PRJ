@@ -50,10 +50,6 @@ public class QTable {
         return 0;
     }
 
-    /**
-     * Cập nhật Q-learning: Q(s,a) += alpha * (r + gamma * max_a' Q(s',a') - Q(s,a)).
-     * nextState == null nghĩa là trạng thái kết thúc (chết) -> không cộng phần tương lai.
-     */
     public void update(String state, int action, double reward, String nextState,
                        double alpha, double gamma) {
         double[] qs = q(state);
