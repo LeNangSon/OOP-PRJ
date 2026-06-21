@@ -68,7 +68,7 @@ public class QLearningTrainer {
         int maxSteps = intArg(args, 1, 600);
         Mode mode = parseMode(args);
         double alpha = 0.2;
-        double gamma = 0.97;
+        double gamma = 0.99;   // rl_struct: 0.97->0.99, tầm nhìn ~33->~100 bước, hợp thang thời gian đói/khát
 
         QTable wolfQ = QTable.loadOrNew(WOLF_TABLE, NUM_ACTIONS);
         QTable rabbitQ = QTable.loadOrNew(RABBIT_TABLE, NUM_ACTIONS);

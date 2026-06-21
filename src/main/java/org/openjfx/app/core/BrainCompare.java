@@ -1,5 +1,7 @@
 package org.openjfx.app.core;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -86,6 +88,33 @@ public final class BrainCompare {
         }
 
         printReport(brains, all);
+        writePerSeedCsv(brains, all);
+    }
+
+    /**
+     * Ghi giá trị TỪNG SEED ra CSV để phân tích ghép cặp (paired Wilcoxon, bootstrap CI) ở ngoài.
+     * Long format: mỗi dòng = (seed, brain, các metric). Cùng seed across brain = một cặp so sánh.
+     */
+    private static void writePerSeedCsv(List<Brain> brains, List<Metric[]> all) {
+        if (all.isEmpty()) return;
+        Path out = Paths.get("braincompare_perseed.csv");
+        try (BufferedWriter w = Files.newBufferedWriter(out)) {
+            w.write("seed,brain,catches_per_1000,thirst_deaths,hunger_deaths,avg_lifespan,first_catch");
+            w.newLine();
+            int seeds = all.get(0).length;
+            for (int j = 0; j < seeds; j++) {
+                for (int i = 0; i < brains.size(); i++) {
+                    Metric m = all.get(i)[j];
+                    w.write(String.format("%d,%s,%.6f,%d,%d,%.2f,%d",
+                            j, brains.get(i), m.catchesPer1000, m.thirstDeaths,
+                            m.hungerDeaths, m.avgLifespanSteps, m.firstCatchStep));
+                    w.newLine();
+                }
+            }
+            System.out.println("Da ghi per-seed CSV: " + out.toAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Loi ghi per-seed CSV: " + e.getMessage());
+        }
     }
 
     // ============================================================= 1 lần chạy
