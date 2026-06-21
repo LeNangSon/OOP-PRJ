@@ -38,6 +38,10 @@ public class MonteCarloStrategy implements MoveStrategy {
     private static final double HUNGER_PENALTY = 0.2;  // rl_struct: phạt/bước tối đa khi đói chạm 100 (vùng >HUNT_HUNGER) — đối xứng phạt khát
     private static final double THIRST_CRITICAL_PENALTY = 0.4; // rl_struct: phạt thêm vùng nguy cấp, không vượt giá trị săn (~+1/bước amortize của +10) -> vẫn dám săn
 
+    // Ablation lưới P3: -DcoarseMC=true ép state đói/khát về 1-bit (như MC native) NHƯNG GIỮ reward
+    // rl_struct + gamma 0.99 -> đo MC@thô dưới CÙNG reward với MC@mịn (khử confound reward của bản v8).
+    private static final boolean COARSE_MC = Boolean.getBoolean("coarseMC");
+
     private final QTable         q;
     private final Role           role;
     private final double         alpha;
@@ -248,8 +252,15 @@ public class MonteCarloStrategy implements MoveStrategy {
         int targetBin = distBin(curTargetDist, vision);
         // rl_struct (IDENTICAL với QLearningStrategy): đói 4 mức, khát 3 mức để policy phân biệt
         // đói-vừa/rất-đói/sắp-chết và săn-khi-vừa/uống-khi-nguy. Bảng MC cũ (1-bit) phải train lại từ rỗng.
-        int hungerBin = curHungerLevel >= 90 ? 3 : curHungerLevel >= 70 ? 2 : curHungerLevel >= 50 ? 1 : 0;
-        int thirstBin = curThirstLevel >= THIRST_CRITICAL ? 2 : curThirstLevel >= THIRST_HIGH ? 1 : 0;
+        // -DcoarseMC=true (lưới P3): về 1-bit như MC native, reward vẫn rl_struct.
+        int hungerBin, thirstBin;
+        if (COARSE_MC) {
+            hungerBin = curHungerLevel >= 50 ? 1 : 0;
+            thirstBin = curThirsty ? 1 : 0;
+        } else {
+            hungerBin = curHungerLevel >= 90 ? 3 : curHungerLevel >= 70 ? 2 : curHungerLevel >= 50 ? 1 : 0;
+            thirstBin = curThirstLevel >= THIRST_CRITICAL ? 2 : curThirstLevel >= THIRST_HIGH ? 1 : 0;
+        }
         int preyMoveDir = preyMovementSector(preyEntity);
         int mateBin = (owner.canReproduce() && owner.hasMateNearby()) ? 1 : 0;
 

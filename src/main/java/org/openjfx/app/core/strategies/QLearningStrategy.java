@@ -49,6 +49,11 @@ public class QLearningStrategy implements MoveStrategy {
     private static final double HUNGER_PENALTY = 0.2;   // phạt/bước tối đa khi đói chạm 100 (vùng >HUNT_HUNGER) — đối xứng phạt khát
     private static final double THIRST_CRITICAL_PENALTY = 0.4; // phạt thêm vùng nguy cấp: tạo CẤP BÁCH nhưng KHÔNG vượt giá trị săn (~+1/bước amortize của +10) -> sói vẫn dám săn (rl_struct: hạ từ 2.0 vì 2.0 lấn át +10 -> bỏ săn -> thua RBS)
 
+    // Ablation lưới P2/P3: -DcoarseQL=true ép state đói/khát về 1-bit (như MC native) ĐỂ ĐO
+    // đóng góp riêng của "state mịn" vào lợi thế QL — reward shaping + gamma vẫn giữ rl_struct.
+    // Toggle riêng cho MC là -DcoarseMC (xem MonteCarloStrategy) để eval lưới chỉnh từng não độc lập.
+    private static final boolean COARSE_QL = Boolean.getBoolean("coarseQL");
+
     private final QTable q;
     private final Role role;
     private final double alpha;
@@ -263,11 +268,16 @@ public class QLearningStrategy implements MoveStrategy {
         int targetDir = target == null ? 8 : sector(target.sub(pos));
         int targetBin = distBin(curTargetDist, vision);
         // rl_struct: đói 1-bit -> 4 mức để policy phân biệt đói-vừa / rất-đói / sắp-chết-đói (hành động khác nhau).
-        int hungerBin = curHungerLevel >= 90 ? 3 : curHungerLevel >= 70 ? 2 : curHungerLevel >= 50 ? 1 : 0;
         // State khát 3 MỨC (thay 1-bit): 0=ổn (<60, săn thoải mái), 1=khát vừa (60–80, tự điều tiết),
-        // 2=nguy cấp (≥80, nên bỏ mồi đi uống). Cho policy PHÂN BIỆT được mức để học "săn khi vừa,
-        // uống khi nguy" — điều 1-bit không biểu diễn nổi.
-        int thirstBin = curThirstLevel >= THIRST_CRITICAL ? 2 : curThirstLevel >= THIRST_HIGH ? 1 : 0;
+        // 2=nguy cấp (≥80, nên bỏ mồi đi uống). COARSE_STATE=true (lưới P2): về 1-bit như MC native.
+        int hungerBin, thirstBin;
+        if (COARSE_QL) {
+            hungerBin = curHungerLevel >= 50 ? 1 : 0;
+            thirstBin = curThirsty ? 1 : 0;
+        } else {
+            hungerBin = curHungerLevel >= 90 ? 3 : curHungerLevel >= 70 ? 2 : curHungerLevel >= 50 ? 1 : 0;
+            thirstBin = curThirstLevel >= THIRST_CRITICAL ? 2 : curThirstLevel >= THIRST_HIGH ? 1 : 0;
+        }
         int preyMoveDir = preyMovementSector(preyEntity);
         // Mới ở rl_v03: bit "có thể đẻ + có bạn tình kề bên" để RL học khi nào chọn Mate.
         int mateBin = (owner.canReproduce() && owner.hasMateNearby()) ? 1 : 0;
