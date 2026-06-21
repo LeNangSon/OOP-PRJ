@@ -30,10 +30,13 @@ public class MonteCarloStrategy implements MoveStrategy {
     private static final double[] HUNT_LEADS = {0.0, HunterStrategy.DEFAULT_LEAD_TIME, 1.3, 2.0};
 
     private static final double THIRST_HIGH  = 60.0;
+    private static final double THIRST_CRITICAL = 80.0; // rl_struct: ngưỡng nguy cấp -> state bin 2 (phải đi uống ngay)
     private static final double THIRST_SATED = 25.0;
     private static final double HUNGER_SEEK  = 60.0;   // thỏ: tìm cỏ khi đói > ngưỡng này
     private static final double HUNT_HUNGER  = 50.0;   // sói: săn khi đói > ngưỡng này
     private static final double THIRST_PENALTY = 0.2;  // phạt/bước tối đa khi khát chạm 100 (vùng >THIRST_HIGH)
+    private static final double HUNGER_PENALTY = 0.2;  // rl_struct: phạt/bước tối đa khi đói chạm 100 (vùng >HUNT_HUNGER) — đối xứng phạt khát
+    private static final double THIRST_CRITICAL_PENALTY = 0.4; // rl_struct: phạt thêm vùng nguy cấp, không vượt giá trị săn (~+1/bước amortize của +10) -> vẫn dám săn
 
     private final QTable         q;
     private final Role           role;
@@ -66,7 +69,8 @@ public class MonteCarloStrategy implements MoveStrategy {
     private double  curVision     = 1.0;
     private int     curTargetType = 0;
     private boolean curThirsty;
-    private double  curThirstLevel;            // mức khát hiện tại (cho phạt khát)
+    private double  curThirstLevel;            // mức khát hiện tại (cho phạt khát + state 3 mức)
+    private double  curHungerLevel;            // rl_struct: mức đói hiện tại (cho phạt đói + state 4 mức)
 
     public MonteCarloStrategy(QTable q, Role role, double alpha, double gamma,
                               double epsilon, boolean training, Random rng) {
@@ -180,6 +184,14 @@ public class MonteCarloStrategy implements MoveStrategy {
         if (curThirstLevel > THIRST_HIGH) {
             r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
         }
+        // rl_struct (port từ QLearningStrategy): phạt-dốc vùng nguy cấp khát + phạt đói đối xứng
+        // (chống reward-hacking "cắm trại ở hồ"). Giữ IDENTICAL với QL để so sánh sòng phẳng.
+        if (curThirstLevel > THIRST_CRITICAL) {
+            r -= THIRST_CRITICAL_PENALTY * (curThirstLevel - THIRST_CRITICAL) / (100.0 - THIRST_CRITICAL);
+        }
+        if (curHungerLevel > HUNT_HUNGER) {
+            r -= HUNGER_PENALTY * (curHungerLevel - HUNT_HUNGER) / (100.0 - HUNT_HUNGER);
+        }
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
             double closed = prevTargetDist - curTargetDist;
             if (closed > 0) r += 0.03 * closed;
@@ -201,6 +213,7 @@ public class MonteCarloStrategy implements MoveStrategy {
         curEnemyDist = enemy == null ? -1 : pos.distance(enemy);
 
         curThirstLevel = owner.getThirst();
+        curHungerLevel = owner.getHunger();
         thirstCommit = thirstCommit
                 ? owner.getThirst() > THIRST_SATED
                 : owner.getThirst() >= THIRST_HIGH;
@@ -233,8 +246,10 @@ public class MonteCarloStrategy implements MoveStrategy {
         int enemyBin = distBin(curEnemyDist, vision);
         int targetDir = target == null ? 8 : sector(target.sub(pos));
         int targetBin = distBin(curTargetDist, vision);
-        int hungerBin = owner.getHunger() >= 50 ? 1 : 0;
-        int thirstBin = curThirsty ? 1 : 0;
+        // rl_struct (IDENTICAL với QLearningStrategy): đói 4 mức, khát 3 mức để policy phân biệt
+        // đói-vừa/rất-đói/sắp-chết và săn-khi-vừa/uống-khi-nguy. Bảng MC cũ (1-bit) phải train lại từ rỗng.
+        int hungerBin = curHungerLevel >= 90 ? 3 : curHungerLevel >= 70 ? 2 : curHungerLevel >= 50 ? 1 : 0;
+        int thirstBin = curThirstLevel >= THIRST_CRITICAL ? 2 : curThirstLevel >= THIRST_HIGH ? 1 : 0;
         int preyMoveDir = preyMovementSector(preyEntity);
         int mateBin = (owner.canReproduce() && owner.hasMateNearby()) ? 1 : 0;
 

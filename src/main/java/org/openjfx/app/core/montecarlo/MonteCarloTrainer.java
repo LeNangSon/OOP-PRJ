@@ -67,7 +67,7 @@ public class MonteCarloTrainer {
         int    maxSteps = intArg(args, 1, 400);   // MC: episode ngắn hơn QL (buffer nhỏ hơn)
         Mode   mode     = parseMode(args);
         double alpha    = 0.1;
-        double gamma    = 0.97;
+        double gamma    = 0.99;   // rl_struct: 0.97->0.99 khớp QL (tầm nhìn ~33->~100 bước, hợp thang đói/khát)
 
         QTable wolfQ   = QTable.loadOrNew(WOLF_TABLE,   NUM_ACTIONS);
         QTable rabbitQ = QTable.loadOrNew(RABBIT_TABLE, NUM_ACTIONS);

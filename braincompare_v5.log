@@ -1,0 +1,22 @@
+So sanh nao SOI: 20 seed x 3000 step (dt=0.1, ~300s mo phong/seed)
+The gioi co lap: 3 soi + >=10 tho (RBS) + 50 co.
+
+  [RBS] xong 20 seed.
+  [QL] xong 20 seed.
+  [MC] xong 20 seed.
+
+=== KET QUA (trung binh +/- do lech chuan tren cac seed) ===
+Metric                     |             RBS |              QL |              MC
+---------------------------+-----------------+-----------------+----------------
+Bat/1000 step (cao=tot)    | 5.08 +/- 1.87 | 5.43 +/- 2.68 | 8.70 +/- 3.26
+Tuoi tho TB soi (step)     | 2759 +/- 308 | 2092 +/- 406 | 2389 +/- 512
+Soi chet doi               | 0.40 +/- 0.68 | 0.20 +/- 0.41 | 0.50 +/- 0.61
+Soi chet khat              | 0.25 +/- 0.64 | 2.00 +/- 0.79 | 0.80 +/- 0.77
+Step toi lan bat dau       | 78 +/- 91 | 137 +/- 105 | 83 +/- 69
+CPU ms/step (thap=tot)     | 4.2966 +/- 1.4611 | 2.8934 +/- 1.3486 | 2.6630 +/- 1.2264
+A* goi/step                | 3.92 +/- 1.45 | 2.63 +/- 1.47 | 2.37 +/- 1.26
+A* node/step               | 1214.8 +/- 434.4 | 793.8 +/- 383.9 | 731.8 +/- 373.7
+
+Ghi chu: 'Step toi lan bat dau' = maxStep nghia la khong bat duoc (bi kiem duyet).
+         rl_v03: RL hoc CHON strategy (Flee/SeekWater/Hunter/Mate/Wander), A* lo dieu huong
+         -> ca 3 nao dung chung A*; 'A* goi/step','A* node/step' so tai tim duong cong bang.

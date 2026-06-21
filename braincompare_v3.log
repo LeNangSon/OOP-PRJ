@@ -1,0 +1,24 @@
+=== BrainCompare v3 START 16:43:04 ===
+So sanh nao SOI: 20 seed x 3000 step (dt=0.1, ~300s mo phong/seed)
+The gioi co lap: 3 soi + >=10 tho (RBS) + 50 co.
+
+  [RBS] xong 20 seed.
+  [QL] xong 20 seed.
+  [MC] xong 20 seed.
+
+=== KET QUA (trung binh +/- do lech chuan tren cac seed) ===
+Metric                     |             RBS |              QL |              MC
+---------------------------+-----------------+-----------------+----------------
+Bat/1000 step (cao=tot)    | 4.45 +/- 1.36 | 2.00 +/- 0.71 | 7.90 +/- 3.00
+Tuoi tho TB soi (step)     | 2796 +/- 286 | 2405 +/- 472 | 2259 +/- 399
+Soi chet doi               | 0.25 +/- 0.44 | 0.80 +/- 0.77 | 0.30 +/- 0.47
+Soi chet khat              | 0.25 +/- 0.44 | 0.40 +/- 0.68 | 1.40 +/- 0.75
+Step toi lan bat dau       | 66 +/- 66 | 117 +/- 97 | 79 +/- 67
+CPU ms/step (thap=tot)     | 4.4061 +/- 1.2326 | 4.5727 +/- 1.9058 | 2.3070 +/- 1.0691
+A* goi/step                | 4.16 +/- 1.24 | 4.35 +/- 1.91 | 2.11 +/- 1.17
+A* node/step               | 1266.6 +/- 385.8 | 1322.6 +/- 603.0 | 620.3 +/- 321.5
+
+Ghi chu: 'Step toi lan bat dau' = maxStep nghia la khong bat duoc (bi kiem duyet).
+         rl_v03: RL hoc CHON strategy (Flee/SeekWater/Hunter/Mate/Wander), A* lo dieu huong
+         -> ca 3 nao dung chung A*; 'A* goi/step','A* node/step' so tai tim duong cong bang.
+=== BrainCompare v3 DONE 16:54:21 ===

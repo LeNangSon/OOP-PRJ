@@ -1,0 +1,23 @@
+So sanh nao SOI: 20 seed x 3000 step (dt=0.1, ~300s mo phong/seed)
+The gioi co lap: 3 soi + >=10 tho (RBS) + 50 co.
+
+  [RBS] xong 20 seed.
+  [QL] xong 20 seed.
+  [MC] xong 20 seed.
+
+=== KET QUA (trung binh +/- do lech chuan tren cac seed) ===
+Metric                     |             RBS |              QL |              MC
+---------------------------+-----------------+-----------------+----------------
+Bat/1000 step (cao=tot)    | 4.45 +/- 2.34 | 3.60 +/- 1.91 | 7.80 +/- 3.62
+Tuoi tho TB soi (step)     | 2785 +/- 316 | 2751 +/- 274 | 2220 +/- 466
+Soi chet doi               | 0.30 +/- 0.57 | 0.70 +/- 0.73 | 0.20 +/- 0.41
+Soi chet khat              | 0.20 +/- 0.52 | 0.20 +/- 0.41 | 1.45 +/- 0.76
+Step toi lan bat dau       | 71 +/- 63 | 79 +/- 84 | 84 +/- 89
+CPU ms/step (thap=tot)     | 4.7084 +/- 1.6899 | 3.6136 +/- 1.0400 | 2.5723 +/- 0.9857
+A* goi/step                | 4.41 +/- 1.74 | 3.21 +/- 1.01 | 2.32 +/- 1.06
+A* node/step               | 1338.2 +/- 513.5 | 1015.6 +/- 317.2 | 698.9 +/- 292.4
+
+Ghi chu: 'Step toi lan bat dau' = maxStep nghia la khong bat duoc (bi kiem duyet).
+         rl_v03: RL hoc CHON strategy (Flee/SeekWater/Hunter/Mate/Wander), A* lo dieu huong
+         -> ca 3 nao dung chung A*; 'A* goi/step','A* node/step' so tai tim duong cong bang.
+Da ghi per-seed CSV: /Volumes/DEV/OOP JAVA/PRJ/OOP-PRJ/braincompare_perseed.csv
