@@ -54,6 +54,10 @@ public class QLearningStrategy implements MoveStrategy {
     // Toggle riêng cho MC là -DcoarseMC (xem MonteCarloStrategy) để eval lưới chỉnh từng não độc lập.
     private static final boolean COARSE_QL = Boolean.getBoolean("coarseQL");
 
+    // -Dlean=true: reward GỌN (như bản v5 / "MC native") — chỉ giữ phạt khát nền (>THIRST_HIGH),
+    // BỎ phạt-dốc khát nguy cấp + phạt đói. Reward ít phạt per-step -> return phương sai thấp.
+    private static final boolean LEAN_REWARD = Boolean.getBoolean("lean");
+
     private final QTable q;
     private final Role role;
     private final double alpha;
@@ -203,13 +207,13 @@ public class QLearningStrategy implements MoveStrategy {
         // PHẠT DỐC vùng nguy cấp (>THIRST_CRITICAL): state bin 2 cho policy NHÌN THẤY nguy cấp,
         // còn dòng này cho ĐỘNG LỰC đủ mạnh để hành động — phạt lớn (tới ~2/bước ở khát 100)
         // vượt sức hút +10 bắt mồi -> sói bỏ mồi đi uống. Vùng <80 không dính -> săn bình thường.
-        if (curThirstLevel > THIRST_CRITICAL) {
+        if (!LEAN_REWARD && curThirstLevel > THIRST_CRITICAL) {
             r -= THIRST_CRITICAL_PENALTY * (curThirstLevel - THIRST_CRITICAL) / (100.0 - THIRST_CRITICAL);
         }
         // PHẠT ĐÓI (đối xứng phạt khát): chống reward-hacking "cắm trại ở hồ". Không có dòng này,
         // đói là vô hình với TD (chết đói cách ~2000 bước, gamma^2000≈0) -> sói né phạt khát bằng
         // cách đứng cạnh nước, không chịu đi săn. Phạt đói > HUNT_HUNGER buộc nó săn để hạ đói.
-        if (curHungerLevel > HUNT_HUNGER) {
+        if (!LEAN_REWARD && curHungerLevel > HUNT_HUNGER) {
             r -= HUNGER_PENALTY * (curHungerLevel - HUNT_HUNGER) / (100.0 - HUNT_HUNGER);
         }
         // Thưởng tiến-gần mục tiêu (chỉ khi cùng loại mục tiêu 2 bước) — BẤT ĐỐI XỨNG.

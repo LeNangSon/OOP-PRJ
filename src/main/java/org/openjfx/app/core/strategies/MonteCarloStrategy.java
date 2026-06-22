@@ -42,6 +42,10 @@ public class MonteCarloStrategy implements MoveStrategy {
     // rl_struct + gamma 0.99 -> đo MC@thô dưới CÙNG reward với MC@mịn (khử confound reward của bản v8).
     private static final boolean COARSE_MC = Boolean.getBoolean("coarseMC");
 
+    // -Dlean=true: reward GỌN (như bản v5 "MC native") — bỏ phạt-dốc khát nguy cấp + phạt đói,
+    // chỉ giữ phạt khát nền. Return ít nhiễu hơn -> hợp với MC (phương sai thấp).
+    private static final boolean LEAN_REWARD = Boolean.getBoolean("lean");
+
     private final QTable         q;
     private final Role           role;
     private final double         alpha;
@@ -190,10 +194,10 @@ public class MonteCarloStrategy implements MoveStrategy {
         }
         // rl_struct (port từ QLearningStrategy): phạt-dốc vùng nguy cấp khát + phạt đói đối xứng
         // (chống reward-hacking "cắm trại ở hồ"). Giữ IDENTICAL với QL để so sánh sòng phẳng.
-        if (curThirstLevel > THIRST_CRITICAL) {
+        if (!LEAN_REWARD && curThirstLevel > THIRST_CRITICAL) {
             r -= THIRST_CRITICAL_PENALTY * (curThirstLevel - THIRST_CRITICAL) / (100.0 - THIRST_CRITICAL);
         }
-        if (curHungerLevel > HUNT_HUNGER) {
+        if (!LEAN_REWARD && curHungerLevel > HUNT_HUNGER) {
             r -= HUNGER_PENALTY * (curHungerLevel - HUNT_HUNGER) / (100.0 - HUNT_HUNGER);
         }
         if (prevTargetType == curTargetType && prevTargetDist >= 0 && curTargetDist >= 0) {
