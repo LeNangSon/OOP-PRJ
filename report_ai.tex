@@ -1,0 +1,705 @@
+% =====================================================================
+%  BÁO CÁO MÔN AI (Trí tuệ Nhân tạo)
+%  So sánh Q-learning vs Monte Carlo Control vs Rule-Based System
+%  trong bài toán điều khiển tác tử "sói" của mô phỏng sinh thái.
+%
+%  Biên dịch: pdfLaTeX (đã cấu hình T5 + babel tiếng Việt cho Overleaf).
+%  Nếu Overleaf báo lỗi font tiếng Việt: đổi compiler sang XeLaTeX/LuaLaTeX
+%  và thay khối inputenc/fontenc bằng:  \usepackage{fontspec}
+%
+%  Số liệu lấy từ: braincompare_perseed.csv (50 seed x 3000 step),
+%  phân tích bằng stats_braincompare.py (ghép cặp) và stats_rliable.py.
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage{lmodern}
+\usepackage[vietnamese]{babel}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{pgfplots}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+
+\pgfplotsset{compat=1.18}
+\geometry{margin=2.4cm}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,citecolor=ForestGreen,urlcolor=blue!55!black}
+
+% \code: in tên file/định danh có dấu gạch dưới mà không cần thoát thủ công.
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\catk}{bắt/1000}
+
+\title{\textbf{So sánh Reinforcement Learning với Rule-Based System\\
+trong bài toán điều khiển tác tử săn mồi}\\[2mm]
+\large Q-learning (TD) \emph{vs} Monte Carlo Control \emph{vs} luật tay (RBS)}
+
+\author{Báo cáo môn Trí tuệ Nhân tạo}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Báo cáo nghiên cứu bài toán \emph{ra quyết định tuần tự} (sequential decision making) qua một
+mô phỏng sinh thái sói--thỏ, trong đó tác tử ``sói'' phải vừa săn mồi vừa tránh chết đói/khát.
+Chúng tôi đặt bài toán dưới dạng MDP theo khung \emph{Hierarchical RL / Options}: tác tử học
+\emph{chọn macro-action} (1 trong 8 chiến lược luật), mỗi chiến lược tự điều hướng bằng A*. Hai
+thuật toán học bảng (tabular) được so sánh trực tiếp --- \textbf{Q-learning} (TD, off-policy,
+online) và \textbf{Monte Carlo Control} (return thật, on-policy, offline) --- với cùng không
+gian trạng thái / hành động / hàm thưởng; khác biệt duy nhất là \emph{công thức cập nhật}. Cả
+hai được đối chứng với baseline \emph{Rule-Based System} (RBS) --- bộ điều khiển chấm điểm bằng
+luật tay. Trên \textbf{50 seed
+ghép cặp} ($50 \times 3000$ bước), với bộ chỉ số kiểu \emph{rliable} (IQM, Probability of
+Improvement) và kiểm định ghép cặp (Wilcoxon signed-rank, bootstrap 95\% CI, Cohen's $d_z$):
+khi được huấn luyện \emph{đủ}, \textbf{cả QL lẫn MC đều vượt RBS một cách rõ rệt}
+($\text{QL}+51\%$, $P(\text{QL}>\text{RBS})=0.79$; $\text{MC}+35\%$, $P(\text{MC}>\text{RBS})=0.69$),
+và \textbf{QL ngang MC} về hiệu quả săn ($P(\text{MC}>\text{QL})=0.41$, khoảng tin cậy chứa $0.5$).
+Quan trọng hơn một con số thắng--thua, một \textbf{lưới khử biến $2\times 2$} (thuật toán $\times$ độ
+mịn state, kèm trục \emph{ngân sách episode}) tách bạch được ba nguồn khác biệt thật sự: (i) lợi thế
+của QL đến từ việc \emph{khai thác được state mịn} (bỏ state mịn $\to$ QL tụt về mức RBS); (ii) MC
+\emph{kém hiệu quả mẫu}, cần khoảng $3.75\times$ số episode mới đuổi kịp QL; (iii) MC \emph{nhạy cảm
+với reward shaping theo bước} (phạt khát/đói làm \emph{phương sai return} tăng cao $\to$ chết khát
+nhiều). Cơ chế \emph{bootstrap} của TD là yếu tố then chốt: nó vừa giúp QL học nhanh từ state mịn,
+vừa định vị tín hiệu phạt khát theo từng bước nên quản lý sinh tồn tốt hơn. Kết luận phương pháp:
+so sánh ``cùng hàm thưởng tại một ngân sách episode cố định'' dễ gây hiểu nhầm vì trộn lẫn ba yếu
+tố trên; phải huấn luyện tới mức đủ (hoặc báo cáo đường cong học) rồi mới so đỉnh.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Giới thiệu}
+% =====================================================================
+
+Mục tiêu của báo cáo là trả lời một câu hỏi thực nghiệm: \emph{trong cùng một môi trường và cùng
+bộ kỹ năng cơ sở, một tác tử \textbf{học} chính sách (reinforcement learning) có vượt được
+một tác tử \textbf{lập trình luật tay} (rule-based) hay không, và giữa hai gia đình thuật toán
+học kinh điển --- Temporal Difference (Q-learning) và Monte Carlo --- phương pháp nào phù hợp hơn
+cho bài toán này?}
+
+Bài toán nằm trong một mô phỏng sinh thái (lập trình bằng Java/JavaFX). \emph{Về mặt AI}, ta chỉ
+cần coi môi trường như một \textbf{Markov Decision Process} (MDP): một bản đồ 2D có nước, cỏ và
+con mồi; tác tử sói quan sát cục bộ (lân cận trong tầm nhìn), chọn hành động mỗi bước thời gian,
+nhận phần thưởng theo \emph{kết quả} (bắt được mồi, sống sót, chết đói/khát). Phần lập trình môi
+trường chỉ được trình bày ở mức cần thiết cho phần AI; trọng tâm là \emph{công thức học}, \emph{thiết
+kế hàm phần thưởng} và \emph{phương pháp đảm bảo so sánh công bằng và có ý nghĩa thống kê}.
+
+\paragraph{Ba ``não'' được so sánh.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{RBS} (Rule-Based System): baseline không học, chấm điểm các chiến lược ứng viên
+        bằng công thức tay rồi chọn điểm cao nhất.
+  \item \textbf{QL} (Q-learning): tabular TD control, học \emph{online} mỗi bước.
+  \item \textbf{MC} (Monte Carlo Control): học từ return thật, \emph{offline} cuối mỗi episode.
+\end{itemize}
+
+\paragraph{Đóng góp.}
+(i) Đặt bài toán săn mồi vào khung \emph{Options} để RL và RBS \textbf{dùng chung} tập kỹ năng cơ
+sở và thuật toán A*, nhờ đó phép so sánh chỉ phản ánh khác biệt ở \emph{bộ chọn chiến lược}. (ii)
+Thiết kế hàm phần thưởng theo kết quả (outcome-based), có \emph{phạt khát/đói} để chống hiện tượng
+khai thác lỗ hổng hàm phần thưởng (reward hacking). (iii) Đánh giá theo chuẩn thống kê
+hiện đại (rliable IQM \& Probability of Improvement, kiểm định ghép cặp) thay vì chỉ báo trung
+bình.
+
+% =====================================================================
+\section{Mô hình hoá MDP}\label{sec:mdp}
+% =====================================================================
+
+\subsection{Môi trường (mô tả ở mức cần thiết cho phần AI)}
+
+Mỗi ``ván'' (episode) khởi tạo trên bản đồ $576\times 576$ với $50$ cỏ, $10$ thỏ, $3$ sói; bước
+thời gian $\Delta t = 0.1$\,s. Sói có nhu cầu \emph{đói} (hunger) và \emph{khát} (thirst) tăng
+theo thời gian; nếu một trong hai chạm $100$ thì tác tử chết. Để duy trì sự sống, sói phải bắt mồi
+(giảm đói) và uống nước (giảm khát). Đây chính là nguồn \emph{xung đột mục tiêu} khiến bài toán
+không tầm thường: thời gian dành cho việc uống là thời gian không thể dành cho việc săn.
+
+\subsection{Ý tưởng then chốt: Hierarchical RL / Options}
+
+Thay vì học điều khiển cấp thấp (gia tốc theo 8 hướng), tác tử học \emph{chọn macro-action} ---
+một trong 8 chiến lược luật. Mỗi chiến lược được chọn sẽ tự đảm nhiệm việc điều hướng (qua thuật
+toán tìm đường A*) và tự thực hiện các thao tác ăn, uống, sinh sản. Đây là khung \emph{Options}
+\cite{sutton1999options}:
+
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\centering
+$s$ (trạng thái) $\;\xrightarrow{\;\text{Q-table, }\varepsilon\text{-greedy}\;}\;$
+$a \in \{0,\dots,7\}$ $\;\longrightarrow\;$
+\code{options[a].updateVelocity(...)} \;(A* + eat/drink/reproduce)}}
+\end{center}
+
+\textbf{Hệ quả thiết kế (quan trọng cho tính công bằng):} RL và RBS \emph{chia sẻ} toàn bộ tập
+chiến lược và \emph{chia sẻ A*}; chỉ khác \textbf{bộ chọn}. RBS chọn bằng công thức chấm điểm tay;
+RL chọn bằng Q-table học được. Do đó so sánh RL vs RBS không lẫn khác biệt về điều hướng --- chỉ
+phản ánh chất lượng \emph{chính sách chọn việc}.
+
+\subsection{Không gian hành động (8 macro-action)}
+
+\begin{table}[h]
+\centering
+\caption{Tám macro-action. Bốn kiểu săn khác nhau ở \emph{lead time} (điểm đón đầu mồi).}
+\label{tab:actions}
+\small
+\begin{tabular}{clp{8.2cm}}
+\toprule
+Idx & Chiến lược & Ý nghĩa \\
+\midrule
+0 & \code{Flee}               & chạy trốn kẻ thù \\
+1 & \code{SeekWater}          & tìm \& uống nước (có hysteresis) \\
+2 & \code{Mate}               & tìm bạn tình để sinh sản \\
+3 & \code{Wander}             & lang thang (fallback) \\
+4 & \code{Hunter(lead 0.0)}   & \emph{Hunt-direct}: lao thẳng vào mồi \\
+5 & \code{Hunter(lead 0.7)}   & \emph{Hunt-short}: đón đầu ngắn ($\equiv$ RBS mặc định) \\
+6 & \code{Hunter(lead 1.3)}   & \emph{Hunt-long}: cắt góc, đón xa hơn \\
+7 & \code{Hunter(lead 2.0)}   & \emph{Hunt-ambush}: mai phục / đón sâu \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Lý do thiết kế bốn kiểu săn.} RBS chỉ dùng \emph{một} \code{HunterStrategy} cố định (lead
+$0.7$). Bốn kiểu săn của RL là \textbf{superset} (tập cha) của RBS, do đó về lý thuyết trần hiệu
+năng của RL không thấp hơn trần của RBS: RL có thể chọn kiểu đón đầu phù hợp với từng tình huống
+(ở cự ly gần các kiểu hội tụ về nhau, khác biệt chỉ xuất hiện ở cự ly trung bình và xa). Đây chính
+là lợi thế cấu trúc mà RL có khả năng khai thác còn RBS thì không.
+
+\subsection{Không gian trạng thái (state encoding)}\label{sec:state}
+
+Quan sát cục bộ được \textbf{rời rạc hoá} thành một chuỗi khoá cho Q-table. Định dạng hiện hành
+(phiên bản \emph{rl-struct}):
+
+\begin{center}
+\code{P|e3,2|t1,5,1|m4|h1|w0|p0}
+\end{center}
+
+\begin{table}[h]
+\centering
+\caption{Các trường trạng thái của sói/thỏ.}
+\label{tab:state}
+\small
+\begin{tabular}{llp{8.4cm}}
+\toprule
+Trường & Miền & Ý nghĩa \\
+\midrule
+role            & \{P,R\}          & P = predator (sói), R = prey (thỏ) \\
+enemyDir,Bin    & $0$--$7$/$8$;\,$0$--$3$ & hướng \& khoảng cách kẻ thù gần nhất \\
+targetType      & $\{0,1,2\}$      & $0$ không có, $1$ mồi/cỏ, $2$ nước \\
+targetDir,Bin   & $0$--$7$/$8$;\,$0$--$3$ & hướng \& khoảng cách mục tiêu \\
+preyMoveDir     & $0$--$7$/$8$     & hướng vận tốc mồi (để ``đoán'' mà cắt góc) \\
+hungerBin ($h$) & $0$--$3$         & \textbf{4 mức} đói: $<50,\,50\text{--}69,\,70\text{--}89,\,\geq 90$ \\
+thirstBin ($w$) & $0$--$2$         & \textbf{3 mức} khát: $<60,\,60\text{--}79,\,\geq 80$ \\
+mateBin ($p$)   & $0$--$1$         & đủ điều kiện đẻ \& có bạn tình kề \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Việc chia \emph{nhiều mức} cho đói (4) và khát (3) là cải tiến của phiên bản \emph{rl-struct}: nó
+cho phép chính sách phân biệt được các mức đói vừa, rất đói và sắp chết, từ đó đưa ra quyết định
+phù hợp (tiếp tục săn hay tạm dừng để đi uống). Khoảng cách được rời rạc hoá theo tầm nhìn $v$:
+$<v/3$ là gần, $<2v/3$ là vừa, còn lại là xa.
+
+\subsection{Hàm thưởng (outcome-based + phạt khát/đói)}\label{sec:reward}
+
+Thưởng theo \textbf{kết quả} của macro-action, \emph{không} dùng shaping khoảng cách dày (shaping
+dày phạt oan các kiểu săn trễ như ambush/lead-long vì chúng \emph{tạm thời} lùi để đón). Phần
+thưởng mỗi bước (giống hệt nhau ở QL và MC):
+
+\begin{equation}
+r =
+\underbrace{\begin{cases} -0.02 & \text{(sói: sức ép thời gian)}\\[1mm] +0.05 & \text{(thỏ: sống thêm 1 bước)}\end{cases}}_{\text{nền}}
+\;+\;
+\underbrace{\begin{cases} +10 & \text{sói bắt được mồi}\\ +1 & \text{thỏ ăn được cỏ}\end{cases}}_{\text{kết quả}}
+\;-\; P_{\text{khát}} \;-\; P_{\text{đói}} \;+\; \text{shaping}
+\end{equation}
+
+trong đó các thành phần phạt \emph{tuyến tính theo mức}, chỉ kích hoạt khi chỉ số rơi vào vùng nguy
+hiểm (vì vậy tác tử không thể lợi dụng để tích lũy phần thưởng):
+\begin{align}
+P_{\text{khát}} &= 0.2\cdot\tfrac{(\text{thirst}-60)^{+}}{40}
+                 + 0.4\cdot\tfrac{(\text{thirst}-80)^{+}}{20}, &
+P_{\text{đói}}  &= 0.2\cdot\tfrac{(\text{hunger}-50)^{+}}{50},
+\end{align}
+với $(x)^{+}=\max(x,0)$. Shaping tiến-gần mục tiêu là \emph{bất đối xứng} ($+0.03\cdot\text{closed}$
+chỉ khi lại gần, lùi thì $0$ chứ không phạt); thỏ được thêm $+0.06\cdot\Delta$ khoảng cách với
+sói. Khi chết: phần thưởng cuối $-10$ (terminal).
+
+\begin{table}[h]
+\centering
+\caption{Tổng hợp reward. Nguyên tắc thang bậc: sự kiện mục tiêu ($\pm 10$) $\gg$ shaping ($\sim 0.03$--$0.06$/bước).}
+\label{tab:reward}
+\small
+\begin{tabular}{lcc}
+\toprule
+Sự kiện & Sói (PREDATOR) & Thỏ (PREY) \\
+\midrule
+Mỗi bước (nền)        & $-0.02$ & $+0.05$ \\
+Bắt được mồi          & $+10$ & --- \\
+Ăn cỏ                 & --- & $+1$ \\
+Phạt khát (vùng nguy) & tới $\approx -0.6$/bước & tới $\approx -0.6$/bước \\
+Phạt đói (chống camp) & tới $\approx -0.2$/bước & --- \\
+Lại gần mục tiêu      & $+0.03\cdot$closed & $+0.03\cdot$closed \\
+Tăng cách với sói     & --- & $+0.06\cdot\Delta$ \\
+Chết (terminal)       & $-10$ & $-10$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Lý do dùng phạt khát/đói thay cho thưởng uống.}
+Phiên bản trước cộng $+4$ cho mỗi lần uống, nhưng cơ chế này tạo ra hiện tượng khai thác lỗ hổng
+hàm phần thưởng (\emph{reward hacking}): tác tử học cách trú lại cạnh nguồn nước để liên tục thu
+phần thưởng uống và phần thưởng sống sót, thay vì đi săn. Thiết kế hiện tại chỉ \textbf{phạt} khát
+trong vùng nguy hiểm và bổ sung \textbf{phạt đói đối xứng}, khiến chiến lược trú cạnh nước không
+còn có lợi và buộc tác tử phải đi săn để giảm đói. Đây là một lưu ý quan trọng về thiết kế hàm
+phần thưởng, đồng thời là một yếu tố gây nhiễu (\emph{confound}) sẽ được phân tích ở phần thảo
+luận, do Monte Carlo phản ứng với tín hiệu phạt khát theo cách rất khác Q-learning.
+
+% =====================================================================
+\section{Hai thuật toán học: TD vs Monte Carlo}\label{sec:algos}
+% =====================================================================
+
+Cả hai đều cập nhật dạng $Q(s,a) \leftarrow Q(s,a) + \alpha\,[\,\text{target} - Q(s,a)\,]$.
+\textbf{Khác biệt duy nhất} là \emph{target}.
+
+\subsection{Q-learning (TD, bootstrap) --- cập nhật MỖI bước}
+\begin{equation}
+Q(s,a)\;\leftarrow\;Q(s,a) + \alpha\Big[\,\underbrace{r + \gamma\max_{a'}Q(s',a')}_{\text{target (bootstrap)}} - Q(s,a)\Big]
+\end{equation}
+Phương pháp này sử dụng chính ước lượng hiện có $Q(s')$ làm xấp xỉ cho ``phần thưởng tương lai''.
+Tính chất: \emph{off-policy} (dùng toán tử $\max$), \emph{online} (cập nhật ngay từng bước),
+\emph{phương sai thấp nhưng có độ chệch (bias)}. Tại trạng thái cuối (tác tử chết): target $=r$
+(không bootstrap).
+
+\subsection{Monte Carlo Control (return thật) --- cập nhật CUỐI episode}
+\begin{equation}
+G_t = \sum_{k=0}^{T-t-1}\gamma^{k}\,r_{t+k+1}, \qquad
+Q(s_t,a_t)\;\leftarrow\;Q(s_t,a_t) + \alpha\,[\,G_t - Q(s_t,a_t)\,]
+\end{equation}
+Dùng \emph{return thật} $G_t$ (không bootstrap), \emph{on-policy}, \emph{offline} (đợi episode kết
+thúc). Cần lưu lại quỹ đạo (trajectory) các cặp $(s,a)$; phần thưởng được điền sau theo cơ chế trễ
+một bước. Tính chất: \emph{không chệch (unbiased) nhưng phương sai cao}.
+
+\begin{table}[h]
+\centering
+\caption{Bản chất hai thuật toán --- giải thích kỳ vọng về kết quả.}
+\label{tab:tdvsmc}
+\small
+\begin{tabular}{lll}
+\toprule
+& \textbf{Q-learning (TD)} & \textbf{Monte Carlo} \\
+\midrule
+Target                 & $r+\gamma\max_{a'}Q(s',a')$ & return thật $G_t$ \\
+Bootstrap              & Có & Không \\
+Bias / Variance        & có bias / \emph{variance thấp} & không bias / \emph{variance cao} \\
+Policy                 & off-policy & on-policy \\
+Thời điểm học          & online, mỗi bước & offline, cuối episode \\
+Credit qua horizon dài & dần dần qua nhiều episode & toàn bộ episode trong 1 lượt \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tham số học \& pipeline huấn luyện}\label{sec:train}
+
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+  \item $\alpha=0.2$ (QL) / $0.1$ (MC);\; $\gamma=0.99$ (horizon hiệu dụng $\approx 1/(1-\gamma)
+        \approx 100$ bước --- chọn để phủ được thang thời gian đói/khát kéo dài hàng trăm bước).
+  \item $\varepsilon$ giảm tuyến tính $1.0\!\to\!0.05$, chạm sàn ở $\sim 80\%$ số episode;
+        \textbf{eval $\varepsilon=0$} (tất định, để công bằng với RBS).
+  \item \textbf{Giao thức huấn luyện thống nhất (best-response một pha).} Vì trong mọi phép đánh
+        giá con mồi \emph{luôn là RBS}, ta huấn luyện sói theo \emph{một pha duy nhất}: sói học
+        chống thỏ RBS cố định. Cách này loại bỏ tính phi-dừng (non-stationary) của lối huấn luyện
+        xen kẽ trước đây, đồng thời cho phép \textbf{dùng cùng độ dài episode cho cả QL và MC}.
+  \item \textbf{Đã khử confound độ dài episode.} Mọi cấu hình trong báo cáo này train với
+        \emph{cùng} $800$ bước/episode (phiên bản trước dùng MC$=400$, QL$=600$); nhờ vậy khác biệt
+        kết quả không còn lẫn biến độ-dài-episode. Ngân sách mặc định $800$ episode; riêng MC được
+        khảo sát thêm ở $3000$ episode (xem lưới khử biến, \S\ref{sec:grid}).
+\end{itemize}
+
+% =====================================================================
+\section{Baseline RBS (Rule-Based System)}
+% =====================================================================
+
+RBS không học: mỗi bước, sói chấm điểm mọi chiến lược ứng viên rồi chọn điểm cao nhất (có
+\emph{commit bonus} giảm dần theo thời gian để chống nhảy qua lại / flicker). Bảng chấm điểm của
+sói (rút gọn):
+
+\begin{table}[h]
+\centering
+\caption{Logic chấm điểm RBS cho sói. Hunter của RBS \emph{cố định lead $0.7$} (chỉ 1 kiểu săn).}
+\label{tab:rbs}
+\small
+\begin{tabular}{lp{9.6cm}}
+\toprule
+Chiến lược & Điều kiện \& điểm \\
+\midrule
+Flee      & có đe doạ $\Rightarrow 100$ (luôn thắng) \\
+SeekWater & emergency nếu thirst $\geq$ critical; commit nếu đang uống dở; seek theo thirst \\
+Hunter    & chưa đói ($<50$) $\Rightarrow 0$; không thấy mồi $\Rightarrow 0$; mồi rất gần $\Rightarrow$ tấn công áp sát; còn lại $\max(0.75,\text{hunger}/100)+0.5\cdot$closeness \\
+Mate      & đủ điều kiện $\Rightarrow 0.45$ \\
+Wander    & $0.3$ (nền, fallback) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Đây chính là cơ sở để so sánh công bằng: RBS và RL chỉ khác \textbf{bộ chọn} (công thức tay vs
+Q-table), mọi thứ khác (tập chiến lược, A*, ngưỡng sinh thái) giữ nguyên.
+
+% =====================================================================
+\section{Thiết kế thí nghiệm so sánh}\label{sec:exp}
+% =====================================================================
+
+\subsection{Nguyên tắc: cùng điều kiện, so theo cặp}
+
+So \emph{ba bộ điều khiển sói} trên CÙNG điều kiện, \textbf{ghép cặp theo seed}: cùng seed $\to$
+cùng layout thế giới (vị trí spawn, cỏ, nước) cho cả ba não. Biến \emph{duy nhất} thay đổi là bộ
+điều khiển của sói; con mồi (thỏ) \emph{luôn RBS} ở mọi nhánh.
+
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+  \item \textbf{Thế giới cô lập} (chỉ gồm sói, thỏ và cỏ): số lần bắt mồi (catch) đếm được phản ánh
+        chính xác số mồi do sói bắt được.
+  \item Sói thả \emph{đói sẵn} ($\text{hunger}=55$, ngưỡng săn $50$) để cả 3 não khởi động cùng điều
+        kiện; \textbf{bù thỏ về sàn $10$} mỗi bước (áp lực mồi không tắt), \textbf{không bù sói} (để
+        đo tuổi thọ \& chết đói/khát).
+  \item RNG của $\varepsilon$ lấy seed riêng tất định (theo seed $\times$ hằng $+$ chỉ số sói), không
+        lấy từ RNG thế giới --- nhờ vậy vị trí spawn giống hệt giữa 3 nhánh.
+  \item Eval $\varepsilon=0$: RL tất định như RBS (bỏ handicap bước ngẫu nhiên).
+\end{itemize}
+
+\subsection{Cấu hình chạy}
+$50$ seed $\times\,3000$ bước ($\approx 300$\,s mô phỏng/seed), công cụ headless \code{BrainCompare}.
+Reset bộ đếm A* ngay trước vòng mô phỏng (spawn không tính vào A*).
+
+\subsection{Các metric}
+\begin{table}[h]
+\centering
+\caption{Bộ metric. \emph{\catk\ step} là chỉ số chính.}
+\label{tab:metrics}
+\small
+\begin{tabular}{lcl}
+\toprule
+Metric & Hướng tốt & Ý nghĩa \\
+\midrule
+\catk\ step             & cao  & hiệu quả săn $=$ catches$\cdot 1000/$steps \;(\textbf{chính}) \\
+Tuổi thọ TB sói (step)  & cao  & trung bình (deathStep $-$ birthStep) \\
+Sói chết đói            & thấp & chết do hunger \\
+Sói chết khát           & thấp & chết do thirst \\
+Step tới lần bắt đầu     & thấp & $=$ maxStep nghĩa là \emph{không} bắt được con nào \\
+CPU ms/step             & thấp & chi phí tính toán (đại diện) \\
+A* gọi/step, node/step  & (tham khảo) & tải tìm đường --- 3 não chung A* nên so công bằng \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Phương pháp thống kê}\label{sec:stats}
+
+Thiết kế là \textbf{matched-pairs} (cùng seed $\to$ cùng layout), nên không được dùng kiểm định
+không-ghép-cặp. Chúng tôi báo cáo hai tầng bổ sung nhau:
+
+\paragraph{(A) Kiểm định ghép cặp \& độ lớn hiệu ứng} (\code{stats_braincompare.py}).
+Với hiệu $d_i = A_i - B_i$ trên từng seed: \emph{Wilcoxon signed-rank} (phi tham số, xấp xỉ chuẩn
+có hiệu chỉnh tie + liên tục) là kiểm định \emph{chính}; \emph{paired $t$} (xấp xỉ chuẩn) để đối
+chiếu; \emph{Cohen's $d_z$} cho độ lớn hiệu ứng; \emph{bootstrap $95\%$ CI} ($B=20000$) cho hiệu
+trung bình \& trung vị; và đếm thắng/hòa/thua.
+
+\paragraph{(B) Đánh giá kiểu rliable} \cite{agarwal2021rliable} (\code{stats_rliable.py}).
+Báo cáo \emph{Median / IQM / Mean} kèm $95\%$ stratified-bootstrap CI cho từng não. \textbf{IQM}
+(Interquartile Mean --- trung bình $50\%$ giữa) là chỉ số được rliable khuyến nghị vì \emph{bền
+vững với outlier} hơn mean và \emph{nhạy} hơn median. Ngoài ra báo cáo \emph{Probability of
+Improvement} $P(A>B)$ kèm CI, và win-rate ghép cặp khai thác cùng-seed.
+
+% =====================================================================
+\section{Kết quả}\label{sec:results}
+% =====================================================================
+
+\subsection{Metric chính --- best-vs-best (trung bình $\pm$ độ lệch chuẩn trên 50 seed)}
+
+Bảng~\ref{tab:main} so ba não ở cấu hình \emph{tốt nhất / huấn luyện đủ} của mỗi bên, trong
+\emph{cùng một lần chạy ghép cặp} (cùng 50 seed): RBS, QL với state mịn ($800$ ep), và MC với state
+mịn nhưng được huấn luyện đủ ($3000$ ep --- xem lý do ở \S\ref{sec:grid}).
+
+\begin{table}[h]
+\centering
+\caption{Bảng metric tổng hợp (RBS \emph{vs} QL@mịn \emph{vs} MC@mịn-$3000$ep). \textbf{In đậm} = tốt nhất theo hàng.}
+\label{tab:main}
+\small
+\begin{tabular}{lccc}
+\toprule
+Metric & RBS & QL & MC \\
+\midrule
+\catk\ step (cao=tốt)   & $4.65\pm1.98$ & $\mathbf{7.01\pm2.37}$ & $6.27\pm2.81$ \\
+Tuổi thọ TB sói (step)  & $\mathbf{2722\pm313}$ & $2530\pm454$ & $2125\pm464$ \\
+Sói chết đói            & $\mathbf{0.32\pm0.55}$ & $0.38\pm0.53$ & $0.66\pm0.75$ \\
+Sói chết khát           & $\mathbf{0.40\pm0.64}$ & $0.66\pm0.82$ & $1.26\pm0.90$ \\
+Step tới lần bắt đầu     & $\mathbf{69\pm89}$ & $117\pm110$ & $130\pm151$ \\
+CPU ms/step (thấp=tốt)  & $4.34\pm1.40$ & $2.82\pm1.26$ & $\mathbf{2.49\pm0.95}$ \\
+A* gọi/step             & $4.03\pm1.40$ & $2.56\pm1.35$ & $\mathbf{2.17\pm0.87}$ \\
+A* node/step            & $1244.8\pm424.7$ & $785.9\pm380.7$ & $\mathbf{680.2\pm293.6}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Cả hai não học đều bắt mồi hiệu quả hơn RBS rõ rệt, và \textbf{đều rẻ hơn RBS về tính toán}: chúng
+gọi A* ít hơn do chính sách ổn định, ít đổi mục tiêu thừa. Cái giá của RL là \emph{sinh tồn}: cả QL
+lẫn MC chết khát nhiều hơn RBS (RBS là kẻ sống sót thận trọng nhưng săn kém). Đáng chú ý, MC chết
+khát gần gấp đôi QL ($1.26$ so với $0.66$) và tuổi thọ thấp nhất --- một dấu hiệu sẽ được mổ xẻ ở
+\S\ref{sec:disc}.
+
+\subsection{Tổng hợp kiểu rliable (metric: \catk\ step)}
+
+\begin{table}[h]
+\centering
+\caption{Median / IQM / Mean kèm $95\%$ bootstrap CI. IQM là chỉ số khuyến nghị.}
+\label{tab:rliable}
+\small
+\begin{tabular}{lccc}
+\toprule
+Não & Median [95\% CI] & \textbf{IQM} [95\% CI] & Mean [95\% CI] \\
+\midrule
+RBS & $4.65\,[4.12,5.21]$ & $\mathbf{4.36\,[3.79,5.03]}$ & $4.65\,[4.11,5.20]$ \\
+QL  & $7.01\,[6.36,7.66]$ & $\mathbf{6.96\,[6.27,7.68]}$ & $7.01\,[6.36,7.65]$ \\
+MC  & $6.27\,[5.51,7.03]$ & $\mathbf{6.19\,[5.45,6.96]}$ & $6.27\,[5.53,7.05]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.74\textwidth, height=6.2cm,
+  ybar, bar width=26pt,
+  symbolic x coords={RBS,QL,MC},
+  xtick=data,
+  ymin=0, ymax=9,
+  ylabel={IQM \catk\ step},
+  nodes near coords, nodes near coords align={vertical},
+  every node near coord/.append style={font=\small},
+  enlarge x limits=0.32,
+  error bars/y dir=both, error bars/y explicit,
+]
+\addplot+[draw=black,fill=gray!35] coordinates {
+  (RBS,4.36) +- (0,0.62)
+  (QL,6.96)  +- (0,0.70)
+  (MC,6.19)  +- (0,0.75)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{IQM hiệu quả săn với thanh sai số $95\%$ CI (bootstrap, $\approx$ đối xứng), cấu hình
+best-vs-best. CI của \emph{cả QL lẫn MC} tách khỏi RBS; CI của QL và MC \emph{chồng nhau} --- hai
+phương pháp học hòa nhau khi MC được huấn luyện đủ.}
+\label{fig:iqm}
+\end{figure}
+
+\subsection{Kiểm định ghép cặp}
+
+\begin{table}[h]
+\centering
+\caption{So sánh ghép cặp trên \catk\ step ($n=50$). CI bootstrap $95\%$ cho hiệu trung bình.}
+\label{tab:paired}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Cặp (A$-$B) & Hiệu TB [95\% CI] & Wilcoxon $z$ ($p$) & $d_z$ & Thắng/Hòa/Thua \\
+\midrule
+QL $-$ RBS & $+2.36\,[+1.47,+3.23]$ & $+4.30\;(1.7\!\times\!10^{-5})$ & $+0.73$ & $41/1/8$ \\
+MC $-$ RBS & $+1.62\,[+0.70,+2.58]$ & $+2.98\;(2.9\!\times\!10^{-3})$ & $+0.47$ & $34/2/14$ \\
+MC $-$ QL  & $-0.74\,[-1.73,+0.32]$ & $-1.76\;(7.9\!\times\!10^{-2})$ & $-0.20$ & $18/2/30$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+  \item \textbf{QL $>$ RBS}: hiệu $+2.36$ \catk\ ($+51\%$), CI \emph{không chứa $0$}, $d_z=0.73$
+        (hiệu ứng \emph{lớn}), thắng $41/50$ seed. Rất có ý nghĩa.
+  \item \textbf{MC $>$ RBS}: hiệu $+1.62$ ($+35\%$), CI \emph{không chứa $0$}, Wilcoxon $p=0.003$,
+        $d_z=0.47$ (hiệu ứng \emph{vừa}), thắng $34/50$. Có ý nghĩa --- \emph{khác hẳn} kết quả
+        thiếu-train (xem \S\ref{sec:grid}).
+  \item \textbf{MC vs QL}: hiệu $-0.74$, \textbf{CI chứa $0$}, Wilcoxon $p=0.079$, $d_z=-0.20$ (nhỏ),
+        $18/2/30$ $\Rightarrow$ \emph{không} khác biệt có ý nghĩa: QL và MC \textbf{hòa} về hiệu quả săn.
+\end{itemize}
+
+\subsection{Probability of Improvement (rliable)}
+
+\begin{table}[h]
+\centering
+\caption{$P(A>B)$ kèm $95\%$ CI (Mann-Whitney) và win-rate ghép cặp. $0.5 =$ không khác.}
+\label{tab:poi}
+\small
+\begin{tabular}{lccc}
+\toprule
+Cặp & $P(A>B)$ [95\% CI] & win-rate ghép cặp & Kết luận \\
+\midrule
+$P(\text{QL}>\text{RBS})$ & $0.789\,[0.694,0.873]$ & $0.830$ & QL tốt hơn \\
+$P(\text{MC}>\text{RBS})$ & $0.688\,[0.581,0.789]$ & $0.700$ & MC tốt hơn \\
+$P(\text{MC}>\text{QL})$  & $0.411\,[0.304,0.525]$ & $0.380$ & $\approx$ ngang (CI chứa $0.5$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Cả hai tầng phương pháp \textbf{nhất quán}: $\text{QL} \approx \text{MC} \;>\; \text{RBS}$ ---
+cả hai thuật toán học đều vượt baseline một cách có ý nghĩa, và hòa nhau ở chỉ số chính (khi MC
+được huấn luyện đủ).
+
+\subsection{Lưới khử biến: vì sao QL thắng và MC ``hụt hơi''?}\label{sec:grid}
+
+Con số best-vs-best ở trên (QL $\approx$ MC $>$ RBS) chưa giải thích \emph{tại sao}, và đặc biệt vì
+sao MC cần tới $3000$ episode trong khi QL chỉ cần $800$. Để tách bạch, chúng tôi chạy một
+\textbf{lưới khử biến} (ablation), giữ \emph{cố định} reward + $\gamma$ + giao thức ($800\times 800$,
+một pha, thỏ RBS) và chỉ thay đổi hai trục: \textbf{thuật toán} (QL/MC) $\times$ \textbf{độ mịn của
+state} (thô $1$-bit \emph{vs} mịn rl-struct), cộng trục \emph{ngân sách episode} cho MC. Mỗi ô là một
+lần train-từ-rỗng rồi eval $50$ seed; IQM \catk\ step:
+
+\begin{table}[h]
+\centering
+\caption{Lưới khử biến (IQM \catk\ step, $50$ seed). Mọi ô: một pha, $800$ bước/ep, reward+$\gamma$
+rl-struct. RBS $\approx 4.4$ làm mốc. Tham chiếu (có confound): MC@thô với \emph{reward cũ} +
+pipeline xen kẽ đạt $7.14$.}
+\label{tab:grid}
+\small
+\begin{tabular}{lcc}
+\toprule
+ & state THÔ ($1$-bit) & state MỊN (rl-struct) \\
+\midrule
+QL ($800$ ep)  & $4.21$ \;($\approx$ RBS) & $\mathbf{6.96}$ \\
+MC ($800$ ep)  & $3.95$ & $3.62$ \\
+MC ($3000$ ep) & --- & $6.19$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Lưới này tách được \textbf{ba nguồn khác biệt} (trước đây bị trộn lẫn):
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+  \item \textbf{Lợi thế của QL = khai thác được state mịn.} Giữ nguyên reward, chỉ thô-hoá state,
+        QL tụt từ $6.96 \to 4.21$ (ngang RBS, $P(\text{QL}>\text{RBS})=0.44$). Tức năng lực vượt
+        trội của QL \emph{không} đến từ hàm thưởng mà từ việc \emph{phân giải trạng thái mịn hơn}
+        --- điều mà cập nhật TD (bootstrap) khai thác được ngay cả khi mỗi trạng thái ít mẫu.
+  \item \textbf{MC kém hiệu quả mẫu.} Với cùng $800$ ep, MC@mịn chỉ đạt $3.62$; phải tăng lên
+        $3000$ ep (khoảng $3.75\times$) MC mới hồi về $6.19$ và hòa QL. MC \emph{không} hỏng về bản
+        chất --- nó chỉ cần nhiều mẫu hơn hẳn để trung bình hoá return.
+  \item \textbf{Thủ phạm là phương sai return, không phải kích thước state.} Một giả thuyết tự
+        nhiên là ``state mịn quá lớn nên MC thiếu mẫu''. Nhưng MC@thô (bảng chỉ $286$ trạng thái,
+        $800$ ep \emph{thừa} mẫu) vẫn chỉ đạt $3.95 \approx$ MC@mịn $3.62$. Bảng nhỏ, đủ mẫu, mà vẫn
+        kẹt $\Rightarrow$ vấn đề \emph{không} phải số trạng thái. Nguyên nhân là \textbf{phương sai
+        cao của return} sinh ra bởi các khoản \emph{phạt khát/đói theo bước}: chúng nhỏ, rải đều,
+        xuất hiện muộn, làm $G_t$ nhiễu mạnh; MC (trung bình return cả episode) cần rất nhiều mẫu
+        mới lọc nổi. Bằng chứng: MC \emph{chết khát cao ở mọi ô} dùng reward này --- đúng hành vi mà
+        khoản phạt định dạy thì MC lại không học được. (Đối chiếu: với \emph{reward cũ} gọn hơn,
+        ít phạt theo bước, MC@thô từng đạt $7.14$ --- nhất quán với giả thuyết phương sai, dù ô đó
+        còn lẫn biến giao thức nên chỉ mang tính tham chiếu.)
+\end{enumerate}
+
+% =====================================================================
+\section{Thảo luận}\label{sec:disc}
+% =====================================================================
+
+\subsection{Phân tích: nguyên nhân QL vượt RBS}
+QL khai thác được toàn bộ \emph{superset} gồm bốn kiểu săn: chính sách học được chọn lead time phù
+hợp theo cự ly và hướng di chuyển của mồi --- điều mà RBS, vốn cố định một kiểu săn, không thực
+hiện được. Đáng chú ý, QL đạt hiệu quả cao hơn trong khi số lần gọi A* lại thấp hơn khoảng $40\%$
+(Bảng~\ref{tab:main}), cho thấy chính sách ra quyết định ổn định và ít dao động giữa các chiến
+lược. Tuổi thọ của QL thấp hơn RBS một chút (chết khát $0.66$ so với $0.40$): QL chấp nhận rủi ro
+về khát cao hơn để đổi lấy nhiều cơ hội săn hơn --- một sự đánh đổi hợp lý, vì chỉ số mục tiêu của
+bài toán là hiệu quả săn. Nhờ phân giải state mịn (\S\ref{sec:grid}), QL chọn được kiểu đón đầu theo
+từng tình huống, đó là phần năng lực mà RBS (một kiểu săn cố định) không có.
+
+\subsection{Phân tích: hồ sơ sinh tồn của MC và khoảng cách hiệu quả mẫu}
+Khi được huấn luyện đủ, MC \emph{hòa} QL về hiệu quả săn (Bảng~\ref{tab:main}), nhưng vẫn lộ một
+điểm yếu nhất quán: \textbf{MC chết khát nhiều hơn} ($1.26$ so với $0.66$ của QL; và lên tới $1.92$
+khi thiếu train) kéo tuổi thọ xuống thấp nhất ($2125$ bước). Quan trọng hơn, lưới khử biến
+(\S\ref{sec:grid}) cho thấy ở \emph{cùng} ngân sách $800$ ep, MC chỉ đạt $\approx 3.6$--$4.0$, kém
+QL hẳn một bậc. Ba quan sát có liên hệ giải thích điều này:
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+  \item \textbf{Phương sai cao của ước lượng return --- thủ phạm chính.} MC cập nhật $Q(s,a)$ theo
+        $G_t$, tổng chiết khấu của \emph{toàn bộ} phần còn lại episode. Các khoản phạt khát/đói nhỏ
+        ($\sim 0.2$--$0.6$/bước), rải đều và đến muộn, cộng với cú $-10$ khi chết, làm $G_t$ \emph{nhiễu
+        rất mạnh}; trạng thái ``khát cao'' do đó khó có ước lượng $Q$ ổn định để học được quy tắc
+        ``cần đi uống''. Lưới khử biến chứng minh đây là nguyên nhân \emph{thực sự}, không phải kích
+        thước không gian trạng thái: ngay cả với bảng thô chỉ $286$ trạng thái (thừa mẫu ở $800$ ep),
+        MC vẫn kẹt ở $3.95$. Ngược lại, TD lan truyền phạt khát \emph{cục bộ theo từng bước} qua
+        bootstrap, phương sai thấp, nên QL học quản lý khát tốt hơn hẳn.
+  \item \textbf{Kém hiệu quả mẫu, nhưng không hỏng về bản chất.} Vì cần trung bình hoá phương sai
+        nói trên, MC đòi hỏi nhiều mẫu hơn nhiều: tăng từ $800$ lên $3000$ ep ($\approx 3.75\times$)
+        đưa MC@mịn từ $3.62$ lên $6.19$, đủ hòa QL. Đây là biểu hiện kinh điển của khoảng cách hiệu
+        quả mẫu giữa Monte Carlo (phương sai cao) và TD.
+  \item \textbf{Đã khử confound độ dài episode.} Phiên bản trước train MC với $400$ bước, QL với
+        $600$ bước --- một biến gây nhiễu. Trong báo cáo này, \emph{mọi} cấu hình dùng chung $800$
+        bước/ep (\S\ref{sec:train}), nên khác biệt còn lại phản ánh đúng bản chất thuật toán chứ
+        không phải độ-dài-episode. Câu hỏi ``under-training hay bản chất'' từng để ngỏ nay đã được
+        trả lời bằng trục ngân sách episode của lưới: \emph{cả hai} --- MC kém ở ngân sách thấp
+        (sample-inefficiency) nhưng hồi phục khi đủ mẫu, và luôn yếu hơn ở quản lý khát (phương sai).
+\end{enumerate}
+
+\paragraph{Tương tác giữa thuật toán và thiết kế hàm phần thưởng.} Việc chuyển từ \emph{thưởng uống
+$+4$} sang \emph{phạt khát} (\S\ref{sec:reward}) đã ngăn được hiện tượng khai thác lỗ hổng ``trú
+cạnh nguồn nước'', nhưng đồng thời biến mục tiêu ``tránh chết khát'' thành một tín hiệu phạt có giá
+trị nhỏ, phân bố đều và xuất hiện muộn --- đúng dạng tín hiệu mà MC xử lý kém nhất. Nói cách khác,
+cùng một hàm phần thưởng có thể phù hợp với TD nhưng bất lợi cho MC. Lưới khử biến củng cố trực tiếp
+điểm này: ở \emph{cùng} state thô, MC dùng reward shaping rl-struct chỉ đạt $3.95$, trong khi với
+reward cũ (ít phạt theo bước) từng đạt $7.14$. Đây là một minh hoạ cụ thể cho nguyên lý: việc lựa
+chọn thuật toán và thiết kế hàm phần thưởng \emph{không độc lập với nhau}.
+
+% =====================================================================
+\section{Hạn chế \& hướng phát triển}
+% =====================================================================
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+  \item \textbf{Giảm phương sai cho MC:} đã xác định phương sai return là thủ phạm chính; bước tiếp
+        theo là dùng baseline / return chuẩn hoá, hoặc chuyển sang $n$-step / TD($\lambda$) để nối
+        nhịp TD--MC --- kỳ vọng thu hẹp khoảng cách hiệu quả mẫu.
+  \item \textbf{Đóng nốt lưới:} ô MC@thô ở $3000$ ep (chưa chạy) và ô MC@thô với \emph{reward cũ}
+        ở giao thức một-pha (khử confound còn lại của con số tham chiếu $7.14$).
+  \item \textbf{Đường cong học:} báo cáo catches/episode theo thời gian train để định lượng tốc độ
+        hội tụ TD \emph{vs} MC (lưới hiện chỉ chụp ở $800$ và $3000$ ep).
+  \item \textbf{Đo trần môi trường (oracle):} có trần mới tính được \emph{optimality gap} chuẩn hoá
+        $[0,1]$ của rliable (hiện bỏ qua vì chưa đo trần).
+\end{itemize}
+
+% =====================================================================
+\section{Kết luận}
+% =====================================================================
+Trên cùng môi trường, cùng không gian trạng thái, hành động, hàm phần thưởng và cùng thuật toán A*,
+\textbf{cả hai thuật toán học đều vượt baseline luật tay một cách rõ rệt} khi được huấn luyện đủ
+($\text{QL}+51\%$, $P(\text{QL}>\text{RBS})=0.79$, $d_z=0.73$; $\text{MC}+35\%$,
+$P(\text{MC}>\text{RBS})=0.69$), đồng thời rẻ hơn RBS về tính toán; và \textbf{QL ngang MC} ở hiệu
+quả săn ($P(\text{MC}>\text{QL})=0.41$). Tuy nhiên, lưới khử biến cho thấy ``ngang nhau ở đỉnh''
+che giấu ba khác biệt cốt lõi: (i) lợi thế của QL đến từ khả năng \emph{khai thác state mịn} (bỏ đi
+thì QL tụt về mức RBS); (ii) MC \emph{kém hiệu quả mẫu}, cần khoảng $3.75\times$ số episode mới đuổi
+kịp; (iii) MC \emph{nhạy cảm với reward shaping theo bước} do phương sai return cao, biểu hiện ở việc
+chết khát nhiều --- đúng thứ mà cập nhật bootstrap của TD xử lý tốt. Ba kết luận rút ra: (1) RL có
+thể vượt hệ luật tay khi được cấp đúng lợi thế về không gian hành động (superset) và phân giải trạng
+thái; (2) giữa các thuật toán RL, sự phù hợp với \emph{cấu trúc hàm thưởng} và \emph{ngân sách mẫu}
+quan trọng hơn nhãn ``có phải RL hay không''; và (3) về phương pháp luận, so sánh hai thuật toán ở
+\emph{một} ngân sách episode cố định dễ gây hiểu nhầm --- phải huấn luyện tới mức đủ hoặc báo cáo
+đường cong học thì kết luận mới vững.
+
+\paragraph{Tái lập.} Số liệu sinh từ \code{BrainCompare} ($50\times3000$), lưu
+\code{braincompare_perseed.csv}; phân tích bằng \code{stats_braincompare.py} (ghép cặp) và
+\code{stats_rliable.py} (rliable). Eval $\varepsilon=0$, seed ghép cặp.
+
+% =====================================================================
+\begin{thebibliography}{9}
+\bibitem{sutton2018rl} R.~S. Sutton and A.~G. Barto.
+  \emph{Reinforcement Learning: An Introduction}, 2nd ed. MIT Press, 2018.
+\bibitem{watkins1992q} C.~J.~C.~H. Watkins and P. Dayan.
+  Q-learning. \emph{Machine Learning}, 8(3--4):279--292, 1992.
+\bibitem{sutton1999options} R.~S. Sutton, D. Precup, and S. Singh.
+  Between MDPs and semi-MDPs: A framework for temporal abstraction in reinforcement learning.
+  \emph{Artificial Intelligence}, 112(1--2):181--211, 1999.
+\bibitem{agarwal2021rliable} R. Agarwal, M. Schwarzer, P.~S. Castro, A. Courville, and M.~G. Bellemare.
+  Deep Reinforcement Learning at the Edge of the Statistical Precipice.
+  \emph{NeurIPS}, 2021.
+\bibitem{wilcoxon1945} F. Wilcoxon.
+  Individual comparisons by ranking methods. \emph{Biometrics Bulletin}, 1(6):80--83, 1945.
+\bibitem{efron1993boot} B. Efron and R.~J. Tibshirani.
+  \emph{An Introduction to the Bootstrap}. Chapman \& Hall, 1993.
+\end{thebibliography}
+
+\end{document}

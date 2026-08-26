@@ -37,6 +37,8 @@ public class WanderStrategy implements MoveStrategy {
 
     private static final Map<Integer, DebugWanderState> DEBUG_STATES = new ConcurrentHashMap<>();
 
+    private static final double STEERING_GAIN = 4.0;
+
     private double wanderDistance;
     private double wanderRadius;
     private double wanderTheta = Math.PI / 2;
@@ -50,15 +52,20 @@ public class WanderStrategy implements MoveStrategy {
         return DEBUG_STATES.get(entityId);
     }
 
+    public static void clearDebugState(int entityId) {
+        DEBUG_STATES.remove(entityId);
+    }
+
     @Override
     public void updateVelocity(LivingEntity owner, List<Entity> neighbors, double dt, WorldMap world) {
+        // Né chướng ngại (đá/nước/biên) do LivingEntity.avoidBlockedDirection() xử lý;
+        // ở đây chỉ lo việc đi lang thang mượt.
         Vector2D currentVel = owner.getVelocity();
         Vector2D currentPos = owner.getPosition();
 
         double maxSpeed = owner.getWanderSpeed();
 
         double maxForce = owner.getMaxForce();
-        double mass = owner.getMass();
 
         double safeWanderDistance = this.wanderDistance;
         double safeWanderRadius = this.wanderRadius;
@@ -79,18 +86,21 @@ public class WanderStrategy implements MoveStrategy {
         double displaceRange = 0.25;
         wanderTheta += (-displaceRange + Math.random() * 2 * displaceRange);
 
-        Vector2D steer = wanderPoint.sub(currentPos);
-        if (steer.magnitude() > 1e-6) {
-            steer = steer.normalize().multiply(maxForce);
+        // Lái kiểu Reynolds: steering = vận tốc mong muốn - vận tốc hiện tại.
+        // Lực giảm dần khi đã đi đúng hướng -> đổi hướng mượt, không giật.
+        Vector2D desired = wanderPoint.sub(currentPos);
+        if (desired.magnitude() > 1e-6) {
+            desired = desired.normalize().multiply(maxSpeed);
         } else {
-            steer = new Vector2D(0, 0);
+            desired = forward.multiply(maxSpeed);
         }
 
-        Vector2D acceleration = steer.multiply(1.0/mass);
+        Vector2D steering = desired.sub(currentVel);
+        Vector2D acceleration = steering.multiply(STEERING_GAIN).limit(maxForce);
         owner.setAcceleration(acceleration);
 
         Vector2D nextVelocity = currentVel.add(acceleration.multiply(dt));
-        if (nextVelocity.magnitude() > maxSpeed && maxSpeed > 0) {
+        if (maxSpeed > 0 && nextVelocity.magnitude() > 1e-6) {
             nextVelocity = nextVelocity.normalize().multiply(maxSpeed);
         }
         owner.setVelocity(nextVelocity);

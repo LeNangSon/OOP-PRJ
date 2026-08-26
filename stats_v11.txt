@@ -1,0 +1,13 @@
+CSV=braincompare_perseed.csv  metric=catches_per_1000  n=50 seed (ghép cặp)  reps=10000
+
+Tổng hợp (điểm [95% CI]) — IQM là chỉ số rliable khuyến nghị:
+   MC: Median 6.39 [5.64,7.16]  IQM 6.22 [5.51,7.01]  Mean 6.39 [5.63,7.19]
+   QL: Median 4.49 [3.84,5.20]  IQM 4.21 [3.60,4.82]  Mean 4.49 [3.85,5.20]
+  RBS: Median 4.76 [4.26,5.28]  IQM 4.51 [3.99,5.08]  Mean 4.76 [4.27,5.28]
+
+Probability of Improvement  P(A>B)  [95% CI]   (0.5 = không khác):
+  P(MC>QL) = 0.721 [0.618,0.819]   | win-rate ghép cặp = 0.740   ✓ có ý nghĩa
+  P(MC>RBS) = 0.697 [0.592,0.795]   | win-rate ghép cặp = 0.720   ✓ có ý nghĩa
+  P(QL>RBS) = 0.440 [0.330,0.552]   | win-rate ghép cặp = 0.380   ≈ CI chứa 0.5
+
+Ghi chú: P(A>B) của rliable là Mann-Whitney (coi các run độc lập); win-rate ghép cặp khai thác cùng-seed. Optimality gap cần điểm chuẩn-hoá [0,1] theo oracle/trần nên bỏ ở đây (chưa đo trần môi trường).

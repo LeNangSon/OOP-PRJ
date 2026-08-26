@@ -4,42 +4,36 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Herbivore;
+import org.openjfx.app.entities.base.LivingEntity;
 
 public class Rabbit extends Herbivore {
 
     public Rabbit(Vector2D position) {
-        // Gọi super của Herbivore với đầy đủ thông số:
-        // position, size, shape, initialHealth, hungerRate, thirstRate,
-        // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
-        super(
-                position,
-            20,
-                "circle",
-                100.0,
-                0.0,
-                5.0,
-            20,
-            20,
-            0.5,
-            10.0,
-            10.0
-        );
+        // hungerRate 1.2/s: 1 cụm cỏ (30 dinh dưỡng) nuôi ~25s; thirstRate 1.8/s: uống mỗi ~39s.
+        super(position, 10.0, "circle", 100.0, 1.2, 1.8,
+                32.0, 38.0, 0.5, 35.0, 12.0);
+        setVisionRadius(50.0);
+        type = EntityType.RABBIT;
+        // Thỏ sinh nhanh nhất đàn (mồi phải đẻ nhanh hơn thú săn ăn). Đo 600s: 15s/lứa
+        // bùng nổ >600 con rồi chết đói hàng loạt; 25s/lứa lại không hồi kịp sau đợt săn
+        // đầu -> 18s/lứa + tốn 20 đói (phải ăn cỏ giữa 2 lứa) là điểm giữa.
+        matureAge = 6.0;
+        reproduceCooldownMax = 22.0;
+        reproduceHungerCost = 20.0;
+    }
 
-        // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setVisionRadius(100.0); // Tầm nhìn xa hơn để phản ứng sớm trên map 1032x576
-        this.type = EntityType.RABBIT;
+    @Override
+    protected LivingEntity createOffspring(Vector2D spawnPos) {
+        return new Rabbit(spawnPos);
     }
 
     @Override
     public void update(double dt, WorldMap world) {
-        // Chỉ cần gọi super.update của Herbivore
-        // Vì Herbivore đã chứa logic xử lý Flee, SeekWater, Hunter, Wander
         super.update(dt, world);
     }
 
     @Override
     public String toString() {
-        // Đường dẫn đến tài nguyên hình ảnh
-        return "org/openjfx/app/Rabbit.png";
+        return "Rabbit#" + getId();
     }
 }

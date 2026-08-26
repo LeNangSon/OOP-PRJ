@@ -1,14 +1,20 @@
 package org.openjfx.app.entities.base;
 
+import java.util.List;
+
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.core.strategies.FleeStrategy;
 import org.openjfx.app.core.strategies.HunterStrategy;
+import org.openjfx.app.core.strategies.MateStrategy;
 import org.openjfx.app.core.strategies.SeekWaterStrategy;
+import org.openjfx.app.core.strategies.StrategyCandidate;
 import org.openjfx.app.core.strategies.WanderStrategy;
 import org.openjfx.app.entities.staticobjs.Plant;
 
 public abstract class Herbivore extends LivingEntity {
+
+    private List<StrategyCandidate> candidates;
 
     public Herbivore(Vector2D position, double size, String shape, double initialHealth, double hungerRate, double thirstRate,
                      double maxSpeed, double maxForce, double mass,
@@ -18,40 +24,52 @@ public abstract class Herbivore extends LivingEntity {
 
     @Override
     public void eat(Entity target, double dt) {
-        if (target instanceof Plant) {
-            setHunger(this.getHunger() - ((Plant) target).consume());
+        if (target instanceof Plant plant) {
+            setHunger(getHunger() - plant.consume());
         }
+    }
+
+    private List<StrategyCandidate> buildCandidates() {
+        return List.of(
+                new StrategyCandidate(FleeStrategy::new,
+                        (e, n) -> hasThreat(e, n) ? 100.0 : 0.0),
+                new StrategyCandidate(() -> new SeekWaterStrategy(wanderDistance, wanderRadius),
+                        (e, n) -> {
+                            // Sắp chết khát -> uống là ưu tiên sống còn, vượt mọi nhu cầu khác.
+                            if (e.getThirst() >= THIRST_CRITICAL) return THIRST_EMERGENCY_SCORE;
+                            // Đang uống dở -> uống cho tới khi hết khát hẳn (chống yo-yo ở mép nước).
+                            if (e.getMoveStrategy() instanceof SeekWaterStrategy)
+                                return e.getThirst() > THIRST_SATED ? DRINK_COMMIT_SCORE : 0.0;
+                            // Chưa uống -> chỉ đi tìm nước khi đã khát đáng kể.
+                            return e.getThirst() > THIRST_SEEK_START ? e.getThirst() / 100.0 + 0.2 : 0.0;
+                        }),
+                new StrategyCandidate(HunterStrategy::new,
+                        (e, n) -> {
+                            if (e.getHunger() < 5.0) return 0.0; // no bị kẹt tìm ăn khi no
+                            if (e.getHunger() > 60.0 || e.getMoveStrategy() instanceof HunterStrategy)
+                                return e.getHunger() / 100.0;
+                            return 0.0;
+                        }),
+                new StrategyCandidate(MateStrategy::new,
+                        (e, n) -> canReproduce() && hasMateNearby() ? 0.45 : 0.0),
+                new StrategyCandidate(() -> new WanderStrategy(wanderDistance, wanderRadius),
+                        (e, n) -> 0.3)
+        );
     }
 
     @Override
     public void update(double dt, WorldMap world) {
-        this.neighbors = world.getNeighbors(this, this.visionRadius);
-        boolean isSeekingWater = this.moveStrategy instanceof SeekWaterStrategy;
-        if (hasThreat(this, neighbors)) {
-            if (!(this.moveStrategy instanceof FleeStrategy)) {
-                this.moveStrategy = new FleeStrategy();
-            }
-        } else if (this.getThirst() > 70.0 || (isSeekingWater && this.getThirst()>0.1)) {
-            if (!(isSeekingWater)) {
-                this.moveStrategy = new SeekWaterStrategy(this.wanderDistance, this.wanderRadius);
-            }
-        } else if (this.getHunger() > 70.0) {
-            if (!(this.moveStrategy instanceof HunterStrategy)) {
-                this.moveStrategy = new HunterStrategy();
-            }
+        setDrinking(false);
+        neighbors = world.getNeighbors(this, visionRadius);
+        if (fixedStrategy != null) {
+            moveStrategy = fixedStrategy;          // Q-learning điều khiển trực tiếp
         } else {
-            // Quay lại trạng thái lang thang nếu không có nhu cầu cấp bách
-            if (!(this.moveStrategy instanceof WanderStrategy)) {
-                this.moveStrategy = new WanderStrategy(this.wanderDistance, this.wanderRadius);
-            }
+            if (candidates == null) candidates = buildCandidates();
+            moveStrategy = StrategyCandidate.selectBest(candidates, moveStrategy, dt, this, neighbors);
         }
-
-        // Cập nhật vận tốc từ Strategy
-        if (this.moveStrategy != null) {
-            this.moveStrategy.updateVelocity(this, neighbors, dt, world);
+        if (moveStrategy != null && !isAvoidingBlockedPath()) {
+            moveStrategy.updateVelocity(this, neighbors, dt, world);
         }
-
-        // Cập nhật vị trí và các chỉ số sinh tồn (Gọi lớp cha)
         super.update(dt, world);
     }
 }

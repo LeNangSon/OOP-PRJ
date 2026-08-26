@@ -1,0 +1,31 @@
+CSV=braincompare_perseed.csv  metric=catches_per_1000  bootstrap B=20000
+   MC: mean 3.267  sd 1.894  SE 0.268  n=50
+   QL: mean 3.593  sd 2.160  SE 0.305  n=50
+  RBS: mean 4.560  sd 1.724  SE 0.244  n=50
+
+== MC − QL  (n=50 cặp) ==
+  hiệu TB (A-B)      : -0.327   (trung vị -0.333)
+  bootstrap 95% CI TB: [-1.107, +0.407]   -> CHỨA 0 (không ý nghĩa)
+  bootstrap 95% CI TV: [-1.333, +0.833]
+  Wilcoxon signed-rank: z=-0.757, p=4.49e-01   (n hiệu khác 0 = 47)
+  paired t (≈chuẩn)   : t=-0.828, p=4.07e-01
+  Cohen's dz (paired) : -0.117
+  thắng/hòa/thua (A>B): 21 / 3 / 26
+
+== MC − RBS  (n=50 cặp) ==
+  hiệu TB (A-B)      : -1.293   (trung vị -2.000)
+  bootstrap 95% CI TB: [-1.947, -0.593]   -> KHÔNG chứa 0 (có ý nghĩa)
+  bootstrap 95% CI TV: [-2.333, -0.667]
+  Wilcoxon signed-rank: z=-3.525, p=4.23e-04   (n hiệu khác 0 = 44)
+  paired t (≈chuẩn)   : t=-3.731, p=1.91e-04
+  Cohen's dz (paired) : -0.528
+  thắng/hòa/thua (A>B): 10 / 6 / 34
+
+== QL − RBS  (n=50 cặp) ==
+  hiệu TB (A-B)      : -0.967   (trung vị -1.167)
+  bootstrap 95% CI TB: [-1.727, -0.140]   -> KHÔNG chứa 0 (có ý nghĩa)
+  bootstrap 95% CI TV: [-2.000, -0.333]
+  Wilcoxon signed-rank: z=-2.825, p=4.72e-03   (n hiệu khác 0 = 49)
+  paired t (≈chuẩn)   : t=-2.369, p=1.79e-02
+  Cohen's dz (paired) : -0.335
+  thắng/hòa/thua (A>B): 14 / 1 / 35

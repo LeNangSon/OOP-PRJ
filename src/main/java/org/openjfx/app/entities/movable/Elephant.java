@@ -4,45 +4,40 @@ import org.openjfx.app.core.EntityType;
 import org.openjfx.app.core.Vector2D;
 import org.openjfx.app.core.WorldMap;
 import org.openjfx.app.entities.base.Herbivore;
+import org.openjfx.app.entities.base.LivingEntity;
 
 public class Elephant extends Herbivore {
 
     public Elephant(Vector2D position) {
-        // Gọi super của Herbivore với các thông số đặc trưng cho Voi:
-        // position, size, shape, health, hungerRate, thirstRate,
-        // maxSpeed, maxForce, mass, wanderDistance, wanderRadius
-        super(
-                position,
-                120.0,     // size (Kích thước lớn)
-                "rect",    // shape (Hình chữ nhật)
-                100.0,     // initialHealth
-                5.0,       // hungerRate (Voi ăn nhiều nên tốc độ đói nhanh)
-                6.0,       // thirstRate (Voi uống nhiều nước)
-                30.0,      // maxSpeed (Voi di chuyển chậm hơn thỏ)
-                2.0,       // maxForce (Lực lái vừa phải)
-                50.0,      // mass (Trọng lượng rất nặng, khó tăng tốc đột ngột)
-                100.0,     // wanderDistance (Khoảng cách điểm ảo xa để đi thẳng ổn định)
-                40.0       // wanderRadius (Bán kính nhiễu lớn hơn để quẹo vòng cung rộng)
-        );
+        // Bộ cũ (đói 5/s, khát 6/s) khiến voi chết liên tục: 1 cụm cỏ chỉ nuôi được 6s.
+        // Voi to xác trao đổi chất CHẬM nhất + đi chậm nhất (26 px/s): đói 0.5/s
+        // (1 cỏ nuôi 60s), khát 1.5/s.
+        super(position, 30.0, "rect", 100.0, 0.5, 1.5,
+                26.0, 36.0, 10.0, 100.0, 40.0);
+        setVisionRadius(50.0);
+        // Khát sẵn 60 (dưới ngưỡng nguy hiểm 75): vẫn ra hồ uống sớm nhưng không cận kề cái chết.
+        setThirst(60.0);
+        type = EntityType.ELEPHANT;
+        setVelocity(new Vector2D(8.0, 0.0));
+        // Voi không có thiên địch -> không gì ghìm số lượng ngoài tốc độ đẻ. Đo 600s với
+        // 60s/lứa: voi bùng 2->15 con. Voi thật đẻ chậm nhất rừng — ở đây cũng vậy.
+        matureAge = 40.0;
+        reproduceCooldownMax = 120.0;
+        reproduceHungerCost = 60.0;
+    }
 
-        // Thiết lập tầm nhìn (radius để quét neighbors)
-        this.setVisionRadius(150.0);
-
-        // Bạn muốn voi bắt đầu trong trạng thái hơi khát để test SeekWater
-        this.setThirst(80.0);
-
-        this.type = EntityType.ELEPHANT;
+    @Override
+    protected LivingEntity createOffspring(Vector2D spawnPos) {
+        return new Elephant(spawnPos);
     }
 
     @Override
     public void update(double dt, WorldMap world) {
-        // Herbivore.update sẽ xử lý logic chuyển đổi giữa Wander, SeekWater, Flee...
         super.update(dt, world);
     }
 
     @Override
     public String toString() {
-        // Đảm bảo file này tồn tại trong resources
-        return "org/openjfx/app/Elephant.png";
+        return "Elephant#" + getId();
     }
 }

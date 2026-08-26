@@ -12,6 +12,13 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.1</junit.version>
+        <!-- Bật Q-learning cho sói & thỏ: mvn javafx:run -Dql=true (mặc định false = AI cũ).
+             LƯU Ý: dấu BẰNG (-Dql=true), không phải hai chấm (-Dql:true). -->
+        <ql>false</ql>
+        <!-- Bật Deep Q-learning cho sói: mvn javafx:run -Ddqn=true (ưu tiên hơn ql nếu cùng bật) -->
+        <dqn>false</dqn>
+        <!-- Bật Monte Carlo cho sói & thỏ: mvn javafx:run -Dmc=true (cần chạy ./train_mc.sh trước) -->
+        <mc>false</mc>
     </properties>
 
     <dependencies>
@@ -23,6 +30,11 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
+            <version>21.0.6</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
             <version>21.0.6</version>
         </dependency>
 
@@ -60,13 +72,19 @@
                         <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>org.openjfx.app/org.openjfx.app.HelloApplication</mainClass>
+                            <mainClass>org.openjfx.app.Launcher</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>
                             <noManPages>true</noManPages>
                             <stripDebug>true</stripDebug>
                             <noHeaderFiles>true</noHeaderFiles>
+                            <!-- Chuyển cờ -Dql/-Ddqn/-Dmc xuống JVM của app khi chạy javafx:run -->
+                            <options>
+                                <option>-Dql=${ql}</option>
+                                <option>-Ddqn=${dqn}</option>
+                                <option>-Dmc=${mc}</option>
+                            </options>
                         </configuration>
                     </execution>
                 </executions>

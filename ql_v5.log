@@ -1,0 +1,54 @@
+=== QL-v5 (state khát 3 mức + phạt đói) FRESH START 19:16:20 ===
+Train SOI (tho RBS co dinh): 600 ep, 1500 step/ep. Bang soi: 0 trang thai
+ep     12 | eps 0.98 | catches/ep 8.75 | wolfStates 324 | rabbitStates 1233
+ep     24 | eps 0.95 | catches/ep 9.08 | wolfStates 334 | rabbitStates 1233
+ep     36 | eps 0.93 | catches/ep 9.75 | wolfStates 337 | rabbitStates 1233
+ep     48 | eps 0.90 | catches/ep 10.83 | wolfStates 341 | rabbitStates 1233
+ep     60 | eps 0.88 | catches/ep 8.08 | wolfStates 348 | rabbitStates 1233
+ep     72 | eps 0.85 | catches/ep 10.17 | wolfStates 349 | rabbitStates 1233
+ep     84 | eps 0.83 | catches/ep 9.92 | wolfStates 351 | rabbitStates 1233
+ep     96 | eps 0.80 | catches/ep 8.50 | wolfStates 353 | rabbitStates 1233
+ep    108 | eps 0.78 | catches/ep 9.08 | wolfStates 353 | rabbitStates 1233
+ep    120 | eps 0.75 | catches/ep 9.58 | wolfStates 355 | rabbitStates 1233
+ep    132 | eps 0.73 | catches/ep 8.00 | wolfStates 355 | rabbitStates 1233
+ep    144 | eps 0.70 | catches/ep 6.92 | wolfStates 357 | rabbitStates 1233
+ep    156 | eps 0.68 | catches/ep 10.92 | wolfStates 357 | rabbitStates 1233
+ep    168 | eps 0.65 | catches/ep 11.50 | wolfStates 357 | rabbitStates 1233
+ep    180 | eps 0.63 | catches/ep 10.25 | wolfStates 358 | rabbitStates 1233
+ep    192 | eps 0.60 | catches/ep 11.58 | wolfStates 358 | rabbitStates 1233
+ep    204 | eps 0.58 | catches/ep 9.92 | wolfStates 358 | rabbitStates 1233
+ep    216 | eps 0.55 | catches/ep 10.33 | wolfStates 359 | rabbitStates 1233
+ep    228 | eps 0.53 | catches/ep 10.42 | wolfStates 360 | rabbitStates 1233
+ep    240 | eps 0.50 | catches/ep 9.67 | wolfStates 360 | rabbitStates 1233
+ep    252 | eps 0.48 | catches/ep 11.17 | wolfStates 360 | rabbitStates 1233
+ep    264 | eps 0.45 | catches/ep 10.75 | wolfStates 360 | rabbitStates 1233
+ep    276 | eps 0.43 | catches/ep 11.50 | wolfStates 360 | rabbitStates 1233
+ep    288 | eps 0.40 | catches/ep 12.75 | wolfStates 360 | rabbitStates 1233
+ep    300 | eps 0.38 | catches/ep 9.00 | wolfStates 360 | rabbitStates 1233
+ep    312 | eps 0.35 | catches/ep 10.25 | wolfStates 360 | rabbitStates 1233
+ep    324 | eps 0.33 | catches/ep 12.58 | wolfStates 360 | rabbitStates 1233
+ep    336 | eps 0.30 | catches/ep 7.92 | wolfStates 360 | rabbitStates 1233
+ep    348 | eps 0.28 | catches/ep 10.83 | wolfStates 360 | rabbitStates 1233
+ep    360 | eps 0.25 | catches/ep 12.33 | wolfStates 360 | rabbitStates 1233
+ep    372 | eps 0.23 | catches/ep 10.50 | wolfStates 361 | rabbitStates 1233
+ep    384 | eps 0.20 | catches/ep 11.25 | wolfStates 361 | rabbitStates 1233
+ep    396 | eps 0.18 | catches/ep 9.25 | wolfStates 361 | rabbitStates 1233
+ep    408 | eps 0.15 | catches/ep 10.17 | wolfStates 361 | rabbitStates 1233
+ep    420 | eps 0.13 | catches/ep 10.67 | wolfStates 362 | rabbitStates 1233
+ep    432 | eps 0.10 | catches/ep 9.67 | wolfStates 362 | rabbitStates 1233
+ep    444 | eps 0.08 | catches/ep 11.75 | wolfStates 364 | rabbitStates 1233
+ep    456 | eps 0.05 | catches/ep 13.42 | wolfStates 364 | rabbitStates 1233
+ep    468 | eps 0.05 | catches/ep 8.75 | wolfStates 370 | rabbitStates 1233
+ep    480 | eps 0.05 | catches/ep 10.42 | wolfStates 370 | rabbitStates 1233
+ep    492 | eps 0.05 | catches/ep 12.42 | wolfStates 370 | rabbitStates 1233
+ep    504 | eps 0.05 | catches/ep 11.83 | wolfStates 370 | rabbitStates 1233
+ep    516 | eps 0.05 | catches/ep 7.67 | wolfStates 370 | rabbitStates 1233
+ep    528 | eps 0.05 | catches/ep 10.58 | wolfStates 371 | rabbitStates 1233
+ep    540 | eps 0.05 | catches/ep 11.00 | wolfStates 372 | rabbitStates 1233
+ep    552 | eps 0.05 | catches/ep 12.17 | wolfStates 374 | rabbitStates 1233
+ep    564 | eps 0.05 | catches/ep 12.58 | wolfStates 374 | rabbitStates 1233
+ep    576 | eps 0.05 | catches/ep 10.50 | wolfStates 374 | rabbitStates 1233
+ep    588 | eps 0.05 | catches/ep 9.83 | wolfStates 374 | rabbitStates 1233
+ep    600 | eps 0.05 | catches/ep 10.67 | wolfStates 374 | rabbitStates 1233
+Xong sau 2425.0s (catches/ep 10.35). Da luu /Volumes/DEV/OOP JAVA/PRJ/OOP-PRJ/qtables/wolf.qtable (374 trang thai)
+=== TRAIN DONE 19:56:46, chạy BrainCompare ===
