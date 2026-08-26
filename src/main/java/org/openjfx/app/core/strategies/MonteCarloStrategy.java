@@ -192,8 +192,6 @@ public class MonteCarloStrategy implements MoveStrategy {
         if (curThirstLevel > THIRST_HIGH) {
             r -= THIRST_PENALTY * (curThirstLevel - THIRST_HIGH) / (100.0 - THIRST_HIGH);
         }
-        // rl_struct (port từ QLearningStrategy): phạt-dốc vùng nguy cấp khát + phạt đói đối xứng
-        // (chống reward-hacking "cắm trại ở hồ"). Giữ IDENTICAL với QL để so sánh sòng phẳng.
         if (!LEAN_REWARD && curThirstLevel > THIRST_CRITICAL) {
             r -= THIRST_CRITICAL_PENALTY * (curThirstLevel - THIRST_CRITICAL) / (100.0 - THIRST_CRITICAL);
         }
